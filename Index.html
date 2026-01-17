@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Clima & Alertas Inteligentes</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+body{
+  margin:0;
+  font-family:Arial,sans-serif;
+  background:linear-gradient(135deg,#1565c0,#26c6da);
+  color:#fff;
+  padding:16px;
+}
+h2{text-align:center}
+.card{
+  background:rgba(255,255,255,.18);
+  border-radius:18px;
+  padding:18px;
+  margin-bottom:18px;
+}
+button,input{
+  width:100%;
+  padding:12px;
+  margin-top:10px;
+  font-size:16px;
+  border:none;
+  border-radius:12px;
+}
+button{
+  background:#00e676;
+  font-weight:bold;
+}
+.resultado{
+  margin-top:6px;
+  font-size:18px;
+}
+.status{
+  font-size:20px;
+  font-weight:bold;
+  margin-top:10px;
+}
+canvas{
+  background:#fff;
+  border-radius:12px;
+  padding:10px;
+}
+</style>
+</head>
+
+<body>
+
+<h2>🌦️ Clima & Alertas Inteligentes</h2>
+
+<div class="card">
+  <button onclick="usarGPS()">📍 Usar minha localização</button>
+
+  <input type="date" id="data">
+  <button onclick="buscar()">Consultar</button>
+
+  <div class="resultado" id="pressao"></div>
+  <div class="resultado" id="chuva"></div>
+  <div class="resultado" id="variacao"></div>
+  <div class="resultado" id="comparacao"></div>
+  <div class="status" id="status"></div>
+</div>
+
+<div class="card">
+  <h3>📊 Pressão – histórico (30 dias)</h3>
+  <canvas id="grafico"></canvas>
+</div>
+
+<script>
+let lat = -27.1;
+let lon = -52.6;
+let chart;
+
+// Elementos DOM
+const dataInput   = document.getElementById("data");
+const pressaoDiv  = document.getElementById("pressao");
+const chuvaDiv    = document.getElementById("chuva");
+const variacaoDiv = document.getElementById("variacao");
+const comparacaoDiv = document.getElementById("comparacao");
+const statusDiv   = document.getElementById("status");
+const grafico     = document.getElementById("grafico");
+
+// GPS
+function usarGPS(){
+  if(!navigator.geolocation){
+    alert("❌ GPS não suportado neste navegador");
+    return;
+  }
+
+  navigator.geolocation.getCurrentPosition(
+    pos=>{
+      lat = pos.coords.latitude;
+      lon = pos.coords.longitude;
+      alert(`📍 Localização detectada!\nLat: ${lat.toFixed(4)}\nLon: ${lon.toFixed(4)}`);
+    },
+    erro=>{
+      alert("❌ Não foi possível obter o GPS: " + erro.message);
+    },
+    {
+      enableHighAccuracy:true,
+      timeout:10000,
+      maximumAge:0
+    }
+  );
+}
+
+// Buscar dados climáticos
+async function buscar(){
+  if(!dataInput.value){
+    alert("📅 Selecione uma data");
+    return;
+  }
+
+  const fim = new Date(dataInput.value);
+  const inicio = new Date(fim);
+  inicio.setDate(inicio.getDate() - 30);
+
+  const url = `https://archive-api.open-meteo.com/v1/archive
+    ?latitude=${lat}
+    &longitude=${lon}
+    &start_date=${inicio.toISOString().split("T")[0]}
+    &end_date=${fim.toISOString().split("T")[0]}
+    &daily=pressure_msl,precipitation_sum
+    &timezone=America/Sao_Paulo`;
+
+  try{
+    const resp = await fetch(url);
+    const dados = await resp.json();
+
+    const pHoje = dados.daily.pressure_msl.at(-1);
+    const pSemana = dados.daily.pressure_msl.slice(-7)
+      .reduce((a,b)=>a+b) / 7;
+    const pMes = dados.daily.pressure_msl
+      .reduce((a,b)=>a+b) / dados.daily.pressure_msl.length;
+
+    const chuvaHoje = dados.daily.precipitation_sum.at(-1);
+
+    pressaoDiv.innerHTML = `🌬️ Hoje: <b>${pHoje.toFixed(1)} hPa</b>`;
+    comparacaoDiv.innerHTML =
+      `📊 Média 7 dias: ${pSemana.toFixed(1)} hPa<br>
+       📈 Média mês: ${pMes.toFixed(1)} hPa`;
+    variacaoDiv.innerHTML =
+      `🔄 Diferença hoje/semana: ${(pHoje-pSemana).toFixed(1)} hPa`;
+    chuvaDiv.innerHTML =
+      chuvaHoje > 0 ? `🌧️ Chuva: ${chuvaHoje} mm` : "☀️ Sem chuva";
+
+    // Índice de tempestade
+    let indice = "🟢 Baixo";
+    if(pHoje < 1010) indice = "🟡 Moderado";
+    if(pHoje < 1007 || chuvaHoje > 20) indice = "🔴 Alto";
+
+    statusDiv.innerText = `🌪️ Índice de tempestade: ${indice}`;
+
+    // Notificação
+    if(Notification.permission !== "granted"){
+      Notification.requestPermission();
+    }
+
+    if(indice === "🔴 Alto" && Notification.permission === "granted"){
+      new Notification("⚠️ Alerta de tempestade", {
+        body: "Queda significativa de pressão atmosférica detectada!"
+      });
+    }
+
+    // Gráfico
+    if(chart) chart.destroy();
+    chart = new Chart(grafico,{
+      type:"line",
+      data:{
+        labels:dados.daily.time,
+        datasets:[{
+          label:"Pressão (hPa)",
+          data:dados.daily.pressure_msl,
+          borderWidth:3,
+          tension:0.4
+        }]
+      }
+    });
+
+  }catch(e){
+    alert("❌ Erro ao consultar dados climáticos");
+  }
+}
+</script>
+
+</body>
+</html>
