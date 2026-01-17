@@ -58,6 +58,8 @@ canvas{
 <div class="card">
   <button onclick="usarGPS()">📍 Usar minha localização</button>
 
+  <div class="resultado" id="local"></div>
+
   <input type="date" id="data">
   <button onclick="buscar()">Consultar</button>
 
@@ -79,15 +81,179 @@ let lon = -52.6;
 let chart;
 
 // Elementos DOM
-const dataInput   = document.getElementById("data");
-const pressaoDiv  = document.getElementById("pressao");
-const chuvaDiv    = document.getElementById("chuva");
+const dataInput = document.getElementById("data");
+const pressaoDiv = document.getElementById("pressao");
+const chuvaDiv = document.getElementById("chuva");
 const variacaoDiv = document.getElementById("variacao");
 const comparacaoDiv = document.getElementById("comparacao");
-const statusDiv   = document.getElementById("status");
-const grafico     = document.getElementById("grafico");
+const statusDiv = document.getElementById("status");
+const localDiv = document.getElementById("local");
+const grafico = document.getElementById("grafico");
 
-// GPS
+/* =====================================================
+   🔁 Geocodificação reversa (FUNCIONA NO BRASIL)
+   ===================================================== */
+async function buscarCidadeEstado(lat, lon){
+
+  // 1️⃣ Tentativa: Open-Meteo
+  try{
+    const url1 =
+      `https://geocoding-api.open-meteo.com/v1/reverse?latitude=${lat}&longitude=${lon}&language=pt`;
+    const r1 = await fetch(url1);
+    const j1 = await r1.json();
+
+    if(j1.results && j1.results.length > 0){
+      const c = j1.results[0];
+      if(c.name && c.admin1){
+        return `${c.name} – ${c.admin1}`;
+      }
+    }
+  }catch(e){}
+
+  // 2️⃣ Fallback: OpenStreetMap (confiável no Brasil)
+  try{
+    const url2 =
+      `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&accept-language=pt-BR`;
+    const r2 = await fetch(url2);
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Clima & Alertas Inteligentes</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+body{
+  margin:0;
+  font-family:Arial,sans-serif;
+  background:linear-gradient(135deg,#1565c0,#26c6da);
+  color:#fff;
+  padding:16px;
+}
+h2{text-align:center}
+.card{
+  background:rgba(255,255,255,.18);
+  border-radius:18px;
+  padding:18px;
+  margin-bottom:18px;
+}
+button,input{
+  width:100%;
+  padding:12px;
+  margin-top:10px;
+  font-size:16px;
+  border:none;
+  border-radius:12px;
+}
+button{
+  background:#00e676;
+  font-weight:bold;
+}
+.resultado{
+  margin-top:6px;
+  font-size:18px;
+}
+.status{
+  font-size:20px;
+  font-weight:bold;
+  margin-top:10px;
+}
+canvas{
+  background:#fff;
+  border-radius:12px;
+  padding:10px;
+}
+</style>
+</head>
+
+<body>
+
+<h2>🌦️ Clima & Alertas Inteligentes</h2>
+
+<div class="card">
+  <button onclick="usarGPS()">📍 Usar minha localização</button>
+
+  <div class="resultado" id="local"></div>
+
+  <input type="date" id="data">
+  <button onclick="buscar()">Consultar</button>
+
+  <div class="resultado" id="pressao"></div>
+  <div class="resultado" id="chuva"></div>
+  <div class="resultado" id="variacao"></div>
+  <div class="resultado" id="comparacao"></div>
+  <div class="status" id="status"></div>
+</div>
+
+<div class="card">
+  <h3>📊 Pressão – histórico (30 dias)</h3>
+  <canvas id="grafico"></canvas>
+</div>
+
+<script>
+let lat = -27.1;
+let lon = -52.6;
+let chart;
+
+// Elementos DOM
+const dataInput = document.getElementById("data");
+const pressaoDiv = document.getElementById("pressao");
+const chuvaDiv = document.getElementById("chuva");
+const variacaoDiv = document.getElementById("variacao");
+const comparacaoDiv = document.getElementById("comparacao");
+const statusDiv = document.getElementById("status");
+const localDiv = document.getElementById("local");
+const grafico = document.getElementById("grafico");
+
+/* =====================================================
+   🔁 Geocodificação reversa (FUNCIONA NO BRASIL)
+   ===================================================== */
+async function buscarCidadeEstado(lat, lon){
+
+  // 1️⃣ Tentativa: Open-Meteo
+  try{
+    const url1 =
+      `https://geocoding-api.open-meteo.com/v1/reverse?latitude=${lat}&longitude=${lon}&language=pt`;
+    const r1 = await fetch(url1);
+    const j1 = await r1.json();
+
+    if(j1.results && j1.results.length > 0){
+      const c = j1.results[0];
+      if(c.name && c.admin1){
+        return `${c.name} – ${c.admin1}`;
+      }
+    }
+  }catch(e){}
+
+  // 2️⃣ Fallback: OpenStreetMap (confiável no Brasil)
+  try{
+    const url2 =
+      `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&accept-language=pt-BR`;
+    const r2 = await fetch(url2);
+    const j2 = await r2.json();
+
+    if(j2.address){
+      const cidade =
+        j2.address.city ||
+        j2.address.town ||
+        j2.address.village ||
+        j2.address.municipality ||
+        "Cidade desconhecida";
+
+      const estado = j2.address.state || "";
+
+      return `${cidade} – ${estado}`;
+    }
+  }catch(e){}
+
+  return "Local não identificado";
+}
+
+/* =====================================================
+   📍 GPS
+   ===================================================== */
 function usarGPS(){
   if(!navigator.geolocation){
     alert("❌ GPS não suportado neste navegador");
@@ -95,13 +261,20 @@ function usarGPS(){
   }
 
   navigator.geolocation.getCurrentPosition(
-    pos=>{
+    async pos=>{
       lat = pos.coords.latitude;
       lon = pos.coords.longitude;
-      alert(`📍 Localização detectada ajp!\nLat: ${lat.toFixed(4)}\nLon: ${lon.toFixed(4)}`);
+
+      localDiv.innerHTML = "🔎 Identificando local...";
+
+      const local = await buscarCidadeEstado(lat, lon);
+
+      localDiv.innerHTML =
+        `📍 <b>${local}</b><br>
+         🌎 Lat: ${lat.toFixed(4)} | Lon: ${lon.toFixed(4)}`;
     },
     erro=>{
-      alert("❌ Não foi possível obter o GPS: " + erro.message);
+      alert("❌ Erro ao obter GPS: " + erro.message);
     },
     {
       enableHighAccuracy:true,
@@ -111,10 +284,12 @@ function usarGPS(){
   );
 }
 
-// Buscar dados climáticos
+/* =====================================================
+   🌦️ Buscar dados climáticos
+   ===================================================== */
 async function buscar(){
   if(!dataInput.value){
-    alert("📅 Selecione uma data");
+    alert("📅 Selecione uma ajp data");
     return;
   }
 
@@ -122,7 +297,8 @@ async function buscar(){
   const inicio = new Date(fim);
   inicio.setDate(inicio.getDate() - 30);
 
-  const url = `https://archive-api.open-meteo.com/v1/archive
+  const url =
+    `https://archive-api.open-meteo.com/v1/archive
     ?latitude=${lat}
     &longitude=${lon}
     &start_date=${inicio.toISOString().split("T")[0]}
@@ -136,9 +312,9 @@ async function buscar(){
 
     const pHoje = dados.daily.pressure_msl.at(-1);
     const pSemana = dados.daily.pressure_msl.slice(-7)
-      .reduce((a,b)=>a+b) / 7;
+      .reduce((a,b)=>a+b)/7;
     const pMes = dados.daily.pressure_msl
-      .reduce((a,b)=>a+b) / dados.daily.pressure_msl.length;
+      .reduce((a,b)=>a+b)/dados.daily.pressure_msl.length;
 
     const chuvaHoje = dados.daily.precipitation_sum.at(-1);
 
@@ -151,25 +327,22 @@ async function buscar(){
     chuvaDiv.innerHTML =
       chuvaHoje > 0 ? `🌧️ Chuva: ${chuvaHoje} mm` : "☀️ Sem chuva";
 
-    // Índice de tempestade
     let indice = "🟢 Baixo";
     if(pHoje < 1010) indice = "🟡 Moderado";
     if(pHoje < 1007 || chuvaHoje > 20) indice = "🔴 Alto";
 
     statusDiv.innerText = `🌪️ Índice de tempestade: ${indice}`;
 
-    // Notificação
     if(Notification.permission !== "granted"){
       Notification.requestPermission();
     }
 
     if(indice === "🔴 Alto" && Notification.permission === "granted"){
       new Notification("⚠️ Alerta de tempestade", {
-        body: "Queda significativa de pressão atmosférica detectada!"
+        body: "Queda significativa da pressão atmosférica detectada!"
       });
     }
 
-    // Gráfico
     if(chart) chart.destroy();
     chart = new Chart(grafico,{
       type:"line",
