@@ -106,11 +106,11 @@ const pressaoDiv = document.getElementById("pressao");
 const chuvaDiv = document.getElementById("chuva");
 const variacaoDiv = document.getElementById("variacao");
 const comparacaoDiv = document.getElementById("comparacao");
-const statusDiv = document.getElementById("status");
 const pressaoChuvaDiv = document.getElementById("pressaoChuva");
+const statusDiv = document.getElementById("status");
 const grafico = document.getElementById("grafico");
 
-/* 🔍 AUTOCOMPLETE DE CIDADE */
+/* 🔍 AUTOCOMPLETE */
 cidadeInput.addEventListener("input", async ()=>{
   const q = cidadeInput.value.trim();
   lista.innerHTML = "";
@@ -142,34 +142,52 @@ cidadeInput.addEventListener("input", async ()=>{
   });
 });
 
-/* 🌦️ BUSCAR CLIMA */
+/* 🌦️ BUSCAR CLIMA (API ARCHIVE – CORRETA) */
 async function buscarClima(){
   if(lat === null){
     alert("Selecione uma cidade na lista");
     return;
   }
 
+  const fim = new Date();
+  const inicio = new Date();
+  inicio.setDate(fim.getDate() - 7);
+
+  const inicioStr = inicio.toISOString().split("T")[0];
+  const fimStr = fim.toISOString().split("T")[0];
+
   const url =
-    `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}
+    `https://archive-api.open-meteo.com/v1/archive
+     ?latitude=${lat}
+     &longitude=${lon}
+     &start_date=${inicioStr}
+     &end_date=${fimStr}
      &hourly=pressure_msl,precipitation
-     &past_days=7
      &timezone=America/Sao_Paulo`;
 
-  const r = await fetch(url);
-  const d = await r.json();
-  processarDados(d);
+  try{
+    const r = await fetch(url);
+    const d = await r.json();
+
+    if(!d.hourly || !d.hourly.time){
+      alert("Sem dados disponíveis");
+      return;
+    }
+
+    processarDados(d);
+  }catch(e){
+    alert("Erro ao consultar dados climáticos");
+  }
 }
 
 /* ⏱️ PROCESSAR DADOS */
 function processarDados(d){
-  const hoje = new Date().toISOString().slice(0,10);
   const dias = {};
 
   d.hourly.time.forEach((t,i)=>{
     const dia = t.split("T")[0];
-    if(dia > hoje) return;
-
     if(!dias[dia]) dias[dia] = {p:[], c:0};
+
     dias[dia].p.push(d.hourly.pressure_msl[i]);
     dias[dia].c += d.hourly.precipitation[i];
   });
@@ -182,9 +200,7 @@ function processarDados(d){
     const partes = dia.split("-");
     labels.push(`${partes[2]}/${partes[1]}/${partes[0]}`);
 
-    pressao.push(
-      dias[dia].p.reduce((a,b)=>a+b) / dias[dia].p.length
-    );
+    pressao.push(dias[dia].p.reduce((a,b)=>a+b)/dias[dia].p.length);
     chuva.push(dias[dia].c);
   });
 
@@ -192,25 +208,23 @@ function processarDados(d){
 }
 
 /* 🌧️ PRESSÃO TÍPICA DE CHUVA */
-function calcularPressaoDeChuva(pressoes, chuvas){
+function calcularPressaoDeChuva(p, c){
   let soma = 0;
   let dias = 0;
 
-  for(let i = 0; i < chuvas.length; i++){
-    if(chuvas[i] >= 1){
-      soma += pressoes[i];
+  for(let i=0;i<c.length;i++){
+    if(c[i] >= 1){
+      soma += p[i];
       dias++;
     }
   }
-
-  if(dias === 0) return null;
-  return soma / dias;
+  return dias ? soma/dias : null;
 }
 
 /* 📊 RENDERIZAR */
 function renderizar(labels, p, c){
   const hoje = p.at(-1);
-  const media = p.reduce((a,b)=>a+b) / p.length;
+  const media = p.reduce((a,b)=>a+b)/p.length;
 
   pressaoDiv.innerHTML = `🌬️ Pressão atual: <b>${hoje.toFixed(1)} hPa</b>`;
   comparacaoDiv.innerHTML = `📊 Média 7 dias: ${media.toFixed(1)} hPa`;
@@ -223,14 +237,9 @@ function renderizar(labels, p, c){
   statusDiv.innerText = `🌪️ Risco: ${risco}`;
 
   const pressaoChuva = calcularPressaoDeChuva(p, c);
-  if(pressaoChuva){
-    pressaoChuvaDiv.innerHTML =
-      `🌧️ Em <b>${cidadeAtual}</b> costuma chover quando a pressão atmosférica está em torno de
-       <b>${pressaoChuva.toFixed(1)} hPa</b>`;
-  }else{
-    pressaoChuvaDiv.innerHTML =
-      `🌤️ Não houve chuva suficiente no período para identificar um padrão`;
-  }
+  pressaoChuvaDiv.innerHTML = pressaoChuva
+    ? `🌧️ Em <b>${cidadeAtual}</b> costuma chover quando a pressão atmosférica está em torno de <b>${pressaoChuva.toFixed(1)} hPa</b>`
+    : `🌤️ Não houve chuva suficiente para identificar um padrão`;
 
   if(chart) chart.destroy();
   chart = new Chart(grafico,{
