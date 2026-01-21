@@ -54,6 +54,17 @@ button{
   background:#e0e0e0;
 }
 
+.alerta{
+  margin-top:10px;
+  padding:10px;
+  border-radius:10px;
+  font-weight:bold;
+}
+
+.alerta.verde{background:#2e7d32;}
+.alerta.amarelo{background:#f9a825;color:#000;}
+.alerta.vermelho{background:#c62828;}
+
 canvas{
   background:#fff;
   border-radius:10px;
@@ -74,7 +85,9 @@ canvas{
 
   <div id="info"></div>
   <div id="previsao"></div>
+  <div id="historico"></div>
   <div id="padrao"></div>
+  <div id="alerta"></div>
 </div>
 
 <div class="card">
@@ -91,7 +104,9 @@ const cidadeInput=document.getElementById("cidade");
 const lista=document.getElementById("lista");
 const info=document.getElementById("info");
 const previsao=document.getElementById("previsao");
+const historico=document.getElementById("historico");
 const padrao=document.getElementById("padrao");
+const alertaDiv=document.getElementById("alerta");
 
 /* 🔍 AUTOCOMPLETE */
 cidadeInput.addEventListener("input", async ()=>{
@@ -120,7 +135,7 @@ cidadeInput.addEventListener("input", async ()=>{
   });
 });
 
-/* 🌦️ BUSCAR CLIMA */
+/* 🌦️ BUSCAR */
 async function buscar(){
   if(lat===null){
     alert("Selecione a cidade na lista");
@@ -131,15 +146,12 @@ async function buscar(){
   const inicio=new Date();
   inicio.setDate(hoje.getDate()-7);
 
-  const fimStr=hoje.toISOString().split("T")[0];
-  const iniStr=inicio.toISOString().split("T")[0];
-
   const url=
     "https://archive-api.open-meteo.com/v1/archive"
     +"?latitude="+lat
     +"&longitude="+lon
-    +"&start_date="+iniStr
-    +"&end_date="+fimStr
+    +"&start_date="+inicio.toISOString().split("T")[0]
+    +"&end_date="+hoje.toISOString().split("T")[0]
     +"&hourly=pressure_msl,precipitation"
     +"&timezone=America/Sao_Paulo";
 
@@ -177,15 +189,15 @@ function processar(d){
   render(labels,p,c);
 }
 
-/* 🎨 FUNDO DOS DIAS CHUVOSOS */
+/* 🎨 FUNDO CHUVOSO */
 const fundoChuvaPlugin={
   id:"fundoChuva",
   beforeDraw(chart){
-    const {ctx, chartArea, scales:{x}}=chart;
+    const {ctx,chartArea,scales:{x}}=chart;
     ctx.save();
     chuvaGlobal.forEach((v,i)=>{
       if(v>1){
-        const w=x.width/(x.ticks.length);
+        const w=x.width/x.ticks.length;
         const px=x.getPixelForValue(i)-w/2;
         ctx.fillStyle="rgba(255,0,0,0.08)";
         ctx.fillRect(px,chartArea.top,w,chartArea.bottom-chartArea.top);
@@ -197,31 +209,40 @@ const fundoChuvaPlugin={
 
 /* 📊 RENDER */
 function render(labels,p,c){
-  const pressaoAtual=p[p.length-1];
-  info.innerHTML="🌬️ Pressão atual: <b>"+pressaoAtual.toFixed(1)+" hPa</b>";
+  const atual=p[p.length-1];
+  const media7=p.reduce((a,b)=>a+b)/p.length;
+
+  info.innerHTML="🌬️ Pressão atual: <b>"+atual.toFixed(1)+" hPa</b>";
+  historico.innerHTML="📊 Média dos últimos 7 dias: <b>"+media7.toFixed(1)+" hPa</b>";
 
   let soma=0,cont=0;
-  c.forEach((v,i)=>{
-    if(v>1){soma+=p[i];cont++;}
-  });
-
-  let mediaChuva=null;
-  if(cont>0) mediaChuva=soma/cont;
+  c.forEach((v,i)=>{if(v>1){soma+=p[i];cont++;}});
+  const mediaChuva=cont?soma/cont:null;
 
   /* 🔮 PREVISÃO */
-  if(mediaChuva){
-    previsao.innerHTML=
-      pressaoAtual<=mediaChuva
-      ? "🌧️ <b>Tendência de chuva</b> nas próximas horas"
-      : "☀️ <b>Baixa chance de chuva</b>";
-  }else{
-    previsao.innerHTML="ℹ️ Sem histórico recente suficiente para prever chuva";
-  }
+  previsao.innerHTML=mediaChuva
+    ? (atual<=mediaChuva
+       ? "🌧️ <b>Tendência de chuva</b>"
+       : "☀️ <b>Baixa chance de chuva</b>")
+    : "ℹ️ Histórico insuficiente para prever chuva";
 
   padrao.innerHTML=mediaChuva
     ? "🌧️ Costuma chover quando a pressão está em torno de <b>"
       +mediaChuva.toFixed(1)+" hPa</b>"
     : "";
+
+  /* ⚠️ ALERTA */
+  alertaDiv.className="alerta";
+  if(mediaChuva && (atual<=mediaChuva-2 || c.at(-1)>20)){
+    alertaDiv.classList.add("vermelho");
+    alertaDiv.innerText="⚠️ ALERTA DE TEMPESTADE – condições favoráveis!";
+  }else if(atual<=media7-2){
+    alertaDiv.classList.add("amarelo");
+    alertaDiv.innerText="⛈️ Atenção: instabilidade atmosférica";
+  }else{
+    alertaDiv.classList.add("verde");
+    alertaDiv.innerText="✅ Sem alerta de tempestade";
+  }
 
   const cores=c.map(v=>v>1?"red":"#1565c0");
 
