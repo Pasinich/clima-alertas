@@ -77,7 +77,7 @@ canvas{
 </div>
 
 <div class="card">
-  <h3>📊 Pressão atmosférica (7 dias)</h3>
+  <h3>📊 Pressão atmosférica – últimos 7 dias</h3>
   <canvas id="grafico"></canvas>
 </div>
 
@@ -90,16 +90,17 @@ const lista=document.getElementById("lista");
 const info=document.getElementById("info");
 const padrao=document.getElementById("padrao");
 
-/* AUTOCOMPLETE */
+/* 🔍 AUTOCOMPLETE */
 cidadeInput.addEventListener("input", async ()=>{
   lista.innerHTML="";
   if(cidadeInput.value.length<3) return;
 
-  const url="https://geocoding-api.open-meteo.com/v1/search?name="+encodeURIComponent(cidadeInput.value)+"&count=5&language=pt";
+  const url="https://geocoding-api.open-meteo.com/v1/search?name="
+    +encodeURIComponent(cidadeInput.value)
+    +"&count=5&language=pt";
 
   const r=await fetch(url);
   const d=await r.json();
-
   if(!d.results) return;
 
   d.results.forEach(c=>{
@@ -116,9 +117,12 @@ cidadeInput.addEventListener("input", async ()=>{
   });
 });
 
-/* BUSCAR CLIMA */
+/* 🌦️ BUSCAR CLIMA */
 async function buscar(){
-  if(lat===null){alert("Selecione a cidade na lista");return;}
+  if(lat===null){
+    alert("Selecione a cidade na lista");
+    return;
+  }
 
   const hoje=new Date();
   const inicio=new Date();
@@ -128,23 +132,25 @@ async function buscar(){
   const iniStr=inicio.toISOString().split("T")[0];
 
   const url=
-  "https://archive-api.open-meteo.com/v1/archive"+
-  "?latitude="+lat+
-  "&longitude="+lon+
-  "&start_date="+iniStr+
-  "&end_date="+fimStr+
-  "&hourly=pressure_msl,precipitation"+
-  "&timezone=America/Sao_Paulo";
+    "https://archive-api.open-meteo.com/v1/archive"
+    +"?latitude="+lat
+    +"&longitude="+lon
+    +"&start_date="+iniStr
+    +"&end_date="+fimStr
+    +"&hourly=pressure_msl,precipitation"
+    +"&timezone=America/Sao_Paulo";
 
   const r=await fetch(url);
   const d=await r.json();
-
-  if(!d.hourly){alert("Sem dados disponíveis");return;}
+  if(!d.hourly){
+    alert("Sem dados disponíveis");
+    return;
+  }
 
   processar(d);
 }
 
-/* PROCESSAR */
+/* ⏱️ PROCESSAR DADOS */
 function processar(d){
   const dias={};
 
@@ -157,17 +163,17 @@ function processar(d){
 
   const labels=[], p=[], c=[];
 
-  Object.keys(dias).slice(-7).forEach(d=>{
-    const x=d.split("-");
+  Object.keys(dias).slice(-7).forEach(dia=>{
+    const x=dia.split("-");
     labels.push(x[2]+"/"+x[1]+"/"+x[0]);
-    p.push(dias[d].p.reduce((a,b)=>a+b)/dias[d].p.length);
-    c.push(dias[d].c);
+    p.push(dias[dia].p.reduce((a,b)=>a+b)/dias[dia].p.length);
+    c.push(dias[dia].c);
   });
 
   render(labels,p,c);
 }
 
-/* RENDER */
+/* 📊 RENDERIZAR */
 function render(labels,p,c){
   const hoje=p[p.length-1];
   info.innerHTML="🌬️ Pressão atual: <b>"+hoje.toFixed(1)+" hPa</b>";
@@ -178,8 +184,12 @@ function render(labels,p,c){
   }
 
   padrao.innerHTML=cont
-    ? "🌧️ Costuma chover quando a pressão está em torno de <b>"+(soma/cont).toFixed(1)+" hPa</b>"
-    : "☀️ Não houve chuva suficiente para padrão";
+    ? "🌧️ Costuma chover quando a pressão está em torno de <b>"
+      +(soma/cont).toFixed(1)+" hPa</b>"
+    : "☀️ Não houve chuva suficiente para identificar padrão";
+
+  /* 🎨 pontos vermelhos nos dias com chuva */
+  const coresPontos=c.map(v=>v>1?"red":"#1565c0");
 
   if(chart) chart.destroy();
   chart=new Chart(document.getElementById("grafico"),{
@@ -189,9 +199,27 @@ function render(labels,p,c){
       datasets:[{
         label:"Pressão média diária (hPa)",
         data:p,
+        borderColor:"#1565c0",
+        pointBackgroundColor:coresPontos,
+        pointRadius:6,
+        pointHoverRadius:8,
         borderWidth:3,
         tension:0.4
       }]
+    },
+    options:{
+      responsive:true,
+      plugins:{
+        tooltip:{
+          callbacks:{
+            label:(ctx)=>{
+              const i=ctx.dataIndex;
+              return "Pressão: "+p[i].toFixed(1)+" hPa | Chuva: "
+                     +c[i].toFixed(1)+" mm";
+            }
+          }
+        }
+      }
     }
   });
 }
