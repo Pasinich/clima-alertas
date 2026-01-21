@@ -65,6 +65,17 @@ button{
 .alerta.amarelo{background:#f9a825;color:#000;}
 .alerta.vermelho{background:#c62828;}
 
+.prob{
+  padding:6px 10px;
+  border-radius:8px;
+  margin-top:6px;
+  font-weight:bold;
+}
+
+.prob.verde{background:#2e7d32;}
+.prob.amarelo{background:#f9a825;color:#000;}
+.prob.vermelho{background:#c62828;}
+
 canvas{
   background:#fff;
   border-radius:10px;
@@ -115,8 +126,7 @@ cidadeInput.addEventListener("input", async ()=>{
   lista.innerHTML="";
   if(cidadeInput.value.length<3) return;
 
-  const url=
-    "https://geocoding-api.open-meteo.com/v1/search?name="
+  const url="https://geocoding-api.open-meteo.com/v1/search?name="
     +encodeURIComponent(cidadeInput.value)
     +"&count=5&language=pt";
 
@@ -160,10 +170,7 @@ async function buscar(){
 
   const r=await fetch(url);
   const d=await r.json();
-  if(!d.hourly){
-    alert("Sem dados disponíveis");
-    return;
-  }
+  if(!d.hourly){ alert("Sem dados disponíveis"); return; }
 
   processar(d);
 }
@@ -180,10 +187,9 @@ function processar(d){
   });
 
   const labels=[], p=[], c=[];
-
   Object.keys(dias).slice(-7).forEach(dia=>{
     const x=dia.split("-");
-    labels.push(x[2]+"/"+x[1]+"/"+x[0]);
+    labels.push(x[2]+"/"+x[1]);
     p.push(dias[dia].p.reduce((a,b)=>a+b)/dias[dia].p.length);
     c.push(dias[dia].c);
   });
@@ -211,24 +217,6 @@ async function buscarProbabilidadeChuva(){
   };
 }
 
-/* 🎨 FUNDO CHUVOSO */
-const fundoChuvaPlugin={
-  id:"fundoChuva",
-  beforeDraw(chart){
-    const {ctx,chartArea,scales:{x}}=chart;
-    ctx.save();
-    chuvaGlobal.forEach((v,i)=>{
-      if(v>1){
-        const w=x.width/x.ticks.length;
-        const px=x.getPixelForValue(i)-w/2;
-        ctx.fillStyle="rgba(255,0,0,0.08)";
-        ctx.fillRect(px,chartArea.top,w,chartArea.bottom-chartArea.top);
-      }
-    });
-    ctx.restore();
-  }
-};
-
 /* 📊 RENDER */
 function render(labels,p,c){
   const atual=p[p.length-1];
@@ -237,76 +225,45 @@ function render(labels,p,c){
   info.innerHTML="🌬️ Pressão atual: <b>"+atual.toFixed(1)+" hPa</b>";
   historico.innerHTML="📊 Média dos últimos 7 dias: <b>"+media7.toFixed(1)+" hPa</b>";
 
-  let soma=0,cont=0;
-  c.forEach((v,i)=>{if(v>1){soma+=p[i];cont++;}});
-  const mediaChuva=cont?soma/cont:null;
-
-  previsao.innerHTML=mediaChuva
-    ? (atual<=mediaChuva
-       ? "🌧️ <b>Tendência de chuva</b>"
-       : "☀️ <b>Baixa chance de chuva</b>")
-    : "ℹ️ Histórico insuficiente para prever chuva";
-
-  padrao.innerHTML=mediaChuva
-    ? "🌧️ Costuma chover quando a pressão está em torno de <b>"
-      +mediaChuva.toFixed(1)+" hPa</b>"
-    : "";
+  padrao.innerHTML="🌧️ Costuma chover quando a pressão está mais baixa";
 
   probChuva.innerHTML="";
   buscarProbabilidadeChuva().then(res=>{
     if(!res) return;
 
-    let html="<br>📆 <b>Probabilidade de chuva – próximos 5 dias:</b><br>";
+    let html="<br>📆 <b>Probabilidade de chuva – próximos 5 dias:</b>";
     res.dias.forEach((d,i)=>{
+      const p=res.prob[i];
+      let cls="verde";
+      if(p>=70) cls="vermelho";
+      else if(p>=30) cls="amarelo";
+
       const x=d.split("-");
-      html+="• "+x[2]+"/"+x[1]+": <b>"+res.prob[i]+"%</b><br>";
+      html+=
+        `<div class="prob ${cls}">
+          ${x[2]}/${x[1]} → ${p}% de chance de chuva
+        </div>`;
     });
     probChuva.innerHTML=html;
   });
 
-  alertaDiv.className="alerta";
-  if(mediaChuva && (atual<=mediaChuva-2 || c.at(-1)>20)){
-    alertaDiv.classList.add("vermelho");
-    alertaDiv.innerText="⚠️ ALERTA DE TEMPESTADE – condições favoráveis!";
-  }else if(atual<=media7-2){
-    alertaDiv.classList.add("amarelo");
-    alertaDiv.innerText="⛈️ Atenção: instabilidade atmosférica";
-  }else{
-    alertaDiv.classList.add("verde");
-    alertaDiv.innerText="✅ Sem alerta de tempestade";
-  }
-
-  const cores=c.map(v=>v>1?"red":"#1565c0");
+  alertaDiv.className="alerta verde";
+  alertaDiv.innerText="✅ Sistema funcionando normalmente";
 
   if(chart) chart.destroy();
   chart=new Chart(document.getElementById("grafico"),{
     type:"line",
     data:{
-      labels:labels,
+      labels,
       datasets:[{
         label:"Pressão média diária (hPa)",
         data:p,
         borderColor:"#1565c0",
-        pointBackgroundColor:cores,
         pointRadius:6,
-        borderWidth:3,
         tension:0.4
       }]
     },
-    options:{
-      responsive:true,
-      plugins:{
-        tooltip:{
-          callbacks:{
-            label:(ctx)=>{
-              const i=ctx.dataIndex;
-              return "Pressão: "+p[i].toFixed(1)+" hPa | Chuva: "+c[i].toFixed(1)+" mm";
-            }
-          }
-        }
-      }
-    },
-    plugins:[fundoChuvaPlugin]
+    options:{ responsive:true }
   });
 }
 </script>
