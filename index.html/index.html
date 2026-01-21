@@ -87,6 +87,7 @@ canvas{
   <div id="previsao"></div>
   <div id="historico"></div>
   <div id="padrao"></div>
+  <div id="probChuva"></div>
   <div id="alerta"></div>
 </div>
 
@@ -106,6 +107,7 @@ const info=document.getElementById("info");
 const previsao=document.getElementById("previsao");
 const historico=document.getElementById("historico");
 const padrao=document.getElementById("padrao");
+const probChuva=document.getElementById("probChuva");
 const alertaDiv=document.getElementById("alerta");
 
 /* 🔍 AUTOCOMPLETE */
@@ -113,7 +115,8 @@ cidadeInput.addEventListener("input", async ()=>{
   lista.innerHTML="";
   if(cidadeInput.value.length<3) return;
 
-  const url="https://geocoding-api.open-meteo.com/v1/search?name="
+  const url=
+    "https://geocoding-api.open-meteo.com/v1/search?name="
     +encodeURIComponent(cidadeInput.value)
     +"&count=5&language=pt";
 
@@ -189,6 +192,25 @@ function processar(d){
   render(labels,p,c);
 }
 
+/* 📆 PROBABILIDADE DE CHUVA */
+async function buscarProbabilidadeChuva(){
+  const url=
+    "https://api.open-meteo.com/v1/forecast"
+    +"?latitude="+lat
+    +"&longitude="+lon
+    +"&daily=precipitation_probability_max"
+    +"&timezone=America/Sao_Paulo";
+
+  const r=await fetch(url);
+  const d=await r.json();
+  if(!d.daily) return null;
+
+  return {
+    dias:d.daily.time.slice(0,5),
+    prob:d.daily.precipitation_probability_max.slice(0,5)
+  };
+}
+
 /* 🎨 FUNDO CHUVOSO */
 const fundoChuvaPlugin={
   id:"fundoChuva",
@@ -219,7 +241,6 @@ function render(labels,p,c){
   c.forEach((v,i)=>{if(v>1){soma+=p[i];cont++;}});
   const mediaChuva=cont?soma/cont:null;
 
-  /* 🔮 PREVISÃO */
   previsao.innerHTML=mediaChuva
     ? (atual<=mediaChuva
        ? "🌧️ <b>Tendência de chuva</b>"
@@ -231,7 +252,18 @@ function render(labels,p,c){
       +mediaChuva.toFixed(1)+" hPa</b>"
     : "";
 
-  /* ⚠️ ALERTA */
+  probChuva.innerHTML="";
+  buscarProbabilidadeChuva().then(res=>{
+    if(!res) return;
+
+    let html="<br>📆 <b>Probabilidade de chuva – próximos 5 dias:</b><br>";
+    res.dias.forEach((d,i)=>{
+      const x=d.split("-");
+      html+="• "+x[2]+"/"+x[1]+": <b>"+res.prob[i]+"%</b><br>";
+    });
+    probChuva.innerHTML=html;
+  });
+
   alertaDiv.className="alerta";
   if(mediaChuva && (atual<=mediaChuva-2 || c.at(-1)>20)){
     alertaDiv.classList.add("vermelho");
