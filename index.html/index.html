@@ -77,16 +77,16 @@
 </div>
 
 <script>
-/* ==========================
-   VARIÁVEIS GLOBAIS
-========================== */
+/* =====================
+   VARIÁVEIS
+===================== */
 let lat = -27.1;
 let lon = -52.6;
 let chart;
 
-/* ==========================
-   ELEMENTOS DOM
-========================== */
+/* =====================
+   ELEMENTOS
+===================== */
 const dataInput = document.getElementById("data");
 const pressaoDiv = document.getElementById("pressao");
 const chuvaDiv = document.getElementById("chuva");
@@ -96,9 +96,9 @@ const statusDiv = document.getElementById("status");
 const localDiv = document.getElementById("local");
 const grafico = document.getElementById("grafico");
 
-/* ==========================
-   GEOCODIFICAÇÃO REVERSA
-========================== */
+/* =====================
+   GEOCODIFICAÇÃO
+===================== */
 async function buscarCidadeEstado(lat, lon){
   try{
     const r = await fetch(
@@ -106,11 +106,8 @@ async function buscarCidadeEstado(lat, lon){
     );
     const j = await r.json();
 
-    if(j.results && j.results.length){
-      const c = j.results[0];
-      if(c.name && c.admin1){
-        return `${c.name} – ${c.admin1}`;
-      }
+    if(j.results?.length){
+      return `${j.results[0].name} – ${j.results[0].admin1}`;
     }
   }catch(e){}
 
@@ -119,7 +116,6 @@ async function buscarCidadeEstado(lat, lon){
       `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&accept-language=pt-BR`
     );
     const j = await r.json();
-
     if(j.address){
       return `${j.address.city || j.address.town || j.address.village || "Cidade"} – ${j.address.state || ""}`;
     }
@@ -128,9 +124,9 @@ async function buscarCidadeEstado(lat, lon){
   return "Local não identificado";
 }
 
-/* ==========================
+/* =====================
    GPS
-========================== */
+===================== */
 function usarGPS(){
   if(!navigator.geolocation){
     alert("❌ GPS não suportado");
@@ -143,7 +139,6 @@ function usarGPS(){
       lon = pos.coords.longitude;
 
       localDiv.innerHTML = "🔎 Identificando local...";
-
       const local = await buscarCidadeEstado(lat, lon);
 
       localDiv.innerHTML =
@@ -156,9 +151,9 @@ function usarGPS(){
   );
 }
 
-/* ==========================
-   BUSCA CLIMÁTICA
-========================== */
+/* =====================
+   BUSCAR CLIMA
+===================== */
 async function buscar(){
   if(!dataInput.value){
     alert("📅 Selecione uma data");
@@ -166,6 +161,13 @@ async function buscar(){
   }
 
   const fim = new Date(dataInput.value);
+  const hoje = new Date();
+
+  if(fim > hoje){
+    alert("⚠️ A data não pode ser futura.");
+    return;
+  }
+
   const inicio = new Date(fim);
   inicio.setDate(inicio.getDate() - 30);
 
@@ -176,27 +178,29 @@ async function buscar(){
     const r = await fetch(url);
     const d = await r.json();
 
+    if(d.error || !d.daily?.pressure_msl){
+      alert("❌ Sem dados disponíveis para esta data.");
+      return;
+    }
+
     const pHoje = d.daily.pressure_msl.at(-1);
     const pSemana = d.daily.pressure_msl.slice(-7).reduce((a,b)=>a+b)/7;
     const pMes = d.daily.pressure_msl.reduce((a,b)=>a+b)/d.daily.pressure_msl.length;
     const chuvaHoje = d.daily.precipitation_sum.at(-1);
 
     pressaoDiv.innerHTML = `🌬️ Hoje: <b>${pHoje.toFixed(1)} hPa</b>`;
-    comparacaoDiv.innerHTML = `📊 Média 7 dias: ${pSemana.toFixed(1)} hPa<br>📈 Média mês: ${pMes.toFixed(1)} hPa`;
-    variacaoDiv.innerHTML = `🔄 Diferença hoje/semana: ${(pHoje-pSemana).toFixed(1)} hPa`;
-    chuvaDiv.innerHTML = chuvaHoje > 0 ? `🌧️ Chuva: ${chuvaHoje} mm` : "☀️ Sem chuva";
+    comparacaoDiv.innerHTML =
+      `📊 Média 7 dias: ${pSemana.toFixed(1)} hPa<br>📈 Média mês: ${pMes.toFixed(1)} hPa`;
+    variacaoDiv.innerHTML =
+      `🔄 Diferença hoje/semana: ${(pHoje - pSemana).toFixed(1)} hPa`;
+    chuvaDiv.innerHTML =
+      chuvaHoje > 0 ? `🌧️ Chuva: ${chuvaHoje} mm` : "☀️ Sem chuva";
 
     let indice = "🟢 Baixo";
     if(pHoje < 1010) indice = "🟡 Moderado";
     if(pHoje < 1007 || chuvaHoje > 20) indice = "🔴 Alto";
 
     statusDiv.innerText = `🌪️ Índice de tempestade: ${indice}`;
-
-    if(indice === "🔴 Alto" && Notification.permission === "granted"){
-      new Notification("⚠️ Alerta de tempestade", {
-        body: "Queda significativa da pressão atmosférica!"
-      });
-    }
 
     if(chart) chart.destroy();
     chart = new Chart(grafico,{
@@ -213,9 +217,16 @@ async function buscar(){
     });
 
   }catch(e){
-    alert("❌ Erro ao consultar dados");
+    alert("❌ Erro de conexão com a API");
+    console.error(e);
   }
 }
+
+/* =====================
+   BLOQUEIA DATA FUTURA
+===================== */
+document.getElementById("data").max =
+  new Date().toISOString().split("T")[0];
 </script>
 
 </body>
