@@ -171,14 +171,21 @@ async function buscarHistorico(){
     chuvaDias[dia]+=d.hourly.precipitation[i];
   });
 
-  const labels=[], pressao=[], pressaoChuva=[];
+  const labels=[], pressao=[], cores=[], pressaoChuva=[];
 
   Object.keys(dias).slice(-7).forEach(d=>{
     const x=d.split("-");
     const mediaDia=dias[d].reduce((a,b)=>a+b)/dias[d].length;
+
     labels.push(x[2]+"/"+x[1]);
     pressao.push(mediaDia);
-    if(chuvaDias[d]>1) pressaoChuva.push(mediaDia);
+
+    if(chuvaDias[d]>1){
+      cores.push("red");          // 🔴 choveu
+      pressaoChuva.push(mediaDia);
+    }else{
+      cores.push("#1565c0");      // 🔵 não choveu
+    }
   });
 
   const atual=pressao.at(-1);
@@ -206,7 +213,8 @@ async function buscarHistorico(){
         borderColor:"#1565c0",
         borderWidth:3,
         tension:0.4,
-        pointRadius:5
+        pointRadius:6,
+        pointBackgroundColor:cores   // 🎯 cores por dia
       }]
     },
     options:{responsive:true}
