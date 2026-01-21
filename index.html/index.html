@@ -41,7 +41,7 @@ canvas{background:#fff;border-radius:12px;padding:10px}
 <h2>🌦️ Clima & Alertas Inteligentes</h2>
 
 <div class="card">
-  <div class="resultado" id="local">📍 Obtendo localização...</div>
+  <div class="resultado" id="local">📍 Detectando cidade...</div>
 
   <input type="date" id="data">
   <button onclick="buscar()">Consultar</button>
@@ -59,9 +59,11 @@ canvas{background:#fff;border-radius:12px;padding:10px}
 </div>
 
 <script>
-/* 📍 Coordenadas padrão (Chapecó) */
+/* 📍 PADRÃO (Chapecó - SC) */
 let lat = -27.1000;
 let lon = -52.6150;
+let cidade = "Chapecó";
+let estado = "SC";
 
 const dataInput = document.getElementById("data");
 const pressaoDiv = document.getElementById("pressao");
@@ -74,25 +76,54 @@ const grafico = document.getElementById("grafico");
 
 let chart;
 
-/* 🔄 GPS AUTOMÁTICO AO CARREGAR */
+/* 🔄 GPS + CIDADE AUTOMÁTICOS */
 window.onload = () => {
-  if(navigator.geolocation){
-    navigator.geolocation.getCurrentPosition(
-      pos=>{
-        lat = pos.coords.latitude;
-        lon = pos.coords.longitude;
-        localDiv.innerHTML =
-          `📍 Local detectado automaticamente<br>Lat: ${lat.toFixed(4)} | Lon: ${lon.toFixed(4)}`;
-      },
-      err=>{
-        localDiv.innerHTML =
-          "📍 Localização não autorizada<br>Usando posição padrão";
-      }
-    );
-  }else{
-    localDiv.innerHTML = "📍 GPS não suportado";
+  if(!navigator.geolocation){
+    localDiv.innerHTML = `📍 ${cidade} – ${estado}`;
+    return;
   }
+
+  navigator.geolocation.getCurrentPosition(
+    pos=>{
+      lat = pos.coords.latitude;
+      lon = pos.coords.longitude;
+      obterCidadeEstado(lat, lon);
+    },
+    err=>{
+      localDiv.innerHTML = `📍 ${cidade} – ${estado}`;
+    }
+  );
 };
+
+/* 🌎 CONVERTE LAT/LON → CIDADE/UF */
+async function obterCidadeEstado(lat, lon){
+  try{
+    const url =
+      `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=10&addressdetails=1`;
+
+    const r = await fetch(url,{
+      headers:{
+        "User-Agent":"clima-alertas-app"
+      }
+    });
+    const d = await r.json();
+
+    cidade =
+      d.address.city ||
+      d.address.town ||
+      d.address.village ||
+      "Cidade não identificada";
+
+    estado =
+      d.address.state_code ||
+      d.address.state ||
+      "";
+
+    localDiv.innerHTML = `📍 ${cidade} – ${estado}`;
+  }catch(e){
+    localDiv.innerHTML = `📍 ${cidade} – ${estado}`;
+  }
+}
 
 /* BUSCAR DADOS */
 async function buscar(){
