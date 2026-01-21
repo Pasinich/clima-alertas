@@ -1,55 +1,53 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <title>Clima & Alertas Inteligentes</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="UTF-8">
+<title>Clima & Alertas Inteligentes</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
-  <style>
-    body{
-      margin:0;
-      font-family:Arial,sans-serif;
-      background:linear-gradient(135deg,#1565c0,#26c6da);
-      color:#fff;
-      padding:16px;
-    }
-    h2{text-align:center}
-    .card{
-      background:rgba(255,255,255,.18);
-      border-radius:18px;
-      padding:18px;
-      margin-bottom:18px;
-    }
-    button,input{
-      width:100%;
-      padding:12px;
-      margin-top:10px;
-      font-size:16px;
-      border:none;
-      border-radius:12px;
-    }
-    button{
-      background:#00e676;
-      font-weight:bold;
-      cursor:pointer;
-    }
-    .resultado{
-      margin-top:6px;
-      font-size:18px;
-    }
-    .status{
-      font-size:20px;
-      font-weight:bold;
-      margin-top:10px;
-    }
-    canvas{
-      background:#fff;
-      border-radius:12px;
-      padding:10px;
-    }
-  </style>
+<style>
+body{
+  margin:0;
+  font-family:Arial,sans-serif;
+  background:linear-gradient(135deg,#1565c0,#26c6da);
+  color:#fff;
+  padding:16px;
+}
+h2{text-align:center}
+.card{
+  background:rgba(255,255,255,.18);
+  border-radius:18px;
+  padding:18px;
+  margin-bottom:18px;
+}
+button,input{
+  width:100%;
+  padding:12px;
+  margin-top:10px;
+  font-size:16px;
+  border:none;
+  border-radius:12px;
+}
+button{
+  background:#00e676;
+  font-weight:bold;
+}
+.resultado{
+  margin-top:6px;
+  font-size:18px;
+}
+.status{
+  font-size:20px;
+  font-weight:bold;
+  margin-top:10px;
+}
+canvas{
+  background:#fff;
+  border-radius:12px;
+  padding:10px;
+}
+</style>
 </head>
 
 <body>
@@ -57,8 +55,7 @@
 <h2>🌦️ Clima & Alertas Inteligentes</h2>
 
 <div class="card">
-  <button onclick="usarGPS()">📍 Usar teste minha localização</button>
-
+  <button onclick="usarGPS()">📍 Usar minha localização</button>
   <div class="resultado" id="local"></div>
 
   <input type="date" id="data">
@@ -77,16 +74,10 @@
 </div>
 
 <script>
-/* =====================
-   VARIÁVEIS
-===================== */
 let lat = -27.1;
 let lon = -52.6;
 let chart;
 
-/* =====================
-   ELEMENTOS
-===================== */
 const dataInput = document.getElementById("data");
 const pressaoDiv = document.getElementById("pressao");
 const chuvaDiv = document.getElementById("chuva");
@@ -96,76 +87,28 @@ const statusDiv = document.getElementById("status");
 const localDiv = document.getElementById("local");
 const grafico = document.getElementById("grafico");
 
-/* =====================
-   GEOCODIFICAÇÃO
-===================== */
-async function buscarCidadeEstado(lat, lon){
-  try{
-    const r = await fetch(
-      `https://geocoding-api.open-meteo.com/v1/reverse?latitude=${lat}&longitude=${lon}&language=pt`
-    );
-    const j = await r.json();
-
-    if(j.results?.length){
-      return `${j.results[0].name} – ${j.results[0].admin1}`;
-    }
-  }catch(e){}
-
-  try{
-    const r = await fetch(
-      `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&accept-language=pt-BR`
-    );
-    const j = await r.json();
-    if(j.address){
-      return `${j.address.city || j.address.town || j.address.village || "Cidadere"} – ${j.address.state || ""}`;
-    }
-  }catch(e){}
-
-  return "Local não identificado";
-}
-
-/* =====================
-   GPS
-===================== */
+/* GPS */
 function usarGPS(){
-  if(!navigator.geolocation){
-    alert("❌ GPS não suportado");
-    return;
-  }
-
-  navigator.geolocation.getCurrentPosition(
-    async pos=>{
-      lat = pos.coords.latitude;
-      lon = pos.coords.longitude;
-
-      localDiv.innerHTML = "🔎 Identificando local...";
-      const local = await buscarCidadeEstado(lat, lon);
-
-      localDiv.innerHTML =
-        `📍 <b>${local}</b><br>🌎 Lat: ${lat.toFixed(4)} | Lon: ${lon.toFixed(4)}`;
-    },
-    err=>{
-      alert("❌ Erro no GPS: " + err.message);
-    },
-    { enableHighAccuracy:true, timeout:10000 }
-  );
+  navigator.geolocation.getCurrentPosition(async pos=>{
+    lat = pos.coords.latitude;
+    lon = pos.coords.longitude;
+    localDiv.innerHTML = `📍 Lat: ${lat.toFixed(4)} | Lon: ${lon.toFixed(4)}`;
+  });
 }
 
-/* =====================
-   BUSCAR CLIMA
-===================== */
+/* BUSCA */
 async function buscar(){
   if(!dataInput.value){
     alert("📅 Selecione uma data");
     return;
   }
 
-  const fim = new Date(dataInput.value);
+  let fim = new Date(dataInput.value);
   const hoje = new Date();
 
-  if(fim > hoje){
-    alert("⚠️ A data não pode ser futura.");
-    return;
+  // 🔥 CORREÇÃO CRÍTICA
+  if(fim.toDateString() === hoje.toDateString()){
+    fim.setDate(fim.getDate() - 1);
   }
 
   const inicio = new Date(fim);
@@ -174,59 +117,47 @@ async function buscar(){
   const url =
     `https://archive-api.open-meteo.com/v1/archive?latitude=${lat}&longitude=${lon}&start_date=${inicio.toISOString().split("T")[0]}&end_date=${fim.toISOString().split("T")[0]}&daily=pressure_msl,precipitation_sum&timezone=America/Sao_Paulo`;
 
-  try{
-    const r = await fetch(url);
-    const d = await r.json();
+  const r = await fetch(url);
+  const d = await r.json();
 
-    if(d.error || !d.daily?.pressure_msl){
-      alert("❌ Sem dados disponíveis para esta data.");
-      return;
-    }
-
-    const pHoje = d.daily.pressure_msl.at(-1);
-    const pSemana = d.daily.pressure_msl.slice(-7).reduce((a,b)=>a+b)/7;
-    const pMes = d.daily.pressure_msl.reduce((a,b)=>a+b)/d.daily.pressure_msl.length;
-    const chuvaHoje = d.daily.precipitation_sum.at(-1);
-
-    pressaoDiv.innerHTML = `🌬️ Hoje: <b>${pHoje.toFixed(1)} hPa</b>`;
-    comparacaoDiv.innerHTML =
-      `📊 Média 7 dias: ${pSemana.toFixed(1)} hPa<br>📈 Média mês: ${pMes.toFixed(1)} hPa`;
-    variacaoDiv.innerHTML =
-      `🔄 Diferença hoje/semana: ${(pHoje - pSemana).toFixed(1)} hPa`;
-    chuvaDiv.innerHTML =
-      chuvaHoje > 0 ? `🌧️ Chuva: ${chuvaHoje} mm` : "☀️ Sem chuva";
-
-    let indice = "🟢 Baixo";
-    if(pHoje < 1010) indice = "🟡 Moderado";
-    if(pHoje < 1007 || chuvaHoje > 20) indice = "🔴 Alto";
-
-    statusDiv.innerText = `🌪️ Índice de tempestade: ${indice}`;
-
-    if(chart) chart.destroy();
-    chart = new Chart(grafico,{
-      type:"line",
-      data:{
-        labels:d.daily.time,
-        datasets:[{
-          label:"Pressão (hPa)",
-          data:d.daily.pressure_msl,
-          borderWidth:3,
-          tension:0.4
-        }]
-      }
-    });
-
-  }catch(e){
-    alert("❌ Erro de conexão com a API");
-    console.error(e);
+  if(!d.daily || !d.daily.pressure_msl || d.daily.pressure_msl.length === 0){
+    alert("❌ Sem dados disponíveis para esta data.");
+    return;
   }
+
+  const pHoje = d.daily.pressure_msl.at(-1);
+  const pSemana = d.daily.pressure_msl.slice(-7).reduce((a,b)=>a+b)/7;
+  const pMes = d.daily.pressure_msl.reduce((a,b)=>a+b)/d.daily.pressure_msl.length;
+  const chuvaHoje = d.daily.precipitation_sum.at(-1);
+
+  pressaoDiv.innerHTML = `🌬️ Pressão: <b>${pHoje.toFixed(1)} hPa</b>`;
+  comparacaoDiv.innerHTML = `📊 Média 7 dias: ${pSemana.toFixed(1)} hPa`;
+  variacaoDiv.innerHTML = `🔄 Diferença: ${(pHoje-pSemana).toFixed(1)} hPa`;
+  chuvaDiv.innerHTML = chuvaHoje > 0 ? `🌧️ Chuva: ${chuvaHoje} mm` : "☀️ Sem chuva";
+
+  let indice = "🟢 Baixo";
+  if(pHoje < 1010) indice = "🟡 Moderado";
+  if(pHoje < 1007 || chuvaHoje > 20) indice = "🔴 Alto";
+
+  statusDiv.innerText = `🌪️ Índice: ${indice}`;
+
+  if(chart) chart.destroy();
+  chart = new Chart(grafico,{
+    type:"line",
+    data:{
+      labels:d.daily.time,
+      datasets:[{
+        label:"Pressão (hPa)",
+        data:d.daily.pressure_msl,
+        borderWidth:3,
+        tension:0.4
+      }]
+    }
+  });
 }
 
-/* =====================
-   BLOQUEIA DATA FUTURA
-===================== */
-document.getElementById("data").max =
-  new Date().toISOString().split("T")[0];
+/* BLOQUEIA FUTURO */
+dataInput.max = new Date().toISOString().split("T")[0];
 </script>
 
 </body>
