@@ -2,15 +2,15 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<title>Clima & Alertas</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Clima & Pressão Atmosférica</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
 body{
   margin:0;
-  font-family:Arial,sans-serif;
+  font-family:Arial, sans-serif;
   background:linear-gradient(135deg,#1565c0,#26c6da);
   color:#fff;
   padding:16px;
@@ -19,18 +19,18 @@ h2{text-align:center}
 
 .card{
   background:rgba(255,255,255,.18);
-  border-radius:18px;
-  padding:18px;
-  margin-bottom:18px;
+  border-radius:16px;
+  padding:16px;
+  margin-bottom:16px;
 }
 
 input,button{
   width:100%;
   padding:12px;
-  margin-top:10px;
-  font-size:16px;
+  margin-top:8px;
   border:none;
-  border-radius:12px;
+  border-radius:10px;
+  font-size:16px;
 }
 
 button{
@@ -39,22 +39,12 @@ button{
   cursor:pointer;
 }
 
-.resultado{margin-top:8px;font-size:18px}
-.status{font-size:20px;font-weight:bold;margin-top:10px}
-
-canvas{
-  background:#fff;
-  border-radius:12px;
-  padding:10px;
-}
-
-/* AUTOCOMPLETE */
 .autocomplete{
   background:#fff;
   color:#000;
   border-radius:10px;
-  overflow:hidden;
   margin-top:4px;
+  overflow:hidden;
 }
 .autocomplete div{
   padding:10px;
@@ -63,186 +53,136 @@ canvas{
 .autocomplete div:hover{
   background:#e0e0e0;
 }
+
+canvas{
+  background:#fff;
+  border-radius:10px;
+  padding:8px;
+}
 </style>
 </head>
 
 <body>
 
-<h2 id="titulo">🌦️ Clima & Alertas</h2>
+<h2 id="titulo">🌦️ Clima & Pressão Atmosférica</h2>
 
 <div class="card">
-  <input id="cidadeInput" placeholder="Digite a cidade (ex: Chapecó)">
-  <div id="listaCidades" class="autocomplete"></div>
+  <input id="cidade" placeholder="Digite a cidade (ex: Chapecó)">
+  <div id="lista" class="autocomplete"></div>
 
-  <div class="resultado" id="local">📍 Nenhuma cidade selecionada</div>
+  <button onclick="buscar()">Consultar últimos 7 dias</button>
 
-  <button onclick="buscarClima()">Consultar últimos 7 dias</button>
-
-  <div class="resultado" id="pressao"></div>
-  <div class="resultado" id="chuva"></div>
-  <div class="resultado" id="variacao"></div>
-  <div class="resultado" id="comparacao"></div>
-  <div class="resultado" id="pressaoChuva"></div>
-  <div class="status" id="status"></div>
+  <div id="info"></div>
+  <div id="padrao"></div>
 </div>
 
 <div class="card">
-  <h3>📊 Pressão atmosférica – últimos 7 dias</h3>
+  <h3>📊 Pressão atmosférica (7 dias)</h3>
   <canvas id="grafico"></canvas>
 </div>
 
 <script>
-let lat = null;
-let lon = null;
-let chart = null;
-let cidadeAtual = "";
+let lat=null, lon=null;
+let chart=null;
 
-const cidadeInput = document.getElementById("cidadeInput");
-const lista = document.getElementById("listaCidades");
-const localDiv = document.getElementById("local");
-const titulo = document.getElementById("titulo");
+const cidadeInput=document.getElementById("cidade");
+const lista=document.getElementById("lista");
+const info=document.getElementById("info");
+const padrao=document.getElementById("padrao");
 
-const pressaoDiv = document.getElementById("pressao");
-const chuvaDiv = document.getElementById("chuva");
-const variacaoDiv = document.getElementById("variacao");
-const comparacaoDiv = document.getElementById("comparacao");
-const pressaoChuvaDiv = document.getElementById("pressaoChuva");
-const statusDiv = document.getElementById("status");
-const grafico = document.getElementById("grafico");
-
-/* 🔍 AUTOCOMPLETE */
+/* AUTOCOMPLETE */
 cidadeInput.addEventListener("input", async ()=>{
-  const q = cidadeInput.value.trim();
-  lista.innerHTML = "";
-  if(q.length < 3) return;
+  lista.innerHTML="";
+  if(cidadeInput.value.length<3) return;
 
-  const url =
-    `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(q)}&count=5&language=pt`;
+  const url="https://geocoding-api.open-meteo.com/v1/search?name="+encodeURIComponent(cidadeInput.value)+"&count=5&language=pt";
 
-  const r = await fetch(url);
-  const d = await r.json();
+  const r=await fetch(url);
+  const d=await r.json();
+
   if(!d.results) return;
 
   d.results.forEach(c=>{
-    const div = document.createElement("div");
-    const nome = `${c.name}${c.admin1 ? " - " + c.admin1 : ""}`;
-    div.textContent = nome;
-
-    div.onclick = ()=>{
-      lat = c.latitude;
-      lon = c.longitude;
-      cidadeAtual = nome;
-      cidadeInput.value = c.name;
-      lista.innerHTML = "";
-      localDiv.innerHTML = `📍 ${nome}`;
-      titulo.innerText = `🌦️ Clima & Alertas • ${c.name}`;
+    const div=document.createElement("div");
+    div.textContent=c.name+(c.admin1?" - "+c.admin1:"");
+    div.onclick=()=>{
+      lat=c.latitude;
+      lon=c.longitude;
+      cidadeInput.value=c.name;
+      lista.innerHTML="";
+      document.getElementById("titulo").innerText="🌦️ Clima • "+c.name;
     };
-
     lista.appendChild(div);
   });
 });
 
-/* 🌦️ BUSCAR CLIMA (API ARCHIVE – CORRETA) */
-async function buscarClima(){
-  if(lat === null){
-    alert("Selecione uma cidade na lista");
-    return;
-  }
+/* BUSCAR CLIMA */
+async function buscar(){
+  if(lat===null){alert("Selecione a cidade na lista");return;}
 
-  const fim = new Date();
-  const inicio = new Date();
-  inicio.setDate(fim.getDate() - 7);
+  const hoje=new Date();
+  const inicio=new Date();
+  inicio.setDate(hoje.getDate()-7);
 
-  const inicioStr = inicio.toISOString().split("T")[0];
-  const fimStr = fim.toISOString().split("T")[0];
+  const fimStr=hoje.toISOString().split("T")[0];
+  const iniStr=inicio.toISOString().split("T")[0];
 
-  const url =
-    `https://archive-api.open-meteo.com/v1/archive
-     ?latitude=${lat}
-     &longitude=${lon}
-     &start_date=${inicioStr}
-     &end_date=${fimStr}
-     &hourly=pressure_msl,precipitation
-     &timezone=America/Sao_Paulo`;
+  const url=
+  "https://archive-api.open-meteo.com/v1/archive"+
+  "?latitude="+lat+
+  "&longitude="+lon+
+  "&start_date="+iniStr+
+  "&end_date="+fimStr+
+  "&hourly=pressure_msl,precipitation"+
+  "&timezone=America/Sao_Paulo";
 
-  try{
-    const r = await fetch(url);
-    const d = await r.json();
+  const r=await fetch(url);
+  const d=await r.json();
 
-    if(!d.hourly || !d.hourly.time){
-      alert("Sem dados disponíveis");
-      return;
-    }
+  if(!d.hourly){alert("Sem dados disponíveis");return;}
 
-    processarDados(d);
-  }catch(e){
-    alert("Erro ao consultar dados climáticos");
-  }
+  processar(d);
 }
 
-/* ⏱️ PROCESSAR DADOS */
-function processarDados(d){
-  const dias = {};
+/* PROCESSAR */
+function processar(d){
+  const dias={};
 
   d.hourly.time.forEach((t,i)=>{
-    const dia = t.split("T")[0];
-    if(!dias[dia]) dias[dia] = {p:[], c:0};
-
+    const dia=t.split("T")[0];
+    if(!dias[dia]) dias[dia]={p:[],c:0};
     dias[dia].p.push(d.hourly.pressure_msl[i]);
-    dias[dia].c += d.hourly.precipitation[i];
+    dias[dia].c+=d.hourly.precipitation[i];
   });
 
-  const labels = [];
-  const pressao = [];
-  const chuva = [];
+  const labels=[], p=[], c=[];
 
-  Object.keys(dias).slice(-7).forEach(dia=>{
-    const partes = dia.split("-");
-    labels.push(`${partes[2]}/${partes[1]}/${partes[0]}`);
-
-    pressao.push(dias[dia].p.reduce((a,b)=>a+b)/dias[dia].p.length);
-    chuva.push(dias[dia].c);
+  Object.keys(dias).slice(-7).forEach(d=>{
+    const x=d.split("-");
+    labels.push(x[2]+"/"+x[1]+"/"+x[0]);
+    p.push(dias[d].p.reduce((a,b)=>a+b)/dias[d].p.length);
+    c.push(dias[d].c);
   });
 
-  renderizar(labels, pressao, chuva);
+  render(labels,p,c);
 }
 
-/* 🌧️ PRESSÃO TÍPICA DE CHUVA */
-function calcularPressaoDeChuva(p, c){
-  let soma = 0;
-  let dias = 0;
+/* RENDER */
+function render(labels,p,c){
+  const hoje=p[p.length-1];
+  info.innerHTML="🌬️ Pressão atual: <b>"+hoje.toFixed(1)+" hPa</b>";
 
+  let soma=0,cont=0;
   for(let i=0;i<c.length;i++){
-    if(c[i] >= 1){
-      soma += p[i];
-      dias++;
-    }
+    if(c[i]>1){soma+=p[i];cont++;}
   }
-  return dias ? soma/dias : null;
-}
 
-/* 📊 RENDERIZAR */
-function renderizar(labels, p, c){
-  const hoje = p.at(-1);
-  const media = p.reduce((a,b)=>a+b)/p.length;
-
-  pressaoDiv.innerHTML = `🌬️ Pressão atual: <b>${hoje.toFixed(1)} hPa</b>`;
-  comparacaoDiv.innerHTML = `📊 Média 7 dias: ${media.toFixed(1)} hPa`;
-  variacaoDiv.innerHTML = `🔄 Diferença: ${(hoje-media).toFixed(1)} hPa`;
-  chuvaDiv.innerHTML = c.at(-1) > 0 ? `🌧️ ${c.at(-1).toFixed(1)} mm` : "☀️ Sem chuva";
-
-  let risco = "🟢 Baixo";
-  if(hoje < 1010) risco = "🟡 Moderado";
-  if(hoje < 1007 || c.at(-1) > 20) risco = "🔴 Alto";
-  statusDiv.innerText = `🌪️ Risco: ${risco}`;
-
-  const pressaoChuva = calcularPressaoDeChuva(p, c);
-  pressaoChuvaDiv.innerHTML = pressaoChuva
-    ? `🌧️ Em <b>${cidadeAtual}</b> costuma chover quando a pressão atmosférica está em torno de <b>${pressaoChuva.toFixed(1)} hPa</b>`
-    : `🌤️ Não houve chuva suficiente para identificar um padrão`;
+  padrao.innerHTML=cont
+    ? "🌧️ Costuma chover quando a pressão está em torno de <b>"+(soma/cont).toFixed(1)+" hPa</b>"
+    : "☀️ Não houve chuva suficiente para padrão";
 
   if(chart) chart.destroy();
-  chart = new Chart(grafico,{
+  chart=new Chart(document.getElementById("grafico"),{
     type:"line",
     data:{
       labels:labels,
@@ -252,8 +192,7 @@ function renderizar(labels, p, c){
         borderWidth:3,
         tension:0.4
       }]
-    },
-    options:{responsive:true}
+    }
   });
 }
 </script>
