@@ -55,8 +55,8 @@ button{
 }
 
 .alerta{
-  margin-top:10px;
-  padding:10px;
+  margin-top:12px;
+  padding:12px;
   border-radius:10px;
   font-weight:bold;
 }
@@ -110,12 +110,10 @@ canvas{
 <script>
 let lat=null, lon=null;
 let chart=null;
-let chuvaGlobal=[];
 
 const cidadeInput=document.getElementById("cidade");
 const lista=document.getElementById("lista");
 const info=document.getElementById("info");
-const previsao=document.getElementById("previsao");
 const historico=document.getElementById("historico");
 const padrao=document.getElementById("padrao");
 const probChuva=document.getElementById("probChuva");
@@ -155,50 +153,11 @@ async function buscar(){
     return;
   }
 
-  const hoje=new Date();
-  const inicio=new Date();
-  inicio.setDate(hoje.getDate()-7);
-
-  const url=
-    "https://archive-api.open-meteo.com/v1/archive"
-    +"?latitude="+lat
-    +"&longitude="+lon
-    +"&start_date="+inicio.toISOString().split("T")[0]
-    +"&end_date="+hoje.toISOString().split("T")[0]
-    +"&hourly=pressure_msl,precipitation"
-    +"&timezone=America/Sao_Paulo";
-
-  const r=await fetch(url);
-  const d=await r.json();
-  if(!d.hourly){ alert("Sem dados disponíveis"); return; }
-
-  processar(d);
+  padrao.innerHTML="🌧️ Costuma chover quando a pressão atmosférica está mais baixa";
+  buscarProbabilidadeChuva();
 }
 
-/* ⏱️ PROCESSAR */
-function processar(d){
-  const dias={};
-
-  d.hourly.time.forEach((t,i)=>{
-    const dia=t.split("T")[0];
-    if(!dias[dia]) dias[dia]={p:[],c:0};
-    dias[dia].p.push(d.hourly.pressure_msl[i]);
-    dias[dia].c+=d.hourly.precipitation[i];
-  });
-
-  const labels=[], p=[], c=[];
-  Object.keys(dias).slice(-7).forEach(dia=>{
-    const x=dia.split("-");
-    labels.push(x[2]+"/"+x[1]);
-    p.push(dias[dia].p.reduce((a,b)=>a+b)/dias[dia].p.length);
-    c.push(dias[dia].c);
-  });
-
-  chuvaGlobal=c;
-  render(labels,p,c);
-}
-
-/* 📆 PROBABILIDADE DE CHUVA */
+/* 📆 PROBABILIDADE DE CHUVA + ALERTA */
 async function buscarProbabilidadeChuva(){
   const url=
     "https://api.open-meteo.com/v1/forecast"
@@ -209,62 +168,41 @@ async function buscarProbabilidadeChuva(){
 
   const r=await fetch(url);
   const d=await r.json();
-  if(!d.daily) return null;
+  if(!d.daily) return;
 
-  return {
-    dias:d.daily.time.slice(0,5),
-    prob:d.daily.precipitation_probability_max.slice(0,5)
-  };
-}
+  const dias=d.daily.time.slice(0,5);
+  const prob=d.daily.precipitation_probability_max.slice(0,5);
 
-/* 📊 RENDER */
-function render(labels,p,c){
-  const atual=p[p.length-1];
-  const media7=p.reduce((a,b)=>a+b)/p.length;
+  let html="<br>📆 <b>Probabilidade de chuva – próximos 5 dias:</b>";
+  let maxProb=Math.max(...prob);
 
-  info.innerHTML="🌬️ Pressão atual: <b>"+atual.toFixed(1)+" hPa</b>";
-  historico.innerHTML="📊 Média dos últimos 7 dias: <b>"+media7.toFixed(1)+" hPa</b>";
+  dias.forEach((d,i)=>{
+    let cls="verde";
+    if(prob[i]>=70) cls="vermelho";
+    else if(prob[i]>=30) cls="amarelo";
 
-  padrao.innerHTML="🌧️ Costuma chover quando a pressão está mais baixa";
-
-  probChuva.innerHTML="";
-  buscarProbabilidadeChuva().then(res=>{
-    if(!res) return;
-
-    let html="<br>📆 <b>Probabilidade de chuva – próximos 5 dias:</b>";
-    res.dias.forEach((d,i)=>{
-      const p=res.prob[i];
-      let cls="verde";
-      if(p>=70) cls="vermelho";
-      else if(p>=30) cls="amarelo";
-
-      const x=d.split("-");
-      html+=
-        `<div class="prob ${cls}">
-          ${x[2]}/${x[1]} → ${p}% de chance de chuva
-        </div>`;
-    });
-    probChuva.innerHTML=html;
+    const x=d.split("-");
+    html+=`
+      <div class="prob ${cls}">
+        ${x[2]}/${x[1]} → ${prob[i]}% de chance de chuva
+      </div>`;
   });
 
-  alertaDiv.className="alerta verde";
-  alertaDiv.innerText="✅ Sistema funcionando normalmente";
+  probChuva.innerHTML=html;
 
-  if(chart) chart.destroy();
-  chart=new Chart(document.getElementById("grafico"),{
-    type:"line",
-    data:{
-      labels,
-      datasets:[{
-        label:"Pressão média diária (hPa)",
-        data:p,
-        borderColor:"#1565c0",
-        pointRadius:6,
-        tension:0.4
-      }]
-    },
-    options:{ responsive:true }
-  });
+  /* 🚨 ALERTA DE TEMPESTADE */
+  alertaDiv.className="alerta";
+
+  if(maxProb>=80){
+    alertaDiv.classList.add("vermelho");
+    alertaDiv.innerText="⚠️ ALERTA: Alta probabilidade de TEMPESTADE nos próximos dias!";
+  }else if(maxProb>=60){
+    alertaDiv.classList.add("amarelo");
+    alertaDiv.innerText="⛈️ Atenção: Risco de temporal nos próximos dias";
+  }else{
+    alertaDiv.classList.add("verde");
+    alertaDiv.innerText="✅ Sem indicativo de tempestade nos próximos dias";
+  }
 }
 </script>
 
