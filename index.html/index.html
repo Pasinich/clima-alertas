@@ -84,6 +84,7 @@ canvas{
 <script>
 let lat=null, lon=null;
 let chart=null;
+let chuvaGlobal=[];
 
 const cidadeInput=document.getElementById("cidade");
 const lista=document.getElementById("lista");
@@ -150,7 +151,7 @@ async function buscar(){
   processar(d);
 }
 
-/* ⏱️ PROCESSAR DADOS */
+/* ⏱️ PROCESSAR */
 function processar(d){
   const dias={};
 
@@ -170,10 +171,34 @@ function processar(d){
     c.push(dias[dia].c);
   });
 
+  chuvaGlobal=c;
   render(labels,p,c);
 }
 
-/* 📊 RENDERIZAR */
+/* 🎨 PLUGIN PARA FUNDO CHUVOSO */
+const fundoChuvaPlugin={
+  id:"fundoChuva",
+  beforeDraw(chart){
+    const {ctx, chartArea, scales:{x}} = chart;
+    ctx.save();
+    chuvaGlobal.forEach((v,i)=>{
+      if(v>1){
+        const xStart = x.getPixelForValue(i)-x.width/(x.ticks.length*2);
+        const xEnd   = x.getPixelForValue(i)+x.width/(x.ticks.length*2);
+        ctx.fillStyle="rgba(255,0,0,0.08)";
+        ctx.fillRect(
+          xStart,
+          chartArea.top,
+          xEnd-xStart,
+          chartArea.bottom-chartArea.top
+        );
+      }
+    });
+    ctx.restore();
+  }
+};
+
+/* 📊 RENDER */
 function render(labels,p,c){
   const hoje=p[p.length-1];
   info.innerHTML="🌬️ Pressão atual: <b>"+hoje.toFixed(1)+" hPa</b>";
@@ -188,7 +213,6 @@ function render(labels,p,c){
       +(soma/cont).toFixed(1)+" hPa</b>"
     : "☀️ Não houve chuva suficiente para identificar padrão";
 
-  /* 🎨 pontos vermelhos nos dias com chuva */
   const coresPontos=c.map(v=>v>1?"red":"#1565c0");
 
   if(chart) chart.destroy();
@@ -220,7 +244,8 @@ function render(labels,p,c){
           }
         }
       }
-    }
+    },
+    plugins:[fundoChuvaPlugin]
   });
 }
 </script>
