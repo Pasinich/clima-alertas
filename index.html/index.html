@@ -184,7 +184,7 @@ async function buscar(){
     const d = await r.json();
 
     if(!d.daily || !d.daily.pressure_msl || d.daily.pressure_msl.length === 0){
-      alert("❌ Sem dados disponíveis para esta data.");
+      alert("❌ Sem dados disponíveis para esta data.ajp ");
       return;
     }
 
