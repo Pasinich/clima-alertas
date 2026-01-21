@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <title>Clima & Alertas Inteligentes</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
@@ -41,10 +42,14 @@ canvas{background:#fff;border-radius:12px;padding:10px}
 <h2 id="titulo">🌦️ Clima & Alertas</h2>
 
 <div class="card">
-  <div class="resultado" id="local">📍 Detectando cidade...</div>
+
+  <input id="cidadeInput" placeholder="Digite a cidade (ex: Chapecó, SC)">
+  <button onclick="buscarCidade()">🔍 Buscar cidade</button>
+
+  <div class="resultado" id="local">📍 Nenhuma cidade selecionada</div>
 
   <input type="date" id="data">
-  <button onclick="buscar()">Consultar</button>
+  <button onclick="buscarClima()">Consultar clima</button>
 
   <div class="resultado" id="pressao"></div>
   <div class="resultado" id="chuva"></div>
@@ -59,15 +64,14 @@ canvas{background:#fff;border-radius:12px;padding:10px}
 </div>
 
 <script>
-let lat = -27.10;
-let lon = -52.61;
-let cidade = "Chapecó";
-let estado = "SC";
-let chart;
+let lat = null;
+let lon = null;
+let chart = null;
 
-const titulo = document.getElementById("titulo");
+const cidadeInput = document.getElementById("cidadeInput");
 const localDiv = document.getElementById("local");
-const dataInput = document.getElementById("data");
+const titulo = document.getElementById("titulo");
+
 const pressaoDiv = document.getElementById("pressao");
 const chuvaDiv = document.getElementById("chuva");
 const variacaoDiv = document.getElementById("variacao");
@@ -75,73 +79,89 @@ const comparacaoDiv = document.getElementById("comparacao");
 const statusDiv = document.getElementById("status");
 const grafico = document.getElementById("grafico");
 
-/* INIT */
-window.onload = () => {
-  detectarPorIP();
-  dataInput.max = new Date().toISOString().slice(0,10);
-};
+document.getElementById("data").max =
+  new Date().toISOString().slice(0,10);
 
-/* IP */
-async function detectarPorIP(){
+/* 🔎 BUSCAR CIDADE → LAT/LON */
+async function buscarCidade(){
+  const q = cidadeInput.value.trim();
+  if(!q){
+    alert("Digite o nome da cidade");
+    return;
+  }
+
+  const url =
+    `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(q)}&count=1&language=pt&format=json`;
+
   try{
-    const r = await fetch("https://ipapi.co/json/");
+    const r = await fetch(url);
     const d = await r.json();
-    lat = d.latitude;
-    lon = d.longitude;
-    cidade = d.city;
-    estado = d.region_code || d.region;
-  }catch(e){}
-  atualizarCidade();
+
+    if(!d.results || d.results.length === 0){
+      alert("Cidade não encontrada");
+      return;
+    }
+
+    const c = d.results[0];
+    lat = c.latitude;
+    lon = c.longitude;
+
+    const nome =
+      `${c.name}${c.admin1 ? " – " + c.admin1 : ""}`;
+
+    localDiv.innerHTML = `📍 ${nome}`;
+    titulo.innerText = `🌦️ Clima & Alertas • ${c.name}`;
+
+  }catch(e){
+    alert("Erro ao buscar cidade");
+  }
 }
 
-function atualizarCidade(){
-  localDiv.innerHTML = `📍 ${cidade} – ${estado}`;
-  titulo.innerText = `🌦️ Clima & Alertas • ${cidade} – ${estado}`;
-}
+/* 🌦️ BUSCAR CLIMA */
+async function buscarClima(){
+  if(lat === null || lon === null){
+    alert("Busque uma cidade primeiro");
+    return;
+  }
 
-/* BUSCAR */
-async function buscar(){
   const url =
     `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&hourly=pressure_msl,precipitation&past_days=7&timezone=America/Sao_Paulo`;
 
   try{
     const r = await fetch(url);
     const d = await r.json();
-    processar(d);
+    processarDados(d);
   }catch(e){
-    alert("Erro ao consultar dados");
+    alert("Erro ao consultar clima");
   }
 }
 
-/* PROCESSAR HOURLY → DAILY */
-function processar(d){
+/* ⏱️ HOURLY → DAILY */
+function processarDados(d){
   const dias = {};
-  const horas = d.hourly.time;
-  const pressao = d.hourly.pressure_msl;
-  const chuva = d.hourly.precipitation;
-
-  horas.forEach((t,i)=>{
+  d.hourly.time.forEach((t,i)=>{
     const dia = t.split("T")[0];
     if(!dias[dia]) dias[dia] = {p:[], c:0};
-    dias[dia].p.push(pressao[i]);
-    dias[dia].c += chuva[i];
+    dias[dia].p.push(d.hourly.pressure_msl[i]);
+    dias[dia].c += d.hourly.precipitation[i];
   });
 
   const labels = [];
-  const pressaoDia = [];
-  const chuvaDia = [];
+  const pressao = [];
+  const chuva = [];
 
   Object.keys(dias).slice(-7).forEach(dia=>{
-    const p = dias[dia].p.reduce((a,b)=>a+b)/dias[dia].p.length;
     labels.push(dia);
-    pressaoDia.push(p);
-    chuvaDia.push(dias[dia].c);
+    pressao.push(
+      dias[dia].p.reduce((a,b)=>a+b)/dias[dia].p.length
+    );
+    chuva.push(dias[dia].c);
   });
 
-  renderizar(labels, pressaoDia, chuvaDia);
+  renderizar(labels, pressao, chuva);
 }
 
-/* RENDER */
+/* 📊 RENDER */
 function renderizar(labels, p, c){
   const hoje = p.at(-1);
   const media = p.slice(-5).reduce((a,b)=>a+b)/5;
@@ -149,11 +169,14 @@ function renderizar(labels, p, c){
   pressaoDiv.innerHTML = `🌬️ Pressão: <b>${hoje.toFixed(1)} hPa</b>`;
   comparacaoDiv.innerHTML = `📊 Média 5 dias: ${media.toFixed(1)} hPa`;
   variacaoDiv.innerHTML = `🔄 Diferença: ${(hoje-media).toFixed(1)} hPa`;
-  chuvaDiv.innerHTML = c.at(-1) > 0 ? `🌧️ ${c.at(-1).toFixed(1)} mm` : "☀️ Sem chuva";
+  chuvaDiv.innerHTML = c.at(-1) > 0
+    ? `🌧️ ${c.at(-1).toFixed(1)} mm`
+    : "☀️ Sem chuva";
 
   let risco = "🟢 Baixo";
   if(hoje < 1010) risco = "🟡 Moderado";
   if(hoje < 1007 || c.at(-1) > 20) risco = "🔴 Alto";
+
   statusDiv.innerText = `🌪️ Risco: ${risco}`;
 
   if(chart) chart.destroy();
@@ -162,7 +185,7 @@ function renderizar(labels, p, c){
     data:{
       labels,
       datasets:[{
-        label:"Pressão Média Diária (hPa)",
+        label:"Pressão média diária (hPa)",
         data:p,
         borderWidth:3,
         tension:0.4
