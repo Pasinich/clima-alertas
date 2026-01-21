@@ -117,7 +117,7 @@ async function buscarCidadeEstado(lat, lon){
     );
     const j = await r.json();
     if(j.address){
-      return `${j.address.city || j.address.town || j.address.village || "Cidade"} – ${j.address.state || ""}`;
+      return `${j.address.city || j.address.town || j.address.village || "Cidadere"} – ${j.address.state || ""}`;
     }
   }catch(e){}
 
@@ -156,7 +156,7 @@ function usarGPS(){
 ===================== */
 async function buscar(){
   if(!dataInput.value){
-    alert("📅 Selecione uma ajp data");
+    alert("📅 Selecione uma data");
     return;
   }
 
