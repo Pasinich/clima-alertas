@@ -16,13 +16,15 @@ body{
   padding:16px;
 }
 h2{text-align:center}
+
 .card{
   background:rgba(255,255,255,.18);
   border-radius:18px;
   padding:18px;
   margin-bottom:18px;
 }
-button,input{
+
+input,button{
   width:100%;
   padding:12px;
   margin-top:10px;
@@ -30,10 +32,36 @@ button,input{
   border:none;
   border-radius:12px;
 }
-button{background:#00e676;font-weight:bold}
-.resultado{margin-top:6px;font-size:18px}
+
+button{
+  background:#00e676;
+  font-weight:bold;
+}
+
+.resultado{margin-top:8px;font-size:18px}
 .status{font-size:20px;font-weight:bold;margin-top:10px}
-canvas{background:#fff;border-radius:12px;padding:10px}
+
+canvas{
+  background:#fff;
+  border-radius:12px;
+  padding:10px;
+}
+
+/* AUTOCOMPLETE */
+.autocomplete{
+  background:#fff;
+  color:#000;
+  border-radius:10px;
+  overflow:hidden;
+  margin-top:4px;
+}
+.autocomplete div{
+  padding:10px;
+  cursor:pointer;
+}
+.autocomplete div:hover{
+  background:#e0e0e0;
+}
 </style>
 </head>
 
@@ -43,23 +71,23 @@ canvas{background:#fff;border-radius:12px;padding:10px}
 
 <div class="card">
 
-  <input id="cidadeInput" placeholder="Digite a cidade (ex: Chapecó, SC)">
-  <button onclick="buscarCidade()">🔍 Buscar cidade</button>
+  <input id="cidadeInput" placeholder="Digite a cidade (ex: Chapecó)">
+  <div id="listaCidades" class="autocomplete"></div>
 
   <div class="resultado" id="local">📍 Nenhuma cidade selecionada</div>
 
-  <input type="date" id="data">
-  <button onclick="buscarClima()">Consultar clima</button>
+  <button onclick="buscarClima()">Consultar últimos 7 dias</button>
 
   <div class="resultado" id="pressao"></div>
   <div class="resultado" id="chuva"></div>
   <div class="resultado" id="variacao"></div>
   <div class="resultado" id="comparacao"></div>
   <div class="status" id="status"></div>
+
 </div>
 
 <div class="card">
-  <h3>📊 Pressão – últimos 7 dias</h3>
+  <h3>📊 Pressão atmosférica – últimos 7 dias</h3>
   <canvas id="grafico"></canvas>
 </div>
 
@@ -69,6 +97,7 @@ let lon = null;
 let chart = null;
 
 const cidadeInput = document.getElementById("cidadeInput");
+const lista = document.getElementById("listaCidades");
 const localDiv = document.getElementById("local");
 const titulo = document.getElementById("titulo");
 
@@ -79,68 +108,60 @@ const comparacaoDiv = document.getElementById("comparacao");
 const statusDiv = document.getElementById("status");
 const grafico = document.getElementById("grafico");
 
-document.getElementById("data").max =
-  new Date().toISOString().slice(0,10);
-
-/* 🔎 BUSCAR CIDADE → LAT/LON */
-async function buscarCidade(){
+/* 🔍 AUTOCOMPLETE */
+cidadeInput.addEventListener("input", async ()=>{
   const q = cidadeInput.value.trim();
-  if(!q){
-    alert("Digite o nome da cidade");
-    return;
-  }
+  lista.innerHTML = "";
+  if(q.length < 3) return;
 
   const url =
-    `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(q)}&count=1&language=pt&format=json`;
+    `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(q)}&count=5&language=pt`;
 
-  try{
-    const r = await fetch(url);
-    const d = await r.json();
+  const r = await fetch(url);
+  const d = await r.json();
 
-    if(!d.results || d.results.length === 0){
-      alert("Cidade não encontrada");
-      return;
-    }
+  if(!d.results) return;
 
-    const c = d.results[0];
-    lat = c.latitude;
-    lon = c.longitude;
-
-    const nome =
-      `${c.name}${c.admin1 ? " – " + c.admin1 : ""}`;
-
-    localDiv.innerHTML = `📍 ${nome}`;
-    titulo.innerText = `🌦️ Clima & Alertas • ${c.name}`;
-
-  }catch(e){
-    alert("Erro ao buscar cidade");
-  }
-}
+  d.results.forEach(c=>{
+    const div = document.createElement("div");
+    div.textContent =
+      `${c.name}${c.admin1 ? " – "+c.admin1 : ""}`;
+    div.onclick = ()=>{
+      lat = c.latitude;
+      lon = c.longitude;
+      lista.innerHTML = "";
+      cidadeInput.value = c.name;
+      localDiv.innerHTML = `📍 ${div.textContent}`;
+      titulo.innerText = `🌦️ Clima & Alertas • ${c.name}`;
+    };
+    lista.appendChild(div);
+  });
+});
 
 /* 🌦️ BUSCAR CLIMA */
 async function buscarClima(){
-  if(lat === null || lon === null){
-    alert("Busque uma cidade primeiro");
+  if(lat === null){
+    alert("Selecione uma cidade");
     return;
   }
 
   const url =
     `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&hourly=pressure_msl,precipitation&past_days=7&timezone=America/Sao_Paulo`;
 
-  try{
-    const r = await fetch(url);
-    const d = await r.json();
-    processarDados(d);
-  }catch(e){
-    alert("Erro ao consultar clima");
-  }
+  const r = await fetch(url);
+  const d = await r.json();
+  processarDados(d);
 }
 
-/* ⏱️ HOURLY → DAILY */
+/* ⏱️ HOURLY → DAILY (SÓ DIAS PASSADOS) */
 function processarDados(d){
+  const hoje = new Date().toISOString().slice(0,10);
   const dias = {};
+
   d.hourly.time.forEach((t,i)=>{
     const dia = t.split("T")[0];
+    if(dia > hoje) return;
+
     if(!dias[dia]) dias[dia] = {p:[], c:0};
     dias[dia].p.push(d.hourly.pressure_msl[i]);
     dias[dia].c += d.hourly.precipitation[i];
@@ -153,7 +174,7 @@ function processarDados(d){
   Object.keys(dias).slice(-7).forEach(dia=>{
     labels.push(dia);
     pressao.push(
-      dias[dia].p.reduce((a,b)=>a+b)/dias[dia].p.length
+      dias[dia].p.reduce((a,b)=>a+b) / dias[dia].p.length
     );
     chuva.push(dias[dia].c);
   });
@@ -164,19 +185,17 @@ function processarDados(d){
 /* 📊 RENDER */
 function renderizar(labels, p, c){
   const hoje = p.at(-1);
-  const media = p.slice(-5).reduce((a,b)=>a+b)/5;
+  const media = p.slice(-5).reduce((a,b)=>a+b) / 5;
 
   pressaoDiv.innerHTML = `🌬️ Pressão: <b>${hoje.toFixed(1)} hPa</b>`;
   comparacaoDiv.innerHTML = `📊 Média 5 dias: ${media.toFixed(1)} hPa`;
   variacaoDiv.innerHTML = `🔄 Diferença: ${(hoje-media).toFixed(1)} hPa`;
-  chuvaDiv.innerHTML = c.at(-1) > 0
-    ? `🌧️ ${c.at(-1).toFixed(1)} mm`
-    : "☀️ Sem chuva";
+  chuvaDiv.innerHTML =
+    c.at(-1) > 0 ? `🌧️ ${c.at(-1).toFixed(1)} mm` : "☀️ Sem chuva";
 
   let risco = "🟢 Baixo";
   if(hoje < 1010) risco = "🟡 Moderado";
   if(hoje < 1007 || c.at(-1) > 20) risco = "🔴 Alto";
-
   statusDiv.innerText = `🌪️ Risco: ${risco}`;
 
   if(chart) chart.destroy();
