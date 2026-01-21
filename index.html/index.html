@@ -54,12 +54,11 @@ canvas{background:#fff;border-radius:12px;padding:10px}
 </div>
 
 <div class="card">
-  <h3>📊 Pressão – últimos 30 dias</h3>
+  <h3>📊 Pressão – últimos 7 dias</h3>
   <canvas id="grafico"></canvas>
 </div>
 
 <script>
-/* PADRÃO */
 let lat = -27.10;
 let lon = -52.61;
 let cidade = "Chapecó";
@@ -95,54 +94,76 @@ async function detectarPorIP(){
   atualizarCidade();
 }
 
-/* UI */
 function atualizarCidade(){
   localDiv.innerHTML = `📍 ${cidade} – ${estado}`;
   titulo.innerText = `🌦️ Clima & Alertas • ${cidade} – ${estado}`;
 }
 
-/* BUSCAR – SEM FALHAR */
+/* BUSCAR */
 async function buscar(){
-  const hoje = new Date();
-  const inicio = new Date();
-  inicio.setDate(hoje.getDate() - 30);
-
   const url =
-    `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=pressure_msl,precipitation_sum&past_days=30&timezone=America/Sao_Paulo`;
+    `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&hourly=pressure_msl,precipitation&past_days=7&timezone=America/Sao_Paulo`;
 
   try{
     const r = await fetch(url);
     const d = await r.json();
-    renderizar(d);
+    processar(d);
   }catch(e){
-    alert("Erro ao buscar dados climáticos");
+    alert("Erro ao consultar dados");
   }
 }
 
-/* RENDER */
-function renderizar(d){
-  const pHoje = d.daily.pressure_msl.at(-1);
-  const pMedia = d.daily.pressure_msl.slice(-7).reduce((a,b)=>a+b)/7;
-  const chuva = d.daily.precipitation_sum.at(-1);
+/* PROCESSAR HOURLY → DAILY */
+function processar(d){
+  const dias = {};
+  const horas = d.hourly.time;
+  const pressao = d.hourly.pressure_msl;
+  const chuva = d.hourly.precipitation;
 
-  pressaoDiv.innerHTML = `🌬️ Pressão atual: <b>${pHoje.toFixed(1)} hPa</b>`;
-  comparacaoDiv.innerHTML = `📊 Média 7 dias: ${pMedia.toFixed(1)} hPa`;
-  variacaoDiv.innerHTML = `🔄 Diferença: ${(pHoje-pMedia).toFixed(1)} hPa`;
-  chuvaDiv.innerHTML = chuva > 0 ? `🌧️ ${chuva} mm` : "☀️ Sem chuva";
+  horas.forEach((t,i)=>{
+    const dia = t.split("T")[0];
+    if(!dias[dia]) dias[dia] = {p:[], c:0};
+    dias[dia].p.push(pressao[i]);
+    dias[dia].c += chuva[i];
+  });
+
+  const labels = [];
+  const pressaoDia = [];
+  const chuvaDia = [];
+
+  Object.keys(dias).slice(-7).forEach(dia=>{
+    const p = dias[dia].p.reduce((a,b)=>a+b)/dias[dia].p.length;
+    labels.push(dia);
+    pressaoDia.push(p);
+    chuvaDia.push(dias[dia].c);
+  });
+
+  renderizar(labels, pressaoDia, chuvaDia);
+}
+
+/* RENDER */
+function renderizar(labels, p, c){
+  const hoje = p.at(-1);
+  const media = p.slice(-5).reduce((a,b)=>a+b)/5;
+
+  pressaoDiv.innerHTML = `🌬️ Pressão: <b>${hoje.toFixed(1)} hPa</b>`;
+  comparacaoDiv.innerHTML = `📊 Média 5 dias: ${media.toFixed(1)} hPa`;
+  variacaoDiv.innerHTML = `🔄 Diferença: ${(hoje-media).toFixed(1)} hPa`;
+  chuvaDiv.innerHTML = c.at(-1) > 0 ? `🌧️ ${c.at(-1).toFixed(1)} mm` : "☀️ Sem chuva";
 
   let risco = "🟢 Baixo";
-  if(pHoje < 1010) risco = "🟡 Moderado";
-  if(pHoje < 1007 || chuva > 20) risco = "🔴 Alto";
+  if(hoje < 1010) risco = "🟡 Moderado";
+  if(hoje < 1007 || c.at(-1) > 20) risco = "🔴 Alto";
   statusDiv.innerText = `🌪️ Risco: ${risco}`;
 
   if(chart) chart.destroy();
   chart = new Chart(grafico,{
     type:"line",
     data:{
-      labels:d.daily.time,
+      labels,
       datasets:[{
-        label:"Pressão (hPa)",
-        data:d.daily.pressure_msl,
+        label:"Pressão Média Diária (hPa)",
+        data:p,
         borderWidth:3,
         tension:0.4
       }]
