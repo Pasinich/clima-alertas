@@ -82,6 +82,7 @@ canvas{
   <div class="resultado" id="chuva"></div>
   <div class="resultado" id="variacao"></div>
   <div class="resultado" id="comparacao"></div>
+  <div class="resultado" id="pressaoChuva"></div>
   <div class="status" id="status"></div>
 </div>
 
@@ -94,6 +95,7 @@ canvas{
 let lat = null;
 let lon = null;
 let chart = null;
+let cidadeAtual = "";
 
 const cidadeInput = document.getElementById("cidadeInput");
 const lista = document.getElementById("listaCidades");
@@ -105,6 +107,7 @@ const chuvaDiv = document.getElementById("chuva");
 const variacaoDiv = document.getElementById("variacao");
 const comparacaoDiv = document.getElementById("comparacao");
 const statusDiv = document.getElementById("status");
+const pressaoChuvaDiv = document.getElementById("pressaoChuva");
 const grafico = document.getElementById("grafico");
 
 /* 🔍 AUTOCOMPLETE DE CIDADE */
@@ -113,7 +116,9 @@ cidadeInput.addEventListener("input", async ()=>{
   lista.innerHTML = "";
   if(q.length < 3) return;
 
-  const url = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(q)}&count=5&language=pt`;
+  const url =
+    `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(q)}&count=5&language=pt`;
+
   const r = await fetch(url);
   const d = await r.json();
   if(!d.results) return;
@@ -126,6 +131,7 @@ cidadeInput.addEventListener("input", async ()=>{
     div.onclick = ()=>{
       lat = c.latitude;
       lon = c.longitude;
+      cidadeAtual = nome;
       cidadeInput.value = c.name;
       lista.innerHTML = "";
       localDiv.innerHTML = `📍 ${nome}`;
@@ -143,7 +149,11 @@ async function buscarClima(){
     return;
   }
 
-  const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&hourly=pressure_msl,precipitation&past_days=7&timezone=America/Sao_Paulo`;
+  const url =
+    `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}
+     &hourly=pressure_msl,precipitation
+     &past_days=7
+     &timezone=America/Sao_Paulo`;
 
   const r = await fetch(url);
   const d = await r.json();
@@ -181,13 +191,29 @@ function processarDados(d){
   renderizar(labels, pressao, chuva);
 }
 
+/* 🌧️ PRESSÃO TÍPICA DE CHUVA */
+function calcularPressaoDeChuva(pressoes, chuvas){
+  let soma = 0;
+  let dias = 0;
+
+  for(let i = 0; i < chuvas.length; i++){
+    if(chuvas[i] >= 1){
+      soma += pressoes[i];
+      dias++;
+    }
+  }
+
+  if(dias === 0) return null;
+  return soma / dias;
+}
+
 /* 📊 RENDERIZAR */
 function renderizar(labels, p, c){
   const hoje = p.at(-1);
-  const media = p.slice(-5).reduce((a,b)=>a+b) / 5;
+  const media = p.reduce((a,b)=>a+b) / p.length;
 
-  pressaoDiv.innerHTML = `🌬️ Pressão: <b>${hoje.toFixed(1)} hPa</b>`;
-  comparacaoDiv.innerHTML = `📊 Média 5 dias: ${media.toFixed(1)} hPa`;
+  pressaoDiv.innerHTML = `🌬️ Pressão atual: <b>${hoje.toFixed(1)} hPa</b>`;
+  comparacaoDiv.innerHTML = `📊 Média 7 dias: ${media.toFixed(1)} hPa`;
   variacaoDiv.innerHTML = `🔄 Diferença: ${(hoje-media).toFixed(1)} hPa`;
   chuvaDiv.innerHTML = c.at(-1) > 0 ? `🌧️ ${c.at(-1).toFixed(1)} mm` : "☀️ Sem chuva";
 
@@ -195,6 +221,16 @@ function renderizar(labels, p, c){
   if(hoje < 1010) risco = "🟡 Moderado";
   if(hoje < 1007 || c.at(-1) > 20) risco = "🔴 Alto";
   statusDiv.innerText = `🌪️ Risco: ${risco}`;
+
+  const pressaoChuva = calcularPressaoDeChuva(p, c);
+  if(pressaoChuva){
+    pressaoChuvaDiv.innerHTML =
+      `🌧️ Em <b>${cidadeAtual}</b> costuma chover quando a pressão atmosférica está em torno de
+       <b>${pressaoChuva.toFixed(1)} hPa</b>`;
+  }else{
+    pressaoChuvaDiv.innerHTML =
+      `🌤️ Não houve chuva suficiente no período para identificar um padrão`;
+  }
 
   if(chart) chart.destroy();
   chart = new Chart(grafico,{
@@ -208,9 +244,7 @@ function renderizar(labels, p, c){
         tension:0.4
       }]
     },
-    options:{
-      responsive:true
-    }
+    options:{responsive:true}
   });
 }
 </script>
