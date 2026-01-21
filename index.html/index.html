@@ -54,7 +54,7 @@ canvas{background:#fff;border-radius:12px;padding:10px}
 </div>
 
 <div class="card">
-  <h3>📊 Pressão – histórico</h3>
+  <h3>📊 Pressão – últimos 30 dias</h3>
   <canvas id="grafico"></canvas>
 </div>
 
@@ -76,80 +76,47 @@ const comparacaoDiv = document.getElementById("comparacao");
 const statusDiv = document.getElementById("status");
 const grafico = document.getElementById("grafico");
 
-/* INICIALIZA */
+/* INIT */
 window.onload = () => {
   detectarPorIP();
   dataInput.max = new Date().toISOString().slice(0,10);
 };
 
-/* 🌍 DETECÇÃO POR IP (SEM GPS) */
+/* IP */
 async function detectarPorIP(){
   try{
     const r = await fetch("https://ipapi.co/json/");
     const d = await r.json();
-
     lat = d.latitude;
     lon = d.longitude;
     cidade = d.city;
     estado = d.region_code || d.region;
-
-    atualizarCidade();
-  }catch(e){
-    atualizarCidade();
-  }
+  }catch(e){}
+  atualizarCidade();
 }
 
-/* ATUALIZA TEXTO */
+/* UI */
 function atualizarCidade(){
   localDiv.innerHTML = `📍 ${cidade} – ${estado}`;
   titulo.innerText = `🌦️ Clima & Alertas • ${cidade} – ${estado}`;
 }
 
-/* BUSCAR DADOS */
+/* BUSCAR – SEM FALHAR */
 async function buscar(){
-  if(!dataInput.value){
-    alert("Selecione uma data");
-    return;
-  }
-
-  let dados = await buscarArchive();
-  if(!dados) dados = await buscarForecast();
-  if(!dados){
-    alert("Sem dados disponíveis");
-    return;
-  }
-
-  renderizar(dados);
-}
-
-/* ARCHIVE */
-async function buscarArchive(){
-  const fim = new Date(dataInput.value);
-  const inicio = new Date(fim);
-  inicio.setDate(inicio.getDate() - 30);
+  const hoje = new Date();
+  const inicio = new Date();
+  inicio.setDate(hoje.getDate() - 30);
 
   const url =
-    `https://archive-api.open-meteo.com/v1/archive?latitude=${lat}&longitude=${lon}&start_date=${inicio.toISOString().slice(0,10)}&end_date=${fim.toISOString().slice(0,10)}&daily=pressure_msl,precipitation_sum&timezone=America/Sao_Paulo`;
+    `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=pressure_msl,precipitation_sum&past_days=30&timezone=America/Sao_Paulo`;
 
   try{
     const r = await fetch(url);
     const d = await r.json();
-    if(d.daily?.pressure_msl?.length) return d;
-  }catch(e){}
-  return null;
-}
-
-/* FORECAST */
-async function buscarForecast(){
-  const url =
-    `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=pressure_msl,precipitation_sum&timezone=America/Sao_Paulo`;
-
-  try{
-    const r = await fetch(url);
-    const d = await r.json();
-    if(d.daily?.pressure_msl?.length) return d;
-  }catch(e){}
-  return null;
+    renderizar(d);
+  }catch(e){
+    alert("Erro ao buscar dados climáticos");
+  }
 }
 
 /* RENDER */
@@ -158,7 +125,7 @@ function renderizar(d){
   const pMedia = d.daily.pressure_msl.slice(-7).reduce((a,b)=>a+b)/7;
   const chuva = d.daily.precipitation_sum.at(-1);
 
-  pressaoDiv.innerHTML = `🌬️ Pressão: <b>${pHoje.toFixed(1)} hPa</b>`;
+  pressaoDiv.innerHTML = `🌬️ Pressão atual: <b>${pHoje.toFixed(1)} hPa</b>`;
   comparacaoDiv.innerHTML = `📊 Média 7 dias: ${pMedia.toFixed(1)} hPa`;
   variacaoDiv.innerHTML = `🔄 Diferença: ${(pHoje-pMedia).toFixed(1)} hPa`;
   chuvaDiv.innerHTML = chuva > 0 ? `🌧️ ${chuva} mm` : "☀️ Sem chuva";
