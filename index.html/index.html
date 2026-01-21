@@ -85,6 +85,7 @@ canvas{
 <div class="card">
   <input id="cidade" placeholder="Digite a cidade (ex: Chapecó)">
   <div id="lista" class="autocomplete"></div>
+
   <button onclick="buscar()">Consultar</button>
 
   <div id="info"></div>
@@ -110,11 +111,15 @@ const padrao=document.getElementById("padrao");
 const probChuva=document.getElementById("probChuva");
 const alerta=document.getElementById("alerta");
 
-/* AUTOCOMPLETE */
+/* 🔍 AUTOCOMPLETE */
 cidade.addEventListener("input",async()=>{
   lista.innerHTML="";
   if(cidade.value.length<3) return;
-  const r=await fetch("https://geocoding-api.open-meteo.com/v1/search?name="+cidade.value+"&count=5&language=pt");
+
+  const r=await fetch(
+    "https://geocoding-api.open-meteo.com/v1/search?name="
+    +cidade.value+"&count=5&language=pt"
+  );
   const d=await r.json();
   if(!d.results) return;
 
@@ -122,7 +127,8 @@ cidade.addEventListener("input",async()=>{
     const div=document.createElement("div");
     div.textContent=c.name+(c.admin1?" - "+c.admin1:"");
     div.onclick=()=>{
-      lat=c.latitude; lon=c.longitude;
+      lat=c.latitude;
+      lon=c.longitude;
       cidade.value=c.name;
       lista.innerHTML="";
       titulo.innerText="🌦️ Clima • "+c.name;
@@ -131,20 +137,22 @@ cidade.addEventListener("input",async()=>{
   });
 });
 
-/* BOTÃO */
+/* ▶️ BOTÃO */
 async function buscar(){
   if(lat==null){ alert("Selecione a cidade"); return; }
   await buscarHistorico();
   await buscarProbabilidadeChuva();
 }
 
-/* HISTÓRICO PRESSÃO */
+/* 📊 HISTÓRICO DA PRESSÃO */
 async function buscarHistorico(){
   const hoje=new Date();
   const ini=new Date(); ini.setDate(hoje.getDate()-7);
 
-  const url="https://archive-api.open-meteo.com/v1/archive"
-    +"?latitude="+lat+"&longitude="+lon
+  const url=
+    "https://archive-api.open-meteo.com/v1/archive"
+    +"?latitude="+lat
+    +"&longitude="+lon
     +"&start_date="+ini.toISOString().split("T")[0]
     +"&end_date="+hoje.toISOString().split("T")[0]
     +"&hourly=pressure_msl,precipitation"
@@ -154,48 +162,70 @@ async function buscarHistorico(){
   const d=await r.json();
   if(!d.hourly) return;
 
-  const dias={}, labels=[], p=[];
+  const dias={}, chuvaDias={};
+
   d.hourly.time.forEach((t,i)=>{
     const dia=t.split("T")[0];
-    if(!dias[dia]) dias[dia]=[];
+    if(!dias[dia]){ dias[dia]=[]; chuvaDias[dia]=0; }
     dias[dia].push(d.hourly.pressure_msl[i]);
+    chuvaDias[dia]+=d.hourly.precipitation[i];
   });
+
+  const labels=[], pressao=[], pressaoChuva=[];
 
   Object.keys(dias).slice(-7).forEach(d=>{
     const x=d.split("-");
+    const mediaDia=dias[d].reduce((a,b)=>a+b)/dias[d].length;
     labels.push(x[2]+"/"+x[1]);
-    p.push(dias[d].reduce((a,b)=>a+b)/dias[d].length);
+    pressao.push(mediaDia);
+    if(chuvaDias[d]>1) pressaoChuva.push(mediaDia);
   });
 
-  info.innerHTML="🌬️ Pressão atual: <b>"+p.at(-1).toFixed(1)+" hPa</b>";
-  historico.innerHTML="📊 Média 7 dias: <b>"+(p.reduce((a,b)=>a+b)/p.length).toFixed(1)+" hPa</b>";
-  padrao.innerHTML="🌧️ Pressão baixa costuma favorecer chuva";
+  const atual=pressao.at(-1);
+  const media7=pressao.reduce((a,b)=>a+b)/pressao.length;
+  const mediaChuva=pressaoChuva.length
+    ? pressaoChuva.reduce((a,b)=>a+b)/pressaoChuva.length
+    : null;
+
+  info.innerHTML="🌬️ Pressão atual: <b>"+atual.toFixed(1)+" hPa</b>";
+  historico.innerHTML="📊 Média dos últimos 7 dias: <b>"+media7.toFixed(1)+" hPa</b>";
+
+  padrao.innerHTML=mediaChuva
+    ? "🌧️ Costuma chover quando a pressão está em torno de <b>"
+      +mediaChuva.toFixed(1)+" hPa</b>"
+    : "ℹ️ Histórico insuficiente para definir padrão de chuva";
 
   if(chart) chart.destroy();
   chart=new Chart(document.getElementById("grafico"),{
     type:"line",
-    data:{labels,
+    data:{
+      labels,
       datasets:[{
         label:"Pressão média diária (hPa)",
-        data:p,
+        data:pressao,
         borderColor:"#1565c0",
         borderWidth:3,
         tension:0.4,
         pointRadius:5
       }]
-    }
+    },
+    options:{responsive:true}
   });
 }
 
-/* PROBABILIDADE + ALERTA */
+/* 🌧️ PROBABILIDADE + ALERTA */
 async function buscarProbabilidadeChuva(){
-  const r=await fetch("https://api.open-meteo.com/v1/forecast?latitude="
-    +lat+"&longitude="+lon+"&daily=precipitation_probability_max&timezone=America/Sao_Paulo");
+  const r=await fetch(
+    "https://api.open-meteo.com/v1/forecast?latitude="
+    +lat+"&longitude="+lon
+    +"&daily=precipitation_probability_max"
+    +"&timezone=America/Sao_Paulo"
+  );
   const d=await r.json();
   if(!d.daily) return;
 
-  const prob=d.daily.precipitation_probability_max.slice(0,5);
   const dias=d.daily.time.slice(0,5);
+  const prob=d.daily.precipitation_probability_max.slice(0,5);
 
   let html="<br>📆 <b>Probabilidade de chuva – próximos 5 dias:</b>";
   prob.forEach((p,i)=>{
