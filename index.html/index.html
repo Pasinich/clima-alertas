@@ -38,7 +38,7 @@ canvas{background:#fff;border-radius:12px;padding:10px}
 
 <body>
 
-<h2>🌦️ Clima & Alertas Inteligentes</h2>
+<h2 id="titulo">🌦️ Clima & Alertas</h2>
 
 <div class="card">
   <div class="resultado" id="local">📍 Detectando cidade...</div>
@@ -59,70 +59,50 @@ canvas{background:#fff;border-radius:12px;padding:10px}
 </div>
 
 <script>
-/* 📍 PADRÃO (Chapecó - SC) */
-let lat = -27.1000;
-let lon = -52.6150;
+/* PADRÃO */
+let lat = -27.10;
+let lon = -52.61;
 let cidade = "Chapecó";
 let estado = "SC";
+let chart;
 
+const titulo = document.getElementById("titulo");
+const localDiv = document.getElementById("local");
 const dataInput = document.getElementById("data");
 const pressaoDiv = document.getElementById("pressao");
 const chuvaDiv = document.getElementById("chuva");
 const variacaoDiv = document.getElementById("variacao");
 const comparacaoDiv = document.getElementById("comparacao");
 const statusDiv = document.getElementById("status");
-const localDiv = document.getElementById("local");
 const grafico = document.getElementById("grafico");
 
-let chart;
-
-/* 🔄 GPS + CIDADE AUTOMÁTICOS */
+/* INICIALIZA */
 window.onload = () => {
-  if(!navigator.geolocation){
-    localDiv.innerHTML = `📍 ${cidade} – ${estado}`;
-    return;
-  }
-
-  navigator.geolocation.getCurrentPosition(
-    pos=>{
-      lat = pos.coords.latitude;
-      lon = pos.coords.longitude;
-      obterCidadeEstado(lat, lon);
-    },
-    err=>{
-      localDiv.innerHTML = `📍 ${cidade} – ${estado}`;
-    }
-  );
+  detectarPorIP();
+  dataInput.max = new Date().toISOString().slice(0,10);
 };
 
-/* 🌎 CONVERTE LAT/LON → CIDADE/UF */
-async function obterCidadeEstado(lat, lon){
+/* 🌍 DETECÇÃO POR IP (SEM GPS) */
+async function detectarPorIP(){
   try{
-    const url =
-      `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=10&addressdetails=1`;
-
-    const r = await fetch(url,{
-      headers:{
-        "User-Agent":"clima-alertas-app"
-      }
-    });
+    const r = await fetch("https://ipapi.co/json/");
     const d = await r.json();
 
-    cidade =
-      d.address.city ||
-      d.address.town ||
-      d.address.village ||
-      "Cidade não identificada";
+    lat = d.latitude;
+    lon = d.longitude;
+    cidade = d.city;
+    estado = d.region_code || d.region;
 
-    estado =
-      d.address.state_code ||
-      d.address.state ||
-      "";
-
-    localDiv.innerHTML = `📍 ${cidade} – ${estado}`;
+    atualizarCidade();
   }catch(e){
-    localDiv.innerHTML = `📍 ${cidade} – ${estado}`;
+    atualizarCidade();
   }
+}
+
+/* ATUALIZA TEXTO */
+function atualizarCidade(){
+  localDiv.innerHTML = `📍 ${cidade} – ${estado}`;
+  titulo.innerText = `🌦️ Clima & Alertas • ${cidade} – ${estado}`;
 }
 
 /* BUSCAR DADOS */
@@ -138,6 +118,7 @@ async function buscar(){
     alert("Sem dados disponíveis");
     return;
   }
+
   renderizar(dados);
 }
 
@@ -201,8 +182,6 @@ function renderizar(d){
     }
   });
 }
-
-dataInput.max = new Date().toISOString().slice(0,10);
 </script>
 
 </body>
