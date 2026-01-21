@@ -10,7 +10,7 @@
 <style>
 body{
   margin:0;
-  font-family:Arial, sans-serif;
+  font-family:Arial,sans-serif;
   background:linear-gradient(135deg,#1565c0,#26c6da);
   color:#fff;
   padding:16px;
@@ -73,6 +73,7 @@ canvas{
   <button onclick="buscar()">Consultar últimos 7 dias</button>
 
   <div id="info"></div>
+  <div id="previsao"></div>
   <div id="padrao"></div>
 </div>
 
@@ -89,6 +90,7 @@ let chuvaGlobal=[];
 const cidadeInput=document.getElementById("cidade");
 const lista=document.getElementById("lista");
 const info=document.getElementById("info");
+const previsao=document.getElementById("previsao");
 const padrao=document.getElementById("padrao");
 
 /* 🔍 AUTOCOMPLETE */
@@ -175,23 +177,18 @@ function processar(d){
   render(labels,p,c);
 }
 
-/* 🎨 PLUGIN PARA FUNDO CHUVOSO */
+/* 🎨 FUNDO DOS DIAS CHUVOSOS */
 const fundoChuvaPlugin={
   id:"fundoChuva",
   beforeDraw(chart){
-    const {ctx, chartArea, scales:{x}} = chart;
+    const {ctx, chartArea, scales:{x}}=chart;
     ctx.save();
     chuvaGlobal.forEach((v,i)=>{
       if(v>1){
-        const xStart = x.getPixelForValue(i)-x.width/(x.ticks.length*2);
-        const xEnd   = x.getPixelForValue(i)+x.width/(x.ticks.length*2);
+        const w=x.width/(x.ticks.length);
+        const px=x.getPixelForValue(i)-w/2;
         ctx.fillStyle="rgba(255,0,0,0.08)";
-        ctx.fillRect(
-          xStart,
-          chartArea.top,
-          xEnd-xStart,
-          chartArea.bottom-chartArea.top
-        );
+        ctx.fillRect(px,chartArea.top,w,chartArea.bottom-chartArea.top);
       }
     });
     ctx.restore();
@@ -200,20 +197,33 @@ const fundoChuvaPlugin={
 
 /* 📊 RENDER */
 function render(labels,p,c){
-  const hoje=p[p.length-1];
-  info.innerHTML="🌬️ Pressão atual: <b>"+hoje.toFixed(1)+" hPa</b>";
+  const pressaoAtual=p[p.length-1];
+  info.innerHTML="🌬️ Pressão atual: <b>"+pressaoAtual.toFixed(1)+" hPa</b>";
 
   let soma=0,cont=0;
-  for(let i=0;i<c.length;i++){
-    if(c[i]>1){soma+=p[i];cont++;}
+  c.forEach((v,i)=>{
+    if(v>1){soma+=p[i];cont++;}
+  });
+
+  let mediaChuva=null;
+  if(cont>0) mediaChuva=soma/cont;
+
+  /* 🔮 PREVISÃO */
+  if(mediaChuva){
+    previsao.innerHTML=
+      pressaoAtual<=mediaChuva
+      ? "🌧️ <b>Tendência de chuva</b> nas próximas horas"
+      : "☀️ <b>Baixa chance de chuva</b>";
+  }else{
+    previsao.innerHTML="ℹ️ Sem histórico recente suficiente para prever chuva";
   }
 
-  padrao.innerHTML=cont
+  padrao.innerHTML=mediaChuva
     ? "🌧️ Costuma chover quando a pressão está em torno de <b>"
-      +(soma/cont).toFixed(1)+" hPa</b>"
-    : "☀️ Não houve chuva suficiente para identificar padrão";
+      +mediaChuva.toFixed(1)+" hPa</b>"
+    : "";
 
-  const coresPontos=c.map(v=>v>1?"red":"#1565c0");
+  const cores=c.map(v=>v>1?"red":"#1565c0");
 
   if(chart) chart.destroy();
   chart=new Chart(document.getElementById("grafico"),{
@@ -224,9 +234,8 @@ function render(labels,p,c){
         label:"Pressão média diária (hPa)",
         data:p,
         borderColor:"#1565c0",
-        pointBackgroundColor:coresPontos,
+        pointBackgroundColor:cores,
         pointRadius:6,
-        pointHoverRadius:8,
         borderWidth:3,
         tension:0.4
       }]
@@ -238,8 +247,7 @@ function render(labels,p,c){
           callbacks:{
             label:(ctx)=>{
               const i=ctx.dataIndex;
-              return "Pressão: "+p[i].toFixed(1)+" hPa | Chuva: "
-                     +c[i].toFixed(1)+" mm";
+              return "Pressão: "+p[i].toFixed(1)+" hPa | Chuva: "+c[i].toFixed(1)+" mm";
             }
           }
         }
