@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <title>Clima & Alertas Inteligentes</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
@@ -32,6 +33,7 @@ button,input{
 button{
   background:#00e676;
   font-weight:bold;
+  cursor:pointer;
 }
 .resultado{
   margin-top:6px;
@@ -74,10 +76,16 @@ canvas{
 </div>
 
 <script>
+/* ==========================
+   VARIÁVEIS GLOBAIS
+========================== */
 let lat = -27.1;
 let lon = -52.6;
 let chart;
 
+/* ==========================
+   ELEMENTOS DOM
+========================== */
 const dataInput = document.getElementById("data");
 const pressaoDiv = document.getElementById("pressao");
 const chuvaDiv = document.getElementById("chuva");
@@ -87,16 +95,65 @@ const statusDiv = document.getElementById("status");
 const localDiv = document.getElementById("local");
 const grafico = document.getElementById("grafico");
 
-/* GPS */
-function usarGPS(){
-  navigator.geolocation.getCurrentPosition(async pos=>{
-    lat = pos.coords.latitude;
-    lon = pos.coords.longitude;
-    localDiv.innerHTML = `📍 Lat: ${lat.toFixed(4)} | Lon: ${lon.toFixed(4)}`;
-  });
+/* ==========================
+   GEOCODIFICAÇÃO REVERSA
+========================== */
+async function buscarCidadeEstado(lat, lon){
+  try{
+    const r1 = await fetch(
+      `https://geocoding-api.open-meteo.com/v1/reverse?latitude=${lat}&longitude=${lon}&language=pt`
+    );
+    const j1 = await r1.json();
+
+    if(j1.results && j1.results.length){
+      return `${j1.results[0].name} – ${j1.results[0].admin1}`;
+    }
+  }catch(e){}
+
+  try{
+    const r2 = await fetch(
+      `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&accept-language=pt-BR`
+    );
+    const j2 = await r2.json();
+
+    if(j2.address){
+      return `${j2.address.city || j2.address.town || j2.address.village || "Cidade"} – ${j2.address.state || ""}`;
+    }
+  }catch(e){}
+
+  return "Local não identificado";
 }
 
-/* BUSCA */
+/* ==========================
+   GPS
+========================== */
+function usarGPS(){
+  if(!navigator.geolocation){
+    alert("❌ GPS não suportado");
+    return;
+  }
+
+  navigator.geolocation.getCurrentPosition(
+    async pos=>{
+      lat = pos.coords.latitude;
+      lon = pos.coords.longitude;
+
+      localDiv.innerHTML = "🔎 Identificando local...";
+      const local = await buscarCidadeEstado(lat, lon);
+
+      localDiv.innerHTML =
+        `📍 <b>${local}</b><br>🌎 Lat: ${lat.toFixed(4)} | Lon: ${lon.toFixed(4)}`;
+    },
+    err=>{
+      alert("❌ Erro no GPS: " + err.message);
+    },
+    { enableHighAccuracy:true, timeout:10000 }
+  );
+}
+
+/* ==========================
+   BUSCAR DADOS CLIMÁTICOS
+========================== */
 async function buscar(){
   if(!dataInput.value){
     alert("📅 Selecione uma data");
@@ -106,9 +163,14 @@ async function buscar(){
   let fim = new Date(dataInput.value);
   const hoje = new Date();
 
-  // 🔥 CORREÇÃO CRÍTICA
+  // ⚠️ Open-Meteo não entrega dia atual
   if(fim.toDateString() === hoje.toDateString()){
     fim.setDate(fim.getDate() - 1);
+  }
+
+  if(fim > hoje){
+    alert("⚠️ Data futura não permitida");
+    return;
   }
 
   const inicio = new Date(fim);
@@ -117,46 +179,57 @@ async function buscar(){
   const url =
     `https://archive-api.open-meteo.com/v1/archive?latitude=${lat}&longitude=${lon}&start_date=${inicio.toISOString().split("T")[0]}&end_date=${fim.toISOString().split("T")[0]}&daily=pressure_msl,precipitation_sum&timezone=America/Sao_Paulo`;
 
-  const r = await fetch(url);
-  const d = await r.json();
+  try{
+    const r = await fetch(url);
+    const d = await r.json();
 
-  if(!d.daily || !d.daily.pressure_msl || d.daily.pressure_msl.length === 0){
-    alert("❌ Sem dados disponíveis para esta data.");
-    return;
-  }
-
-  const pHoje = d.daily.pressure_msl.at(-1);
-  const pSemana = d.daily.pressure_msl.slice(-7).reduce((a,b)=>a+b)/7;
-  const pMes = d.daily.pressure_msl.reduce((a,b)=>a+b)/d.daily.pressure_msl.length;
-  const chuvaHoje = d.daily.precipitation_sum.at(-1);
-
-  pressaoDiv.innerHTML = `🌬️ Pressão: <b>${pHoje.toFixed(1)} hPa</b>`;
-  comparacaoDiv.innerHTML = `📊 Média 7 dias: ${pSemana.toFixed(1)} hPa`;
-  variacaoDiv.innerHTML = `🔄 Diferença: ${(pHoje-pSemana).toFixed(1)} hPa`;
-  chuvaDiv.innerHTML = chuvaHoje > 0 ? `🌧️ Chuva: ${chuvaHoje} mm` : "☀️ Sem chuva";
-
-  let indice = "🟢 Baixo";
-  if(pHoje < 1010) indice = "🟡 Moderado";
-  if(pHoje < 1007 || chuvaHoje > 20) indice = "🔴 Alto";
-
-  statusDiv.innerText = `🌪️ Índice: ${indice}`;
-
-  if(chart) chart.destroy();
-  chart = new Chart(grafico,{
-    type:"line",
-    data:{
-      labels:d.daily.time,
-      datasets:[{
-        label:"Pressão (hPa)",
-        data:d.daily.pressure_msl,
-        borderWidth:3,
-        tension:0.4
-      }]
+    if(!d.daily || !d.daily.pressure_msl || d.daily.pressure_msl.length === 0){
+      alert("❌ Sem dados disponíveis para esta data.");
+      return;
     }
-  });
+
+    const pHoje = d.daily.pressure_msl.at(-1);
+    const pSemana = d.daily.pressure_msl.slice(-7).reduce((a,b)=>a+b)/7;
+    const pMes = d.daily.pressure_msl.reduce((a,b)=>a+b)/d.daily.pressure_msl.length;
+    const chuvaHoje = d.daily.precipitation_sum.at(-1);
+
+    pressaoDiv.innerHTML = `🌬️ Pressão: <b>${pHoje.toFixed(1)} hPa</b>`;
+    comparacaoDiv.innerHTML =
+      `📊 Média 7 dias: ${pSemana.toFixed(1)} hPa<br>📈 Média mês: ${pMes.toFixed(1)} hPa`;
+    variacaoDiv.innerHTML =
+      `🔄 Diferença hoje/semana: ${(pHoje-pSemana).toFixed(1)} hPa`;
+    chuvaDiv.innerHTML =
+      chuvaHoje > 0 ? `🌧️ Chuva: ${chuvaHoje} mm` : "☀️ Sem chuva";
+
+    let indice = "🟢 Baixo";
+    if(pHoje < 1010) indice = "🟡 Moderado";
+    if(pHoje < 1007 || chuvaHoje > 20) indice = "🔴 Alto";
+
+    statusDiv.innerText = `🌪️ Índice de tempestade: ${indice}`;
+
+    if(chart) chart.destroy();
+    chart = new Chart(grafico,{
+      type:"line",
+      data:{
+        labels:d.daily.time,
+        datasets:[{
+          label:"Pressão (hPa)",
+          data:d.daily.pressure_msl,
+          borderWidth:3,
+          tension:0.4
+        }]
+      }
+    });
+
+  }catch(e){
+    alert("❌ Erro ao consultar dados");
+    console.error(e);
+  }
 }
 
-/* BLOQUEIA FUTURO */
+/* ==========================
+   BLOQUEIA DATA FUTURA
+========================== */
 dataInput.max = new Date().toISOString().split("T")[0];
 </script>
 
