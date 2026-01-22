@@ -4,47 +4,44 @@
 <meta charset="UTF-8">
 <title>Clima & Pressão Atmosférica</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
-
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
 body{
   margin:0;
   font-family:Arial,sans-serif;
+  background:linear-gradient(135deg,#1565c0,#26c6da);
   color:#fff;
   padding:16px;
-  overflow-x:hidden;
-  background:linear-gradient(135deg,#1565c0,#26c6da);
-  transition:background 1s ease;
 }
 
-/* FUNDO ANIMADO */
-.fundo-icone{
+/* ===== FUNDO CLIMÁTICO ANIMADO ===== */
+#climaFundo{
   position:fixed;
   inset:0;
-  pointer-events:none;
   z-index:-1;
-  opacity:.25;
-  font-size:60px;
+  pointer-events:none;
+  font-size:70px;
+  opacity:.22;
 }
 
-.sol{
+.clima-item{
+  position:absolute;
   animation: flutuar 6s ease-in-out infinite;
 }
 
 .raio{
-  position:absolute;
-  animation: piscar 1.5s infinite;
+  animation: piscar 1.4s infinite;
 }
 
 @keyframes flutuar{
   0%{transform:translateY(0)}
-  50%{transform:translateY(-20px)}
+  50%{transform:translateY(-25px)}
   100%{transform:translateY(0)}
 }
 
 @keyframes piscar{
-  0%,100%{opacity:.1}
+  0%,100%{opacity:.15}
   50%{opacity:.6}
 }
 
@@ -108,13 +105,15 @@ canvas{
 
 <body>
 
-<div id="fundo"></div>
+<!-- FUNDO ANIMADO -->
+<div id="climaFundo"></div>
 
 <h2 id="titulo">🌦️ Clima & Pressão Atmosférica</h2>
 
 <div class="card">
   <input id="cidade" placeholder="Digite a cidade (ex: Chapecó)">
   <div id="lista" class="autocomplete"></div>
+
   <button onclick="buscar()">Consultar últimos 7 dias</button>
 
   <div id="info"></div>
@@ -142,20 +141,23 @@ const previsao=document.getElementById("previsao");
 const padrao=document.getElementById("padrao");
 const alerta=document.getElementById("alerta");
 const probChuva=document.getElementById("probChuva");
-const fundo=document.getElementById("fundo");
 
-/* FUNDO DINÂMICO */
-function atualizarFundo(clima){
+/* FUNÇÃO FUNDO CLIMA */
+function atualizarAnimacaoClima(tipo){
+  const fundo=document.getElementById("climaFundo");
   fundo.innerHTML="";
-  if(clima==="bom"){
-    document.body.style.background="linear-gradient(135deg,#ffb300,#ffeb3b)";
-    fundo.innerHTML=`<div class="fundo-icone sol">☀️</div>`;
-  }else{
-    document.body.style.background="linear-gradient(135deg,#263238,#1565c0)";
-    for(let i=0;i<6;i++){
-      fundo.innerHTML+=`<div class="fundo-icone raio" 
-      style="top:${Math.random()*100}%;left:${Math.random()*100}%">⚡</div>`;
-    }
+
+  let icone="☀️";
+  if(tipo==="chuva") icone="☁️";
+  if(tipo==="tempestade") icone="⚡";
+
+  for(let i=0;i<6;i++){
+    const div=document.createElement("div");
+    div.className="clima-item"+(tipo==="tempestade"?" raio":"");
+    div.innerText=icone;
+    div.style.top=Math.random()*90+"%";
+    div.style.left=Math.random()*90+"%";
+    fundo.appendChild(div);
   }
 }
 
@@ -164,7 +166,7 @@ cidade.addEventListener("input", async ()=>{
   lista.innerHTML="";
   if(cidade.value.length<3) return;
 
-  const r=await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${cidade.value}&count=5&language=pt`);
+  const r=await fetch("https://geocoding-api.open-meteo.com/v1/search?name="+cidade.value+"&count=5&language=pt");
   const d=await r.json();
   if(!d.results) return;
 
@@ -182,7 +184,7 @@ cidade.addEventListener("input", async ()=>{
   });
 });
 
-/* BUSCAR */
+/* BUSCAR HISTÓRICO */
 async function buscar(){
   if(!lat){alert("Selecione a cidade");return;}
 
@@ -191,7 +193,13 @@ async function buscar(){
   inicio.setDate(hoje.getDate()-7);
 
   const r=await fetch(
-    `https://archive-api.open-meteo.com/v1/archive?latitude=${lat}&longitude=${lon}&start_date=${inicio.toISOString().split("T")[0]}&end_date=${hoje.toISOString().split("T")[0]}&hourly=pressure_msl,precipitation&timezone=America/Sao_Paulo`
+    "https://archive-api.open-meteo.com/v1/archive"+
+    "?latitude="+lat+
+    "&longitude="+lon+
+    "&start_date="+inicio.toISOString().split("T")[0]+
+    "&end_date="+hoje.toISOString().split("T")[0]+
+    "&hourly=pressure_msl,precipitation"+
+    "&timezone=America/Sao_Paulo"
   );
   const d=await r.json();
   processar(d);
@@ -222,21 +230,44 @@ function processar(d){
   render(labels,pressao,chuva);
 }
 
+/* FUNDO DE CHUVA NO GRÁFICO */
+const fundoChuvaPlugin={
+  id:"fundoChuva",
+  beforeDraw(chart){
+    const {ctx,chartArea,scales}=chart;
+    ctx.save();
+    ctx.fillStyle="rgba(30,136,229,0.18)";
+    diasChuvaIndices.forEach(i=>{
+      const x=scales.x.getPixelForValue(i);
+      const w=scales.x.getPixelForValue(i+1)-scales.x.getPixelForValue(i);
+      ctx.fillRect(x-w/2,chartArea.top,w,chartArea.bottom-chartArea.top);
+    });
+    ctx.restore();
+  }
+};
+
 /* RENDER */
 async function render(labels,p,c){
   info.innerHTML="🌬️ Pressão atual: <b>"+p.at(-1).toFixed(1)+" hPa</b>";
   historico.innerHTML="📊 Média 7 dias: <b>"+(p.reduce((a,b)=>a+b)/p.length).toFixed(1)+" hPa</b>";
 
-  if(c.at(-1)>5){
-    alerta.className="alerta vermelho";
-    alerta.innerText="🌩️ ALERTA: Tempestade ou chuva forte";
-    atualizarFundo("chuva");
+  /* ALERTA */
+  alerta.className="alerta";
+  if(c.at(-1)>20){
+    alerta.classList.add("vermelho");
+    alerta.innerText="🌩️ ALERTA: Forte tempestade registrada!";
+    atualizarAnimacaoClima("tempestade");
+  }else if(c.at(-1)>5){
+    alerta.classList.add("amarelo");
+    alerta.innerText="⛈️ Atenção: instabilidade atmosférica";
+    atualizarAnimacaoClima("chuva");
   }else{
-    alerta.className="alerta verde";
-    alerta.innerText="☀️ Tempo estável";
-    atualizarFundo("bom");
+    alerta.classList.add("verde");
+    alerta.innerText="✅ Sem indicativo de tempestade";
+    atualizarAnimacaoClima("sol");
   }
 
+  /* GRÁFICO */
   if(chart) chart.destroy();
   chart=new Chart(document.getElementById("grafico"),{
     type:"line",
@@ -247,10 +278,13 @@ async function render(labels,p,c){
         data:p,
         borderColor:"#1565c0",
         borderWidth:3,
-        tension:.4,
-        pointRadius:6
+        tension:0.4,
+        pointRadius:6,
+        pointBackgroundColor:c.map(v=>v>1?"red":"#1565c0")
       }]
-    }
+    },
+    options:{responsive:true},
+    plugins:[fundoChuvaPlugin]
   });
 }
 </script>
