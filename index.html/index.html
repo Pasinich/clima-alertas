@@ -124,6 +124,26 @@ canvas{
   animation:flash 4s infinite;
 }
 
+/* ====== CHUVA ====== */
+.rain{
+  position:absolute;
+  inset:0;
+}
+.drop{
+  position:absolute;
+  bottom:100%;
+  width:2px;
+  height:20px;
+  background:rgba(255,255,255,.6);
+  animation:rainFall linear infinite;
+}
+
+@keyframes rainFall{
+  to{
+    transform:translateY(110vh);
+  }
+}
+
 @keyframes spin{
   from{transform:rotate(0)}
   to{transform:rotate(360deg)}
@@ -142,7 +162,7 @@ canvas{
 
 <body>
 
-<!-- CAMADA DE FUNDO -->
+<!-- CAMADA DO FUNDO -->
 <div id="weather-bg"></div>
 
 <h2 id="titulo">🌦️ Clima & Pressão Atmosférica</h2>
@@ -169,7 +189,6 @@ canvas{
 <script>
 let lat=null, lon=null, chart=null;
 let chuvaGlobal=[], diasChuvaIndices=[];
-let tipoFundo="sol";
 
 const cidade=document.getElementById("cidade");
 const lista=document.getElementById("lista");
@@ -312,7 +331,6 @@ async function render(labels,p,c){
   });
   probChuva.innerHTML=html;
 
-  /* DEFINE FUNDO PELA PREVISÃO */
   ativarFundo(maxProb);
 
   if(chart) chart.destroy();
@@ -335,17 +353,31 @@ async function render(labels,p,c){
   });
 }
 
-/* ATIVA FUNDO */
+/* FUNDO + CHUVA */
 function ativarFundo(prob){
   const bg=document.getElementById("weather-bg");
   bg.innerHTML="";
+
   if(prob>=70){
-    bg.innerHTML='<div class="cloud"></div><div class="cloud" style="top:200px"></div><div class="lightning"></div>';
+    bg.innerHTML='<div class="cloud"></div><div class="cloud" style="top:200px"></div><div class="lightning"></div>'+criarChuva(120);
   }else if(prob>=40){
-    bg.innerHTML='<div class="cloud"></div><div class="cloud" style="top:180px;animation-duration:120s"></div>';
+    bg.innerHTML='<div class="cloud"></div><div class="cloud" style="top:180px"></div>'+criarChuva(80);
   }else{
     bg.innerHTML='<div class="sun"></div>';
   }
+}
+
+/* CRIA GOTAS */
+function criarChuva(qtd){
+  let html='<div class="rain">';
+  for(let i=0;i<qtd;i++){
+    const left=Math.random()*100;
+    const dur=(Math.random()*1.5+0.7).toFixed(2);
+    const delay=(Math.random()*-5).toFixed(2);
+    html+=`<div class="drop" style="left:${left}%;animation-duration:${dur}s;animation-delay:${delay}s"></div>`;
+  }
+  html+='</div>';
+  return html;
 }
 </script>
 
