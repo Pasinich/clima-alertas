@@ -130,7 +130,7 @@ canvas{
   background:rgba(255,255,255,.6);
   animation:rainFall linear infinite;
 }
-@keyframes rainFall{0%{:Y(110vh)}}
+@keyframes rainFall{0%{transform:translateY(0)}100%{transform:translateY(110vh)}}
 @keyframes spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
 @keyframes cloudMove{from{left:-300px}to{left:110%}}
 #probChuva{
@@ -162,7 +162,7 @@ canvas{
 
 <div id="weather-bg"></div>
 
-<h2 id="titulo"><span id="icone-clima">🌦️</span> Clima Em:<span id="nome-cidade"></span></h2>
+<h2 id="titulo"><span id="icone-clima">🌦️</span> Clima Em: <span id="nome-cidade"></span></h2>
 
 <div class="card">
   <input id="cidade" placeholder="Digite a cidade (ex: Chapecó)">
@@ -201,154 +201,94 @@ const iconeClimaSpan = document.getElementById("icone-clima");
 cidade.addEventListener("input", async ()=>{
   lista.innerHTML="";
   if(cidade.value.length<3) return;
-  try{
-    const q = encodeURIComponent(cidade.value);
-    const r=await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${q}&count=5&language=pt`);
-    if(!r.ok) return;
-    const d=await r.json();
-    if(!d.results) return;
-    d.results.forEach(c=>{
-      const div=document.createElement("div");
-      div.textContent=c.name+(c.admin1?" - "+c.admin1:"");
-      div.onclick=()=>{
-        lat=c.latitude;
-        lon=c.longitude;
-        cidade.value=c.name;
-        cidadeEscolhida=c.name + (c.admin1?(" - "+c.admin1):"");
-        lista.innerHTML="";
-      };
-      lista.appendChild(div);
-    });
-  }catch(err){
-    console.error("Erro no autocomplete:", err);
-  }
+  const r=await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${cidade.value}&count=5&language=pt`);
+  const d=await r.json();
+  if(!d.results) return;
+  d.results.forEach(c=>{
+    const div=document.createElement("div");
+    div.textContent=c.name+(c.admin1?" - "+c.admin1:"");
+    div.onclick=()=>{
+      lat=c.latitude;
+      lon=c.longitude;
+      cidade.value=c.name;
+      cidadeEscolhida=c.name;
+      lista.innerHTML="";
+    };
+    lista.appendChild(div);
+  });
 });
 
 /* BUSCAR */
 async function buscar(){
-  if(!lat){
-    alert("Selecione a cidade");
-    return;
-  }
+  if(!lat){alert("Selecione a cidade");return;}
   const hoje=new Date();
   const inicio=new Date();
   inicio.setDate(hoje.getDate()-7);
 
-  try{
-    // Histórico 7 dias (archive)
-    const start = inicio.toISOString().split("T")[0];
-    const end = hoje.toISOString().split("T")[0];
-    const rHist = await fetch(
-      `https://archive-api.open-meteo.com/v1/archive?latitude=${lat}&longitude=${lon}&start_date=${start}&end_date=${end}&hourly=pressure_msl,precipitation&timezone=America/Sao_Paulo`
-    );
-    if(!rHist.ok){
-      alert("Erro ao obter histórico.");
-      return;
-    }
-    const dHist = await rHist.json();
-    if(!dHist || !dHist.hourly || !Array.isArray(dHist.hourly.time)){
-      alert("Histórico indisponível para a cidade/intervalo selecionado.");
-      return;
-    }
+  // Histórico 7 dias
+  const rHist = await fetch(
+    `https://archive-api.open-meteo.com/v1/archive?latitude=${lat}&longitude=${lon}&start_date=${inicio.toISOString().split("T")[0]}&end_date=${hoje.toISOString().split("T")[0]}&hourly=pressure_msl,precipitation&timezone=America/Sao_Paulo`
+  );
+  const dHist = await rHist.json();
 
-    // Forecast
-    const rForecast = await fetch(
-      `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&hourly=relativehumidity_2m,pressure_msl,precipitation&timezone=America/Sao_Paulo`
-    );
-    if(!rForecast.ok){
-      alert("Erro ao obter previsão.");
-      return;
-    }
-    const dForecast = await rForecast.json();
-    if(!dForecast || !dForecast.hourly || !Array.isArray(dForecast.hourly.time)){
-      alert("Previsão horária indisponível.");
-      return;
-    }
+  // Forecast
+  const rForecast = await fetch(
+    `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&hourly=relativehumidity_2m,pressure_msl,precipitation&timezone=America/Sao_Paulo`
+  );
+  const dForecast = await rForecast.json();
 
-    const agora = new Date();
-    const agoraMs = agora.getTime();
-    // procura índice mais próximo no array de horas
-    const diffs = dForecast.hourly.time.map(t => Math.abs(new Date(t).getTime() - agoraMs));
-    let safeIdx = 0;
-    if(diffs.length>0){
-      const min = Math.min(...diffs);
-      safeIdx = diffs.indexOf(min);
-    }
+  const agora = new Date();
+  const idxHora = dForecast.hourly.time.findIndex(t=>new Date(t).getHours()===agora.getHours());
+  const umidadeAtual = dForecast.hourly.relativehumidity_2m[idxHora];
+  const pressaoAtual = dForecast.hourly.pressure_msl[idxHora];
+  const chuvaAtual = dForecast.hourly.precipitation[idxHora];
 
-    const umidadeAtual = (dForecast.hourly.relativehumidity_2m && dForecast.hourly.relativehumidity_2m[safeIdx] != null)
-      ? dForecast.hourly.relativehumidity_2m[safeIdx]
-      : null;
-    const pressaoAtual = (dForecast.hourly.pressure_msl && dForecast.hourly.pressure_msl[safeIdx] != null)
-      ? dForecast.hourly.pressure_msl[safeIdx]
-      : null;
-    const chuvaAtual = (dForecast.hourly.precipitation && dForecast.hourly.precipitation[safeIdx] != null)
-      ? dForecast.hourly.precipitation[safeIdx]
-      : 0;
+  // ícone clima e cidade
+  let iconeClima="☀️";
+  if(chuvaAtual>=5) iconeClima="🌧️";
+  else if(chuvaAtual>=1) iconeClima="⛅";
+  iconeClimaSpan.innerText = iconeClima;
+  nomeCidadeSpan.innerText = cidadeEscolhida;
 
-    // ícone clima e cidade
-    let iconeClima="☀️";
-    if(chuvaAtual>=5) iconeClima="🌧️";
-    else if(chuvaAtual>=1) iconeClima="⛅";
-    iconeClimaSpan.innerText = iconeClima;
-    nomeCidadeSpan.innerText = cidadeEscolhida || `${lat.toFixed(2)}, ${lon.toFixed(2)}`;
+  // processa histórico
+  processar(dHist, umidadeAtual, pressaoAtual);
 
-    // processa histórico
-    processar(dHist, umidadeAtual, pressaoAtual);
+  // Previsão diária 6 dias
+  const rProb = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=precipitation_probability_max&timezone=America/Sao_Paulo`);
+  const dProb = await rProb.json();
 
-    // Previsão diária 5 dias (probabilidade)
-    const rProb = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=precipitation_probability_max&timezone=America/Sao_Paulo`);
-    let dProb = null;
-    if(rProb.ok){
-      dProb = await rProb.json();
-    }
+  probChuva.innerHTML="";
+  let maxProb=0;
+  dProb.daily.time.slice(0,6).forEach((dia,i)=>{ // agora 6 dias
+    const p=dProb.daily.precipitation_probability_max[i];
+    if(p>maxProb) maxProb=p;
+    let icone="";
+    if(p>=70) icone="🌧️";
+    else if(p>=40) icone="⛅";
+    else icone="☀️";
+    const div=document.createElement("div");
+    div.className="prob-dia";
+    div.innerHTML=`<div style="font-size:10px">${dia.split("-").reverse().join("/")}</div><div class="icon">${icone}</div><div style="font-size:10px">${p}%</div>`;
+    probChuva.appendChild(div);
+  });
 
-    probChuva.innerHTML="";
-    let maxProb=0;
-    if(dProb && dProb.daily && Array.isArray(dProb.daily.time)){
-      dProb.daily.time.slice(0,5).forEach((dia,i)=>{
-        const p=(dProb.daily.precipitation_probability_max && dProb.daily.precipitation_probability_max[i]!=null)
-          ? dProb.daily.precipitation_probability_max[i]
-          : 0;
-        if(p>maxProb) maxProb=p;
-        let icone="";
-        if(p>=70) icone="🌧️";
-        else if(p>=40) icone="⛅";
-        else icone="☀️";
-        const div=document.createElement("div");
-        div.className="prob-dia";
-        div.innerHTML=`<div style="font-size:10px">${dia.split("-").reverse().join("/")}</div><div class="icon">${icone}</div><div style="font-size:10px">${p}%</div>`;
-        probChuva.appendChild(div);
-      });
-    }
-
-    ativarFundo(maxProb);
-  }catch(err){
-    console.error("Erro na busca:", err);
-    alert("Ocorreu um erro ao consultar os dados. Veja o console para mais detalhes.");
-  }
+  ativarFundo(maxProb);
 }
 
 /* PROCESSAR HISTÓRICO */
 function processar(d, umidadeAtual, pressaoAtual){
-  if(!d || !d.hourly || !Array.isArray(d.hourly.time)){
-    alert("Dados históricos inválidos.");
-    return;
-  }
   const dias={};
   d.hourly.time.forEach((t,i)=>{
     const dia=t.split("T")[0];
     if(!dias[dia]) dias[dia]={p:[],c:0};
-    const pVal = (d.hourly.pressure_msl && d.hourly.pressure_msl[i] != null) ? d.hourly.pressure_msl[i] : null;
-    const precipVal = (d.hourly.precipitation && d.hourly.precipitation[i] != null) ? d.hourly.precipitation[i] : 0;
-    if(pVal != null) dias[dia].p.push(pVal);
-    dias[dia].c += precipVal;
+    dias[dia].p.push(d.hourly.pressure_msl[i]);
+    dias[dia].c += d.hourly.precipitation[i];
   });
   const labels=[], pressao=[], chuva=[];
   diasChuvaIndices=[];
-  const chaves = Object.keys(dias).slice(-7);
-  chaves.forEach((dia,i)=>{
+  Object.keys(dias).slice(-7).forEach((dia,i)=>{
     labels.push(dia.split("-").reverse().join("/"));
-    const mediaP = (dias[dia].p.length>0) ? (dias[dia].p.reduce((a,b)=>a+b,0)/dias[dia].p.length) : null;
+    const mediaP=dias[dia].p.reduce((a,b)=>a+b)/dias[dia].p.length;
     pressao.push(mediaP);
     chuva.push(dias[dia].c);
     if(dias[dia].c>1) diasChuvaIndices.push(i);
@@ -359,47 +299,27 @@ function processar(d, umidadeAtual, pressaoAtual){
 
 /* RENDER GRÁFICO E DADOS */
 function render(labels,p,c, umidadeAtual, pressaoAtual){
-  const pressaoText = (typeof pressaoAtual === "number" && isFinite(pressaoAtual)) ? `${pressaoAtual.toFixed(1)} hPa` : "—";
-  const umidadeText = (typeof umidadeAtual === "number" && isFinite(umidadeAtual)) ? `${umidadeAtual.toFixed(0)}%` : "—";
-  info.innerHTML=`🌬️ Pressão atual: <b>${pressaoText}</b><br>💧 Umidade atual: <b>${umidadeText}</b>`;
-  const validP = p.filter(v=>v!=null && isFinite(v));
-  const mediaP = (validP.length>0) ? (validP.reduce((a,b)=>a+b,0)/validP.length).toFixed(1) : "—";
+  info.innerHTML=`🌬️ Pressão atual: <b>${pressaoAtual.toFixed(1)} hPa</b><br>💧 Umidade atual: <b>${umidadeAtual.toFixed(0)}%</b>`;
+  const mediaP = (p.reduce((a,b)=>a+b)/p.length).toFixed(1);
   historico.innerHTML=`📊 Média 7 dias – Pressão: <b>${mediaP} hPa</b>`;
   let soma=0,cont=0;
-  c.forEach((v,i)=>{ if(v>1 && p[i]!=null && isFinite(p[i])){ soma+=p[i]; cont++; }});
-  const mediaChuva=cont? (soma/cont) : null;
+  c.forEach((v,i)=>{if(v>1){soma+=p[i];cont++;}});
+  const mediaChuva=cont?soma/cont:null;
   previsao.innerHTML=mediaChuva
-    ? ( (aoAtual==="number" && pressaoAtual<=mediaChuva) ? "🌧️ <b>Tendência de chuva</b>" : "☀️ <b>Baixa chance de chuva</b>" )
+    ? (pressaoAtual<=mediaChuva?"🌧️ <b>Tendência de chuva</b>":"☀️ <b>Baixa chance de chuva</b>")
     : "";
   padrao.innerHTML=mediaChuva
     ? `🌧️ Costuma chover quando a pressão está em torno de <b>${mediaChuva.toFixed(1)} hPa</b>`
     : "";
   alerta.className="alerta";
-  const ultimoC = (c.length>0) ? c[c.length - 1] : 0;
-  if(ultimoC>20){alerta.classList.add("vermelho");alerta.innerText="🌩️ ALERTA: Forte tempestade registrada!";}
-  else if(ultimoC>5){alerta.classList.add("amarelo");alerta.innerText="⛈️ Atenção: instabilidade atmosférica";}
+  if(c.at(-1)>20){alerta.classList.add("vermelho");alerta.innerText="🌩️ ALERTA: Forte tempestade registrada!";}
+  else if(c.at(-1)>5){alerta.classList.add("amarelo");alerta.innerText="⛈️ Atenção: instabilidade atmosférica";}
   else{alerta.classList.add("verde");alerta.innerText="✅ Sem indicativo de tempestade";}
   if(chart) chart.destroy();
-
-  const datasetP = p.map(v => (v==null ? null : v));
-  const pointColors = c.map(v=> v>1 ? "red" : "#1565c0");
-
   chart=new Chart(document.getElementById("grafico"),{
     type:"line",
-    data:{
-      labels,
-      datasets:[
- datadatasetP,
-          borderColor:"#1565c0",
-          borderWidth:3,
-          tension:.4,
-          pointRadius:6,
-          pointBackgroundColor:pointColors,
-          spanGaps: true
-        }
-      ]
-    },
-    options:{responsive:true, scales:{y:{beginAtZero:false}}}
+    data:{labels,datasets:[{label:"Pressão média diária (hPa)",data:p,borderColor:"#1565c0",borderWidth:3,tension:.4,pointRadius:6,pointBackgroundColor:c.map(v=>v>1?"red":"#1565c0")}]},
+    options:{responsive:true}
   });
 }
 
@@ -411,18 +331,15 @@ function ativarFundo(maxProb){
   const noite=(hora<6 || hora>=18);
 
   if(maxProb>=70){
-    // chuva forte
     bg.innerHTML=(noite?'<div class="moon"></div>':'')+
                  criarClouds()+
                  criarLightning()+
                  criarChuva(150,noite);
   }else if(maxProb>=40){
-    // nublado
     bg.innerHTML=(noite?'<div class="moon"></div>':'')+
                  criarClouds()+
                  criarChuva(80,noite);
   }else{
-    // sol
     bg.innerHTML=noite?'<div class="moon"></div>':'<div class="sun"></div>';
   }
 }
@@ -439,8 +356,8 @@ function criarClouds(){
 function criarLightning(){
   let html="";
   for(let i=0;i<3;i++){
-    const left=(Math.random()*90+5).toFixed(2);
-    const delay=(Math.random()*3).toFixed(2);
+    const left=Math.random()*90+5;
+    const delay=Math.random()*3;
     html+=`<div class="lightning" style="left:${left}%;animation-delay:${delay}s;"></div>`;
   }
   return html;
@@ -448,7 +365,7 @@ function criarLightning(){
 function criarChuva(qtd,noite){
   let html='<div class="rain">';
   for(let i=0;i<qtd;i++){
-    const left=(Math.random()*100).toFixed(2);
+    const left=Math.random()*100;
     const dur=(Math.random()*1.5+0.7).toFixed(2);
     const delay=(Math.random()*-5).toFixed(2);
     const cor=noite?'rgba(180,180,255,0.6)':'rgba(255,255,255,0.6)';
