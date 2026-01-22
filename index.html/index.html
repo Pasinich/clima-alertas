@@ -16,6 +16,36 @@ body{
 }
 h2{text-align:center}
 
+/* ===== FUNDO CLIMÁTICO ANIMADO ===== */
+#climaFundo{
+  position:fixed;
+  inset:0;
+  z-index:-1;
+  pointer-events:none;
+  font-size:72px;
+  opacity:.22;
+}
+
+.clima-item{
+  position:absolute;
+  animation: flutuar 6s ease-in-out infinite;
+}
+
+.raio{
+  animation: piscar 1.3s infinite;
+}
+
+@keyframes flutuar{
+  0%{transform:translateY(0)}
+  50%{transform:translateY(-25px)}
+  100%{transform:translateY(0)}
+}
+
+@keyframes piscar{
+  0%,100%{opacity:.15}
+  50%{opacity:.6}
+}
+
 .card{
   background:rgba(255,255,255,.18);
   border-radius:16px;
@@ -71,6 +101,9 @@ canvas{
 
 <body>
 
+<!-- FUNDO ANIMADO -->
+<div id="climaFundo"></div>
+
 <h2 id="titulo">🌦️ Clima & Pressão Atmosférica</h2>
 
 <div class="card">
@@ -104,6 +137,25 @@ const previsao=document.getElementById("previsao");
 const padrao=document.getElementById("padrao");
 const alerta=document.getElementById("alerta");
 const probChuva=document.getElementById("probChuva");
+
+/* ===== FUNÇÃO DE ANIMAÇÃO DO FUNDO ===== */
+function atualizarAnimacaoClima(tipo){
+  const fundo=document.getElementById("climaFundo");
+  fundo.innerHTML="";
+
+  let icone="☀️";
+  if(tipo==="chuva") icone="☁️";
+  if(tipo==="tempestade") icone="⚡";
+
+  for(let i=0;i<6;i++){
+    const div=document.createElement("div");
+    div.className="clima-item"+(tipo==="tempestade"?" raio":"");
+    div.innerText=icone;
+    div.style.top=Math.random()*90+"%";
+    div.style.left=Math.random()*90+"%";
+    fundo.appendChild(div);
+  }
+}
 
 /* AUTOCOMPLETE */
 cidade.addEventListener("input", async ()=>{
@@ -175,7 +227,7 @@ function processar(d){
   render(labels,pressao,chuva);
 }
 
-/* FUNDO DE CHUVA */
+/* FUNDO DE CHUVA NO GRÁFICO */
 const fundoChuvaPlugin={
   id:"fundoChuva",
   beforeDraw(chart){
@@ -208,36 +260,21 @@ async function render(labels,p,c){
     ? "🌧️ Costuma chover quando a pressão está em torno de <b>"+mediaChuva.toFixed(1)+" hPa</b>"
     : "";
 
-  /* ALERTA REAL */
+  /* ALERTA + FUNDO */
   alerta.className="alerta";
   if(c.at(-1)>20){
     alerta.classList.add("vermelho");
     alerta.innerText="🌩️ ALERTA: Forte tempestade registrada!";
+    atualizarAnimacaoClima("tempestade");
   }else if(c.at(-1)>5){
     alerta.classList.add("amarelo");
     alerta.innerText="⛈️ Atenção: instabilidade atmosférica";
+    atualizarAnimacaoClima("chuva");
   }else{
     alerta.classList.add("verde");
     alerta.innerText="✅ Sem indicativo de tempestade";
+    atualizarAnimacaoClima("sol");
   }
-
-  /* PROBABILIDADE FUTURA */
-  const r=await fetch(
-    "https://api.open-meteo.com/v1/forecast"+
-    "?latitude="+lat+
-    "&longitude="+lon+
-    "&daily=precipitation_probability_max"+
-    "&timezone=America/Sao_Paulo"
-  );
-  const d=await r.json();
-
-  let html="<br>📆 <b>Probabilidade de chuva – 5 dias:</b><br>";
-  d.daily.time.slice(0,5).forEach((dia,i)=>{
-    const p=d.daily.precipitation_probability_max[i];
-    const cor=p>=70?"#e53935":p>=40?"#fbc02d":"#2e7d32";
-    html+="<span style='color:"+cor+"'>• "+dia.split("-").reverse().join("/")+" – "+p+"%</span><br>";
-  });
-  probChuva.innerHTML=html;
 
   if(chart) chart.destroy();
   chart=new Chart(document.getElementById("grafico"),{
