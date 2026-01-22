@@ -85,8 +85,8 @@ canvas{
   height:120px;
   border-radius:50%;
   background:radial-gradient(circle,#fff59d,#fbc02d);
-  animation:spin 30s linear infinite;
   box-shadow:0 0 60px rgba(255,255,0,.6);
+  animation:spin 30s linear infinite;
 }
 
 /* LUA */
@@ -111,7 +111,7 @@ canvas{
   height:65px;
   background:#fff;
   border-radius:50px;
-  opacity:.75;
+  opacity:.7;
   animation:cloudMove linear infinite;
 }
 .cloud::before,.cloud::after{
@@ -130,12 +130,10 @@ canvas{
 .lightning{
   position:absolute;
   top:0;
-  left:50%;
   width:4px;
   height:100vh;
   background:white;
   opacity:0;
-  animation:flash 4s infinite;
 }
 
 /* CHUVA */
@@ -366,7 +364,7 @@ async function render(labels,p,c, umidadeAtual, pressaoAtual){
     alerta.innerText="✅ Sem indicativo de tempestade";
   }
 
-  /* PROBABILIDADE FUTURA - HORIZONTAL COM ÍCONES PEQUENOS */
+  /* PROBABILIDADE FUTURA */
   const r=await fetch(
     `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=precipitation_probability_max&timezone=America/Sao_Paulo`
   );
@@ -413,26 +411,23 @@ async function render(labels,p,c, umidadeAtual, pressaoAtual){
   });
 }
 
-/* FUNDO + CHUVA + SOL/ LUA + ANIMAÇÃO SUAVE */
+/* FUNDO REALISTA */
 function ativarFundo(maxProb){
   const bg=document.getElementById("weather-bg");
   bg.innerHTML="";
-
   const hora=new Date().getHours();
   const noite=(hora<6 || hora>=18);
 
   if(maxProb>=70){
     // chuva forte
     bg.innerHTML=(noite?' <div class="moon"></div>':'')+
-                 '<div class="cloud" style="animation-duration:120s"></div>'+
-                 '<div class="cloud" style="top:200px;animation-duration:150s"></div>'+
-                 '<div class="lightning"></div>'+
+                 criarClouds()+
+                 criarLightning()+
                  criarChuva(150,noite);
   }else if(maxProb>=40){
-    // nublado leve
+    // nublado
     bg.innerHTML=(noite?' <div class="moon"></div>':'')+
-                 '<div class="cloud" style="animation-duration:140s"></div>'+
-                 '<div class="cloud" style="top:180px;animation-duration:170s"></div>'+
+                 criarClouds()+
                  criarChuva(80,noite);
   }else{
     // sol
@@ -440,7 +435,30 @@ function ativarFundo(maxProb){
   }
 }
 
-/* CRIA GOTAS COM VELOCIDADES ALEATÓRIAS */
+/* NUVENS SUAVES */
+function criarClouds(){
+  let html="";
+  const tops=[100,180,250];
+  tops.forEach((t,i)=>{
+    const dur=(120+Math.random()*60).toFixed(0);
+    html+=`<div class="cloud" style="top:${t}px;animation-duration:${dur}s;opacity:${0.5+Math.random()*0.3}"></div>`;
+  });
+  return html;
+}
+
+/* RAIOS ALEATÓRIOS */
+function criarLightning(){
+  let html="";
+  const qtd = 3;
+  for(let i=0;i<qtd;i++){
+    const left = Math.random()*90 + 5;
+    const delay = Math.random()*3;
+    html+=`<div class="lightning" style="left:${left}%;animation-delay:${delay}s;"></div>`;
+  }
+  return html;
+}
+
+/* CHUVA */
 function criarChuva(qtd,noite){
   let html='<div class="rain">';
   for(let i=0;i<qtd;i++){
@@ -448,7 +466,8 @@ function criarChuva(qtd,noite){
     const dur=(Math.random()*1.5+0.7).toFixed(2);
     const delay=(Math.random()*-5).toFixed(2);
     const cor=noite?'rgba(180,180,255,0.6)':'rgba(255,255,255,0.6)';
-    html+=`<div class="drop" style="left:${left}%;animation-duration:${dur}s;animation-delay:${delay}s;background:${cor}"></div>`;
+    const height=(15+Math.random()*10).toFixed(0);
+    html+=`<div class="drop" style="left:${left}%;height:${height}px;animation-duration:${dur}s;animation-delay:${delay}s;background:${cor}"></div>`;
   }
   html+='</div>';
   return html;
