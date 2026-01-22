@@ -168,6 +168,31 @@ canvas{
   0%,94%,100%{opacity:0}
   95%,97%{opacity:1}
 }
+
+/* ================= PROBABILIDADE HORIZONTAL ================= */
+#probChuva{
+  display:flex;
+  justify-content:space-between;
+  margin-top:10px;
+  flex-wrap:nowrap;
+  overflow-x:auto;
+}
+.prob-dia{
+  background:rgba(255,255,255,0.18);
+  border-radius:10px;
+  padding:6px 4px;
+  margin-right:4px;
+  text-align:center;
+  font-weight:bold;
+  flex:0 0 auto;
+  min-width:50px;
+  font-size:12px;
+}
+.prob-dia .icon{
+  font-size:18px;
+  display:block;
+  margin:2px 0;
+}
 </style>
 </head>
 
@@ -213,7 +238,7 @@ const probChuva=document.getElementById("probChuva");
 cidade.addEventListener("input", async ()=>{
   lista.innerHTML="";
   if(cidade.value.length<3) return;
-  const r=await fetch("https://geocoding-api.open-meteo.com/v1/search?name="+cidade.value+"&count=5&language=pt");
+  const r=await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${cidade.value}&count=5&language=pt`);
   const d=await r.json();
   if(!d.results) return;
   d.results.forEach(c=>{
@@ -237,41 +262,61 @@ async function buscar(){
   const inicio=new Date();
   inicio.setDate(hoje.getDate()-7);
 
-  const r=await fetch(
-    "https://archive-api.open-meteo.com/v1/archive"+
-    "?latitude="+lat+
-    "&longitude="+lon+
-    "&start_date="+inicio.toISOString().split("T")[0]+
-    "&end_date="+hoje.toISOString().split("T")[0]+
-    "&hourly=pressure_msl,precipitation"+
-    "&timezone=America/Sao_Paulo"
+  const rHist = await fetch(
+    `https://archive-api.open-meteo.com/v1/archive?latitude=${lat}&longitude=${lon}&start_date=${inicio.toISOString().split("T")[0]}&end_date=${hoje.toISOString().split("T")[0]}&hourly=pressure_msl,precipitation&timezone=America/Sao_Paulo`
   );
-  const d=await r.json();
-  processar(d);
+  const dHist = await rHist.json();
+
+  const rForecast = await fetch(
+    `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&hourly=relativehumidity_2m,pressure_msl&timezone=America/Sao_Paulo`
+  );
+  const dForecast = await rForecast.json();
+
+  const agora = new Date();
+  function indiceMaisProximo(arrHoras, target){
+    let menorDif = Infinity;
+    let idx = 0;
+    arrHoras.forEach((h,i)=>{
+      const hora = new Date(h);
+      const dif = Math.abs(hora - target);
+      if(dif < menorDif){
+        menorDif = dif;
+        idx = i;
+      }
+    });
+    return idx;
+  }
+
+  const idxHora = indiceMaisProximo(dForecast.hourly.time, agora);
+  const umidadeAtual = dForecast.hourly.relativehumidity_2m[idxHora];
+  const pressaoAtual = dForecast.hourly.pressure_msl[idxHora];
+
+  processar(dHist, umidadeAtual, pressaoAtual);
 }
 
 /* PROCESSAR */
-function processar(d){
+function processar(d, umidadeAtual, pressaoAtual){
   const dias={};
   d.hourly.time.forEach((t,i)=>{
     const dia=t.split("T")[0];
     if(!dias[dia]) dias[dia]={p:[],c:0};
     dias[dia].p.push(d.hourly.pressure_msl[i]);
-    dias[dia].c+=d.hourly.precipitation[i];
+    dias[dia].c += d.hourly.precipitation[i];
   });
 
   const labels=[], pressao=[], chuva=[];
   diasChuvaIndices=[];
   Object.keys(dias).slice(-7).forEach((dia,i)=>{
     labels.push(dia.split("-").reverse().join("/"));
-    const media=dias[dia].p.reduce((a,b)=>a+b)/dias[dia].p.length;
-    pressao.push(media);
+    const mediaP=dias[dia].p.reduce((a,b)=>a+b)/dias[dia].p.length;
+    pressao.push(mediaP);
     chuva.push(dias[dia].c);
     if(dias[dia].c>1) diasChuvaIndices.push(i);
   });
 
-  chuvaGlobal=chuva;
-  render(labels,pressao,chuva);
+  chuvaGlobal = chuva;
+
+  render(labels, pressao, chuva, umidadeAtual, pressaoAtual);
 }
 
 /* FUNDO GRÁFICO */
@@ -291,20 +336,22 @@ const fundoChuvaPlugin={
 };
 
 /* RENDER */
-async function render(labels,p,c){
-  info.innerHTML="🌬️ Pressão atual: <b>"+p.at(-1).toFixed(1)+" hPa</b>";
-  historico.innerHTML="📊 Média 7 dias: <b>"+(p.reduce((a,b)=>a+b)/p.length).toFixed(1)+" hPa</b>";
+async function render(labels,p,c, umidadeAtual, pressaoAtual){
+  info.innerHTML=`🌬️ Pressão atual: <b>${pressaoAtual.toFixed(1)} hPa</b><br>💧 Umidade atual: <b>${umidadeAtual.toFixed(0)}%</b>`;
+
+  const mediaP = (p.reduce((a,b)=>a+b)/p.length).toFixed(1);
+  historico.innerHTML=`📊 Média 7 dias – Pressão: <b>${mediaP} hPa</b>`;
 
   let soma=0,cont=0;
   c.forEach((v,i)=>{if(v>1){soma+=p[i];cont++;}});
   const mediaChuva=cont?soma/cont:null;
 
   previsao.innerHTML=mediaChuva
-    ? (p.at(-1)<=mediaChuva?"🌧️ <b>Tendência de chuva</b>":"☀️ <b>Baixa chance de chuva</b>")
+    ? (pressaoAtual<=mediaChuva?"🌧️ <b>Tendência de chuva</b>":"☀️ <b>Baixa chance de chuva</b>")
     : "";
 
   padrao.innerHTML=mediaChuva
-    ? "🌧️ Costuma chover quando a pressão está em torno de <b>"+mediaChuva.toFixed(1)+" hPa</b>"
+    ? `🌧️ Costuma chover quando a pressão está em torno de <b>${mediaChuva.toFixed(1)} hPa</b>`
     : "";
 
   alerta.className="alerta";
@@ -319,26 +366,27 @@ async function render(labels,p,c){
     alerta.innerText="✅ Sem indicativo de tempestade";
   }
 
-  /* PROBABILIDADE FUTURA */
+  /* PROBABILIDADE FUTURA - HORIZONTAL COM ÍCONES PEQUENOS */
   const r=await fetch(
-    "https://api.open-meteo.com/v1/forecast"+
-    "?latitude="+lat+
-    "&longitude="+lon+
-    "&daily=precipitation_probability_max"+
-    "&timezone=America/Sao_Paulo"
+    `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=precipitation_probability_max&timezone=America/Sao_Paulo`
   );
-  const d=await r.json();
+  const dProb=await r.json();
 
-  let html="<br>📆 <b>Probabilidade de chuva – 5 dias:</b><br>";
-  let maxProb=Math.max(...d.daily.precipitation_probability_max.slice(0,5));
+  probChuva.innerHTML=""; // limpa
+  dProb.daily.time.slice(0,5).forEach((dia,i)=>{
+    const p=dProb.daily.precipitation_probability_max[i];
+    let icone = "";
+    if(p>=70) icone="🌧️";       // chuva
+    else if(p>=40) icone="⛅";    // nublado
+    else icone="☀️";             // sol
 
-  d.daily.time.slice(0,5).forEach((dia,i)=>{
-    const p=d.daily.precipitation_probability_max[i];
-    const cor=p>=70?"#e53935":p>=40?"#fbc02d":"#2e7d32";
-    html+="<span style='color:"+cor+"'>• "+dia.split("-").reverse().join("/")+" – "+p+"%</span><br>";
+    const div=document.createElement("div");
+    div.className="prob-dia";
+    div.innerHTML=`<div style="font-size:10px">${dia.split("-").reverse().join("/")}</div><div class="icon">${icone}</div><div style="font-size:10px">${p}%</div>`;
+    probChuva.appendChild(div);
   });
-  probChuva.innerHTML=html;
 
+  let maxProb=Math.max(...dProb.daily.precipitation_probability_max.slice(0,5));
   ativarFundo(maxProb);
 
   if(chart) chart.destroy();
@@ -346,15 +394,17 @@ async function render(labels,p,c){
     type:"line",
     data:{
       labels,
-      datasets:[{
-        label:"Pressão média diária (hPa)",
-        data:p,
-        borderColor:"#1565c0",
-        borderWidth:3,
-        tension:.4,
-        pointRadius:6,
-        pointBackgroundColor:c.map(v=>v>1?"red":"#1565c0")
-      }]
+      datasets:[
+        {
+          label:"Pressão média diária (hPa)",
+          data:p,
+          borderColor:"#1565c0",
+          borderWidth:3,
+          tension:.4,
+          pointRadius:6,
+          pointBackgroundColor:c.map(v=>v>1?"red":"#1565c0")
+        }
+      ]
     },
     options:{responsive:true},
     plugins:[fundoChuvaPlugin]
@@ -367,20 +417,17 @@ function ativarFundo(prob){
   bg.innerHTML="";
 
   const hora=new Date().getHours();
-  const noite=(hora<6 || hora>=18); // 6h-18h = dia
+  const noite=(hora<6 || hora>=18);
 
   if(prob>=70){
-    // Tempestade com raios e chuva
     bg.innerHTML=(noite?' <div class="moon"></div>':'<div class="sun"></div>')+
                  '<div class="cloud"></div><div class="cloud" style="top:200px"></div><div class="lightning"></div>'+
                  criarChuva(150,noite);
   }else if(prob>=40){
-    // Chuva leve
     bg.innerHTML=(noite?' <div class="moon"></div>':'<div class="sun"></div>')+
                  '<div class="cloud"></div><div class="cloud" style="top:180px"></div>'+
                  criarChuva(80,noite);
   }else{
-    // Céu limpo
     bg.innerHTML=noite?'<div class="moon"></div>':'<div class="sun"></div>';
   }
 }
