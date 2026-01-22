@@ -231,7 +231,7 @@ async function buscar(){
   const dHist = await rHist.json();
 
   const rForecast = await fetch(
-    `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&hourly=relativehumidity_2m,pressure_msl,precipitation&timezone=America/Sao_Paulo`
+    `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&hourly=relativehumidity_2m,pressure_msl,precipitation&timezone=America/Sao_Paulo`
   );
   const dForecast = await rForecast.json();
 
@@ -240,10 +240,18 @@ async function buscar(){
   const umidadeAtual = dForecast.hourly.relativehumidity_2m[idxHora];
   const pressaoAtual = dForecast.hourly.pressure_msl[idxHora];
   const chuvaAtual = dForecast.hourly.precipitation[idxHora];
+  const weatherCode = dForecast.current_weather.weathercode;
 
-  let iconeClima="☀️";
-  if(chuvaAtual>=5) iconeClima="🌧️";
-  else if(chuvaAtual>=1) iconeClima="⛅";
+  // Atualizar ícone do topo conforme weathercode
+  const horaAtual = agora.getHours();
+  const noite = horaAtual < 6 || horaAtual >= 18;
+  let iconeClima = "☀️";
+
+  if(noite) iconeClima = "🌙";
+  if([61,63,65,66,67,80,81,82].includes(weatherCode)) iconeClima = "🌧️";
+  else if([1,2,3,45,48].includes(weatherCode)) iconeClima = "⛅";
+  else if(weatherCode === 0) iconeClima = noite ? "🌙" : "☀️";
+
   iconeClimaSpan.innerText = iconeClima;
   nomeCidadeSpan.innerText = cidadeEscolhida;
 
@@ -314,7 +322,6 @@ function render(labels,p,c, umidadeAtual, pressaoAtual){
   if(chart) chart.destroy();
   const ctx=document.getElementById("grafico").getContext("2d");
 
-  // Plugin para pintar fundo do dia com chuva
   const fundoPlugin = {
     id: 'fundoChuva',
     beforeDraw: (chart)=>{
