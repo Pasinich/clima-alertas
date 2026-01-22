@@ -14,37 +14,6 @@ body{
   color:#fff;
   padding:16px;
 }
-
-/* ===== FUNDO CLIMÁTICO ANIMADO ===== */
-#climaFundo{
-  position:fixed;
-  inset:0;
-  z-index:-1;
-  pointer-events:none;
-  font-size:70px;
-  opacity:.22;
-}
-
-.clima-item{
-  position:absolute;
-  animation: flutuar 6s ease-in-out infinite;
-}
-
-.raio{
-  animation: piscar 1.4s infinite;
-}
-
-@keyframes flutuar{
-  0%{transform:translateY(0)}
-  50%{transform:translateY(-25px)}
-  100%{transform:translateY(0)}
-}
-
-@keyframes piscar{
-  0%,100%{opacity:.15}
-  50%{opacity:.6}
-}
-
 h2{text-align:center}
 
 .card{
@@ -76,12 +45,10 @@ button{
   margin-top:4px;
   overflow:hidden;
 }
-
 .autocomplete div{
   padding:10px;
   cursor:pointer;
 }
-
 .autocomplete div:hover{background:#e0e0e0;}
 
 .alerta{
@@ -90,7 +57,6 @@ button{
   border-radius:10px;
   font-weight:bold;
 }
-
 .alerta.verde{background:#2e7d32;}
 .alerta.amarelo{background:#f9a825;color:#000;}
 .alerta.vermelho{background:#c62828;}
@@ -104,9 +70,6 @@ canvas{
 </head>
 
 <body>
-
-<!-- FUNDO ANIMADO -->
-<div id="climaFundo"></div>
 
 <h2 id="titulo">🌦️ Clima & Pressão Atmosférica</h2>
 
@@ -141,25 +104,6 @@ const previsao=document.getElementById("previsao");
 const padrao=document.getElementById("padrao");
 const alerta=document.getElementById("alerta");
 const probChuva=document.getElementById("probChuva");
-
-/* FUNÇÃO FUNDO CLIMA */
-function atualizarAnimacaoClima(tipo){
-  const fundo=document.getElementById("climaFundo");
-  fundo.innerHTML="";
-
-  let icone="☀️";
-  if(tipo==="chuva") icone="☁️";
-  if(tipo==="tempestade") icone="⚡";
-
-  for(let i=0;i<6;i++){
-    const div=document.createElement("div");
-    div.className="clima-item"+(tipo==="tempestade"?" raio":"");
-    div.innerText=icone;
-    div.style.top=Math.random()*90+"%";
-    div.style.left=Math.random()*90+"%";
-    fundo.appendChild(div);
-  }
-}
 
 /* AUTOCOMPLETE */
 cidade.addEventListener("input", async ()=>{
@@ -227,10 +171,11 @@ function processar(d){
     if(dias[dia].c>1) diasChuvaIndices.push(i);
   });
 
+  chuvaGlobal=chuva;
   render(labels,pressao,chuva);
 }
 
-/* FUNDO DE CHUVA NO GRÁFICO */
+/* FUNDO DE CHUVA */
 const fundoChuvaPlugin={
   id:"fundoChuva",
   beforeDraw(chart){
@@ -251,23 +196,49 @@ async function render(labels,p,c){
   info.innerHTML="🌬️ Pressão atual: <b>"+p.at(-1).toFixed(1)+" hPa</b>";
   historico.innerHTML="📊 Média 7 dias: <b>"+(p.reduce((a,b)=>a+b)/p.length).toFixed(1)+" hPa</b>";
 
-  /* ALERTA */
+  let soma=0,cont=0;
+  c.forEach((v,i)=>{if(v>1){soma+=p[i];cont++;}});
+  const mediaChuva=cont?soma/cont:null;
+
+  previsao.innerHTML=mediaChuva
+    ? (p.at(-1)<=mediaChuva?"🌧️ <b>Tendência de chuva</b>":"☀️ <b>Baixa chance de chuva</b>")
+    : "";
+
+  padrao.innerHTML=mediaChuva
+    ? "🌧️ Costuma chover quando a pressão está em torno de <b>"+mediaChuva.toFixed(1)+" hPa</b>"
+    : "";
+
+  /* ALERTA REAL */
   alerta.className="alerta";
   if(c.at(-1)>20){
     alerta.classList.add("vermelho");
     alerta.innerText="🌩️ ALERTA: Forte tempestade registrada!";
-    atualizarAnimacaoClima("tempestade");
   }else if(c.at(-1)>5){
     alerta.classList.add("amarelo");
     alerta.innerText="⛈️ Atenção: instabilidade atmosférica";
-    atualizarAnimacaoClima("chuva");
   }else{
     alerta.classList.add("verde");
     alerta.innerText="✅ Sem indicativo de tempestade";
-    atualizarAnimacaoClima("sol");
   }
 
-  /* GRÁFICO */
+  /* PROBABILIDADE FUTURA */
+  const r=await fetch(
+    "https://api.open-meteo.com/v1/forecast"+
+    "?latitude="+lat+
+    "&longitude="+lon+
+    "&daily=precipitation_probability_max"+
+    "&timezone=America/Sao_Paulo"
+  );
+  const d=await r.json();
+
+  let html="<br>📆 <b>Probabilidade de chuva – 5 dias:</b><br>";
+  d.daily.time.slice(0,5).forEach((dia,i)=>{
+    const p=d.daily.precipitation_probability_max[i];
+    const cor=p>=70?"#e53935":p>=40?"#fbc02d":"#2e7d32";
+    html+="<span style='color:"+cor+"'>• "+dia.split("-").reverse().join("/")+" – "+p+"%</span><br>";
+  });
+  probChuva.innerHTML=html;
+
   if(chart) chart.destroy();
   chart=new Chart(document.getElementById("grafico"),{
     type:"line",
