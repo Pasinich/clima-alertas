@@ -318,7 +318,28 @@ function render(labels,p,c, umidadeAtual, pressaoAtual){
   if(chart) chart.destroy();
   chart=new Chart(document.getElementById("grafico"),{
     type:"line",
-    data:{labels,datasets:[{label:"Pressão média diária (hPa)",data:p,borderColor:"#1565c0",borderWidth:3,tension:.4,pointRadius:6,pointBackgroundColor:c.map(v=>v>1?"red":"#1565c0")}]},
+    data:{
+      labels,
+      datasets:[
+        {
+          label:"Dias com chuva",
+          data:c.map(v=>v>1?Math.max(...p):null),
+          backgroundColor:"rgba(255,0,0,0.18)",
+          borderWidth:0,
+          fill:true,
+          pointRadius:0
+        },
+        {
+          label:"Pressão média diária (hPa)",
+          data:p,
+          borderColor:"#1565c0",
+          borderWidth:3,
+          tension:.4,
+          pointRadius:6,
+          pointBackgroundColor:c.map(v=>v>1?"red":"#1565c0")
+        }
+      ]
+    },
     options:{responsive:true}
   });
 }
