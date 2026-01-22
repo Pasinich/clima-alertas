@@ -67,13 +67,13 @@ canvas{
   padding:8px;
 }
 
-/* ===== ADICIONADO – FUNDO ANIMADO ===== */
+/* ================= FUNDO ANIMADO ================= */
 #weather-bg{
   position:fixed;
   inset:0;
   z-index:-1;
-  overflow:hidden;
   pointer-events:none;
+  overflow:hidden;
 }
 
 /* SOL */
@@ -81,37 +81,36 @@ canvas{
   position:absolute;
   top:40px;
   right:40px;
-  width:120px;
-  height:120px;
-  background:radial-gradient(circle,#fff59d,#fbc02d);
+  width:140px;
+  height:140px;
   border-radius:50%;
-  animation:spin 20s linear infinite;
-  opacity:.9;
+  background:radial-gradient(circle,#fff59d,#fbc02d);
+  animation:spin 25s linear infinite;
 }
 
 /* NUVENS */
 .cloud{
   position:absolute;
-  top:80px;
+  top:100px;
   left:-300px;
-  width:200px;
-  height:60px;
+  width:220px;
+  height:65px;
   background:#fff;
   border-radius:50px;
-  opacity:.7;
-  animation:cloudMove 80s linear infinite;
+  opacity:.75;
+  animation:cloudMove 90s linear infinite;
 }
 .cloud::before,.cloud::after{
   content:"";
   position:absolute;
   background:#fff;
-  width:80px;
-  height:80px;
+  width:90px;
+  height:90px;
   border-radius:50%;
-  top:-40px;
+  top:-45px;
 }
-.cloud::before{left:30px}
-.cloud::after{left:90px}
+.cloud::before{left:25px}
+.cloud::after{left:110px}
 
 /* RAIOS */
 .lightning{
@@ -120,13 +119,13 @@ canvas{
   left:50%;
   width:4px;
   height:100vh;
-  background:#fff;
+  background:white;
   opacity:0;
   animation:flash 4s infinite;
 }
 
 @keyframes spin{
-  from{transform:rotate(0deg)}
+  from{transform:rotate(0)}
   to{transform:rotate(360deg)}
 }
 @keyframes cloudMove{
@@ -134,19 +133,17 @@ canvas{
   to{left:110%}
 }
 @keyframes flash{
-  0%,95%,100%{opacity:0}
-  96%,98%{opacity:1}
+  0%,94%,100%{opacity:0}
+  95%,97%{opacity:1}
 }
-/* ===== FIM DO ADICIONADO ===== */
-
+/* ================= FIM FUNDO ================= */
 </style>
 </head>
 
 <body>
 
-<!-- ===== ADICIONADO – CAMADA DO FUNDO ===== -->
+<!-- CAMADA DE FUNDO -->
 <div id="weather-bg"></div>
-<!-- ===== FIM ===== -->
 
 <h2 id="titulo">🌦️ Clima & Pressão Atmosférica</h2>
 
@@ -170,40 +167,187 @@ canvas{
 </div>
 
 <script>
-/* ===== ADICIONADO – CONTROLE DO FUNDO ===== */
-function atualizarFundoAnimado(tipo){
+let lat=null, lon=null, chart=null;
+let chuvaGlobal=[], diasChuvaIndices=[];
+let tipoFundo="sol";
+
+const cidade=document.getElementById("cidade");
+const lista=document.getElementById("lista");
+const info=document.getElementById("info");
+const historico=document.getElementById("historico");
+const previsao=document.getElementById("previsao");
+const padrao=document.getElementById("padrao");
+const alerta=document.getElementById("alerta");
+const probChuva=document.getElementById("probChuva");
+
+/* AUTOCOMPLETE */
+cidade.addEventListener("input", async ()=>{
+  lista.innerHTML="";
+  if(cidade.value.length<3) return;
+  const r=await fetch("https://geocoding-api.open-meteo.com/v1/search?name="+cidade.value+"&count=5&language=pt");
+  const d=await r.json();
+  if(!d.results) return;
+
+  d.results.forEach(c=>{
+    const div=document.createElement("div");
+    div.textContent=c.name+(c.admin1?" - "+c.admin1:"");
+    div.onclick=()=>{
+      lat=c.latitude;
+      lon=c.longitude;
+      cidade.value=c.name;
+      document.getElementById("titulo").innerText="🌦️ Clima • "+c.name;
+      lista.innerHTML="";
+    };
+    lista.appendChild(div);
+  });
+});
+
+/* BUSCAR */
+async function buscar(){
+  if(!lat){alert("Selecione a cidade");return;}
+  const hoje=new Date();
+  const inicio=new Date();
+  inicio.setDate(hoje.getDate()-7);
+
+  const r=await fetch(
+    "https://archive-api.open-meteo.com/v1/archive"+
+    "?latitude="+lat+
+    "&longitude="+lon+
+    "&start_date="+inicio.toISOString().split("T")[0]+
+    "&end_date="+hoje.toISOString().split("T")[0]+
+    "&hourly=pressure_msl,precipitation"+
+    "&timezone=America/Sao_Paulo"
+  );
+  const d=await r.json();
+  processar(d);
+}
+
+/* PROCESSAR */
+function processar(d){
+  const dias={};
+  d.hourly.time.forEach((t,i)=>{
+    const dia=t.split("T")[0];
+    if(!dias[dia]) dias[dia]={p:[],c:0};
+    dias[dia].p.push(d.hourly.pressure_msl[i]);
+    dias[dia].c+=d.hourly.precipitation[i];
+  });
+
+  const labels=[], pressao=[], chuva=[];
+  diasChuvaIndices=[];
+  Object.keys(dias).slice(-7).forEach((dia,i)=>{
+    labels.push(dia.split("-").reverse().join("/"));
+    const media=dias[dia].p.reduce((a,b)=>a+b)/dias[dia].p.length;
+    pressao.push(media);
+    chuva.push(dias[dia].c);
+    if(dias[dia].c>1) diasChuvaIndices.push(i);
+  });
+
+  chuvaGlobal=chuva;
+  render(labels,pressao,chuva);
+}
+
+/* FUNDO GRÁFICO */
+const fundoChuvaPlugin={
+  id:"fundoChuva",
+  beforeDraw(chart){
+    const {ctx,chartArea,scales}=chart;
+    ctx.save();
+    ctx.fillStyle="rgba(30,136,229,.18)";
+    diasChuvaIndices.forEach(i=>{
+      const x=scales.x.getPixelForValue(i);
+      const w=scales.x.getPixelForValue(i+1)-scales.x.getPixelForValue(i);
+      ctx.fillRect(x-w/2,chartArea.top,w,chartArea.bottom-chartArea.top);
+    });
+    ctx.restore();
+  }
+};
+
+/* RENDER */
+async function render(labels,p,c){
+  info.innerHTML="🌬️ Pressão atual: <b>"+p.at(-1).toFixed(1)+" hPa</b>";
+  historico.innerHTML="📊 Média 7 dias: <b>"+(p.reduce((a,b)=>a+b)/p.length).toFixed(1)+" hPa</b>";
+
+  let soma=0,cont=0;
+  c.forEach((v,i)=>{if(v>1){soma+=p[i];cont++;}});
+  const mediaChuva=cont?soma/cont:null;
+
+  previsao.innerHTML=mediaChuva
+    ? (p.at(-1)<=mediaChuva?"🌧️ <b>Tendência de chuva</b>":"☀️ <b>Baixa chance de chuva</b>")
+    : "";
+
+  padrao.innerHTML=mediaChuva
+    ? "🌧️ Costuma chover quando a pressão está em torno de <b>"+mediaChuva.toFixed(1)+" hPa</b>"
+    : "";
+
+  /* ALERTA */
+  alerta.className="alerta";
+  if(c.at(-1)>20){
+    alerta.classList.add("vermelho");
+    alerta.innerText="🌩️ ALERTA: Forte tempestade registrada!";
+  }else if(c.at(-1)>5){
+    alerta.classList.add("amarelo");
+    alerta.innerText="⛈️ Atenção: instabilidade atmosférica";
+  }else{
+    alerta.classList.add("verde");
+    alerta.innerText="✅ Sem indicativo de tempestade";
+  }
+
+  /* PROBABILIDADE FUTURA */
+  const r=await fetch(
+    "https://api.open-meteo.com/v1/forecast"+
+    "?latitude="+lat+
+    "&longitude="+lon+
+    "&daily=precipitation_probability_max"+
+    "&timezone=America/Sao_Paulo"
+  );
+  const d=await r.json();
+
+  let html="<br>📆 <b>Probabilidade de chuva – 5 dias:</b><br>";
+  let maxProb=Math.max(...d.daily.precipitation_probability_max.slice(0,5));
+
+  d.daily.time.slice(0,5).forEach((dia,i)=>{
+    const p=d.daily.precipitation_probability_max[i];
+    const cor=p>=70?"#e53935":p>=40?"#fbc02d":"#2e7d32";
+    html+="<span style='color:"+cor+"'>• "+dia.split("-").reverse().join("/")+" – "+p+"%</span><br>";
+  });
+  probChuva.innerHTML=html;
+
+  /* DEFINE FUNDO PELA PREVISÃO */
+  ativarFundo(maxProb);
+
+  if(chart) chart.destroy();
+  chart=new Chart(document.getElementById("grafico"),{
+    type:"line",
+    data:{
+      labels,
+      datasets:[{
+        label:"Pressão média diária (hPa)",
+        data:p,
+        borderColor:"#1565c0",
+        borderWidth:3,
+        tension:.4,
+        pointRadius:6,
+        pointBackgroundColor:c.map(v=>v>1?"red":"#1565c0")
+      }]
+    },
+    options:{responsive:true},
+    plugins:[fundoChuvaPlugin]
+  });
+}
+
+/* ATIVA FUNDO */
+function ativarFundo(prob){
   const bg=document.getElementById("weather-bg");
   bg.innerHTML="";
-
-  if(tipo==="sol"){
+  if(prob>=70){
+    bg.innerHTML='<div class="cloud"></div><div class="cloud" style="top:200px"></div><div class="lightning"></div>';
+  }else if(prob>=40){
+    bg.innerHTML='<div class="cloud"></div><div class="cloud" style="top:180px;animation-duration:120s"></div>';
+  }else{
     bg.innerHTML='<div class="sun"></div>';
   }
-  if(tipo==="nuvem"){
-    bg.innerHTML='<div class="cloud"></div><div class="cloud" style="top:160px;animation-duration:110s"></div>';
-  }
-  if(tipo==="tempestade"){
-    bg.innerHTML='<div class="cloud"></div><div class="cloud" style="top:180px"></div><div class="lightning"></div>';
-  }
 }
-/* ===== FIM ===== */
 </script>
-
-<!-- ===== ADICIONADO – ATIVAÇÃO AUTOMÁTICA ===== -->
-<script>
-/* Observa os alertas já existentes e muda o fundo sem alterar lógica */
-const alertaObserver=new MutationObserver(()=>{
-  const alerta=document.getElementById("alerta");
-  if(alerta.classList.contains("vermelho")){
-    atualizarFundoAnimado("tempestade");
-  }else if(alerta.classList.contains("amarelo")){
-    atualizarFundoAnimado("nuvem");
-  }else{
-    atualizarFundoAnimado("sol");
-  }
-});
-alertaObserver.observe(document.getElementById("alerta"),{attributes:true});
-</script>
-<!-- ===== FIM ===== -->
 
 </body>
 </html>
