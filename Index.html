@@ -2,9 +2,8 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<title>Clima & Alertas Inteligentes</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-
+<title>Clima & Pressão Atmosférica</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
@@ -16,177 +15,443 @@ body{
   padding:16px;
 }
 h2{text-align:center}
+
 .card{
   background:rgba(255,255,255,.18);
-  border-radius:18px;
-  padding:18px;
-  margin-bottom:18px;
+  border-radius:16px;
+  padding:16px;
+  margin-bottom:16px;
 }
-button,input{
+
+input,button{
   width:100%;
   padding:12px;
-  margin-top:10px;
-  font-size:16px;
+  margin-top:8px;
   border:none;
-  border-radius:12px;
+  border-radius:10px;
+  font-size:16px;
 }
+
 button{
   background:#00e676;
   font-weight:bold;
+  cursor:pointer;
 }
-.resultado{
-  margin-top:6px;
-  font-size:18px;
+
+.autocomplete{
+  background:#fff;
+  color:#000;
+  border-radius:10px;
+  margin-top:4px;
+  overflow:hidden;
 }
-.status{
-  font-size:20px;
-  font-weight:bold;
+.autocomplete div{
+  padding:10px;
+  cursor:pointer;
+}
+.autocomplete div:hover{background:#e0e0e0;}
+
+.alerta{
   margin-top:10px;
+  padding:10px;
+  border-radius:10px;
+  font-weight:bold;
 }
+.alerta.verde{background:#2e7d32;}
+.alerta.amarelo{background:#f9a825;color:#000;}
+.alerta.vermelho{background:#c62828;}
+
 canvas{
   background:#fff;
-  border-radius:12px;
-  padding:10px;
+  border-radius:10px;
+  padding:8px;
+}
+
+/* ================= FUNDO ANIMADO ================= */
+#weather-bg{
+  position:fixed;
+  inset:0;
+  z-index:-1;
+  pointer-events:none;
+  overflow:hidden;
+}
+
+/* SOL */
+.sun{
+  position:absolute;
+  top:40px;
+  right:40px;
+  width:120px;
+  height:120px;
+  border-radius:50%;
+  background:radial-gradient(circle,#fff59d,#fbc02d);
+  animation:spin 30s linear infinite;
+  box-shadow:0 0 60px rgba(255,255,0,.6);
+}
+
+/* LUA */
+.moon{
+  position:absolute;
+  top:40px;
+  right:40px;
+  width:100px;
+  height:100px;
+  border-radius:50%;
+  background:radial-gradient(circle,#f0f0f0,#b0b0b0);
+  box-shadow:0 0 30px rgba(255,255,255,.5);
+  animation:spin 40s linear infinite;
+}
+
+/* NUVENS */
+.cloud{
+  position:absolute;
+  top:100px;
+  left:-300px;
+  width:220px;
+  height:65px;
+  background:#fff;
+  border-radius:50px;
+  opacity:.75;
+  animation:cloudMove linear infinite;
+}
+.cloud::before,.cloud::after{
+  content:"";
+  position:absolute;
+  background:#fff;
+  width:90px;
+  height:90px;
+  border-radius:50%;
+  top:-45px;
+}
+.cloud::before{left:25px}
+.cloud::after{left:110px}
+
+/* RAIOS */
+.lightning{
+  position:absolute;
+  top:0;
+  left:50%;
+  width:4px;
+  height:100vh;
+  background:white;
+  opacity:0;
+  animation:flash 4s infinite;
+}
+
+/* CHUVA */
+.rain{
+  position:absolute;
+  inset:0;
+}
+.drop{
+  position:absolute;
+  bottom:100%;
+  width:2px;
+  height:20px;
+  background:rgba(255,255,255,.6);
+  animation:rainFall linear infinite;
+}
+
+@keyframes rainFall{
+  0%{transform:translateY(0)}
+  100%{transform:translateY(110vh)}
+}
+@keyframes spin{
+  from{transform:rotate(0)}
+  to{transform:rotate(360deg)}
+}
+@keyframes cloudMove{
+  from{left:-300px}
+  to{left:110%}
+}
+@keyframes flash{
+  0%,94%,100%{opacity:0}
+  95%,97%{opacity:1}
+}
+
+/* ================= PROBABILIDADE HORIZONTAL ================= */
+#probChuva{
+  display:flex;
+  justify-content:flex-start;
+  margin-top:10px;
+  flex-wrap:nowrap;
+  overflow-x:auto;
+}
+.prob-dia{
+  background:rgba(255,255,255,0.18);
+  border-radius:10px;
+  padding:6px 4px;
+  margin-right:4px;
+  text-align:center;
+  font-weight:bold;
+  flex:0 0 auto;
+  min-width:50px;
+  font-size:12px;
+}
+.prob-dia .icon{
+  font-size:18px;
+  display:block;
+  margin:2px 0;
 }
 </style>
 </head>
 
 <body>
 
-<h2>🌦️ Clima & Alertas Inteligentes</h2>
+<div id="weather-bg"></div>
+
+<h2 id="titulo">🌦️ Clima & Pressão Atmosférica</h2>
 
 <div class="card">
-  <button onclick="usarGPS()">📍 Usar minha localização</button>
+  <input id="cidade" placeholder="Digite a cidade (ex: Chapecó)">
+  <div id="lista" class="autocomplete"></div>
 
-  <input type="date" id="data">
-  <button onclick="buscar()">Consultar</button>
+  <button onclick="buscar()">Consultar últimos 7 dias</button>
 
-  <div class="resultado" id="pressao"></div>
-  <div class="resultado" id="chuva"></div>
-  <div class="resultado" id="variacao"></div>
-  <div class="resultado" id="comparacao"></div>
-  <div class="status" id="status"></div>
+  <div id="info"></div>
+  <div id="historico"></div>
+  <div id="previsao"></div>
+  <div id="padrao"></div>
+  <div id="probChuva"></div>
+  <div id="alerta" class="alerta"></div>
 </div>
 
 <div class="card">
-  <h3>📊 Pressão – histórico (30 dias)</h3>
+  <h3>📊 Pressão atmosférica – últimos 7 dias</h3>
   <canvas id="grafico"></canvas>
 </div>
 
 <script>
-let lat = -27.1;
-let lon = -52.6;
-let chart;
+let lat=null, lon=null, chart=null;
+let chuvaGlobal=[], diasChuvaIndices=[];
 
-// Elementos DOM
-const dataInput   = document.getElementById("data");
-const pressaoDiv  = document.getElementById("pressao");
-const chuvaDiv    = document.getElementById("chuva");
-const variacaoDiv = document.getElementById("variacao");
-const comparacaoDiv = document.getElementById("comparacao");
-const statusDiv   = document.getElementById("status");
-const grafico     = document.getElementById("grafico");
+const cidade=document.getElementById("cidade");
+const lista=document.getElementById("lista");
+const info=document.getElementById("info");
+const historico=document.getElementById("historico");
+const previsao=document.getElementById("previsao");
+const padrao=document.getElementById("padrao");
+const alerta=document.getElementById("alerta");
+const probChuva=document.getElementById("probChuva");
 
-// GPS
-function usarGPS(){
-  if(!navigator.geolocation){
-    alert("❌ GPS não suportado neste navegador");
-    return;
-  }
+/* AUTOCOMPLETE */
+cidade.addEventListener("input", async ()=>{
+  lista.innerHTML="";
+  if(cidade.value.length<3) return;
+  const r=await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${cidade.value}&count=5&language=pt`);
+  const d=await r.json();
+  if(!d.results) return;
+  d.results.forEach(c=>{
+    const div=document.createElement("div");
+    div.textContent=c.name+(c.admin1?" - "+c.admin1:"");
+    div.onclick=()=>{
+      lat=c.latitude;
+      lon=c.longitude;
+      cidade.value=c.name;
+      document.getElementById("titulo").innerText="🌦️ Clima • "+c.name;
+      lista.innerHTML="";
+    };
+    lista.appendChild(div);
+  });
+});
 
-  navigator.geolocation.getCurrentPosition(
-    pos=>{
-      lat = pos.coords.latitude;
-      lon = pos.coords.longitude;
-      alert(`📍 Localização detectada!\nLat: ${lat.toFixed(4)}\nLon: ${lon.toFixed(4)}`);
-    },
-    erro=>{
-      alert("❌ Não foi possível obter o GPS: " + erro.message);
-    },
-    {
-      enableHighAccuracy:true,
-      timeout:10000,
-      maximumAge:0
-    }
-  );
-}
-
-// Buscar dados climáticos
+/* BUSCAR */
 async function buscar(){
-  if(!dataInput.value){
-    alert("📅 Selecione uma data");
-    return;
-  }
+  if(!lat){alert("Selecione a cidade");return;}
+  const hoje=new Date();
+  const inicio=new Date();
+  inicio.setDate(hoje.getDate()-7);
 
-  const fim = new Date(dataInput.value);
-  const inicio = new Date(fim);
-  inicio.setDate(inicio.getDate() - 30);
+  const rHist = await fetch(
+    `https://archive-api.open-meteo.com/v1/archive?latitude=${lat}&longitude=${lon}&start_date=${inicio.toISOString().split("T")[0]}&end_date=${hoje.toISOString().split("T")[0]}&hourly=pressure_msl,precipitation&timezone=America/Sao_Paulo`
+  );
+  const dHist = await rHist.json();
 
-  const url = `https://archive-api.open-meteo.com/v1/archive
-    ?latitude=${lat}
-    &longitude=${lon}
-    &start_date=${inicio.toISOString().split("T")[0]}
-    &end_date=${fim.toISOString().split("T")[0]}
-    &daily=pressure_msl,precipitation_sum
-    &timezone=America/Sao_Paulo`;
+  const rForecast = await fetch(
+    `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&hourly=relativehumidity_2m,pressure_msl&timezone=America/Sao_Paulo`
+  );
+  const dForecast = await rForecast.json();
 
-  try{
-    const resp = await fetch(url);
-    const dados = await resp.json();
-
-    const pHoje = dados.daily.pressure_msl.at(-1);
-    const pSemana = dados.daily.pressure_msl.slice(-7)
-      .reduce((a,b)=>a+b) / 7;
-    const pMes = dados.daily.pressure_msl
-      .reduce((a,b)=>a+b) / dados.daily.pressure_msl.length;
-
-    const chuvaHoje = dados.daily.precipitation_sum.at(-1);
-
-    pressaoDiv.innerHTML = `🌬️ Hoje: <b>${pHoje.toFixed(1)} hPa</b>`;
-    comparacaoDiv.innerHTML =
-      `📊 Média 7 dias: ${pSemana.toFixed(1)} hPa<br>
-       📈 Média mês: ${pMes.toFixed(1)} hPa`;
-    variacaoDiv.innerHTML =
-      `🔄 Diferença hoje/semana: ${(pHoje-pSemana).toFixed(1)} hPa`;
-    chuvaDiv.innerHTML =
-      chuvaHoje > 0 ? `🌧️ Chuva: ${chuvaHoje} mm` : "☀️ Sem chuva";
-
-    // Índice de tempestade
-    let indice = "🟢 Baixo";
-    if(pHoje < 1010) indice = "🟡 Moderado";
-    if(pHoje < 1007 || chuvaHoje > 20) indice = "🔴 Alto";
-
-    statusDiv.innerText = `🌪️ Índice de tempestade: ${indice}`;
-
-    // Notificação
-    if(Notification.permission !== "granted"){
-      Notification.requestPermission();
-    }
-
-    if(indice === "🔴 Alto" && Notification.permission === "granted"){
-      new Notification("⚠️ Alerta de tempestade", {
-        body: "Queda significativa de pressão atmosférica detectada!"
-      });
-    }
-
-    // Gráfico
-    if(chart) chart.destroy();
-    chart = new Chart(grafico,{
-      type:"line",
-      data:{
-        labels:dados.daily.time,
-        datasets:[{
-          label:"Pressão (hPa)",
-          data:dados.daily.pressure_msl,
-          borderWidth:3,
-          tension:0.4
-        }]
+  const agora = new Date();
+  function indiceMaisProximo(arrHoras, target){
+    let menorDif = Infinity;
+    let idx = 0;
+    arrHoras.forEach((h,i)=>{
+      const hora = new Date(h);
+      const dif = Math.abs(hora - target);
+      if(dif < menorDif){
+        menorDif = dif;
+        idx = i;
       }
     });
-
-  }catch(e){
-    alert("❌ Erro ao consultar dados climáticos");
+    return idx;
   }
+
+  const idxHora = indiceMaisProximo(dForecast.hourly.time, agora);
+  const umidadeAtual = dForecast.hourly.relativehumidity_2m[idxHora];
+  const pressaoAtual = dForecast.hourly.pressure_msl[idxHora];
+
+  processar(dHist, umidadeAtual, pressaoAtual);
+}
+
+/* PROCESSAR */
+function processar(d, umidadeAtual, pressaoAtual){
+  const dias={};
+  d.hourly.time.forEach((t,i)=>{
+    const dia=t.split("T")[0];
+    if(!dias[dia]) dias[dia]={p:[],c:0};
+    dias[dia].p.push(d.hourly.pressure_msl[i]);
+    dias[dia].c += d.hourly.precipitation[i];
+  });
+
+  const labels=[], pressao=[], chuva=[];
+  diasChuvaIndices=[];
+  Object.keys(dias).slice(-7).forEach((dia,i)=>{
+    labels.push(dia.split("-").reverse().join("/"));
+    const mediaP=dias[dia].p.reduce((a,b)=>a+b)/dias[dia].p.length;
+    pressao.push(mediaP);
+    chuva.push(dias[dia].c);
+    if(dias[dia].c>1) diasChuvaIndices.push(i);
+  });
+
+  chuvaGlobal = chuva;
+
+  render(labels, pressao, chuva, umidadeAtual, pressaoAtual);
+}
+
+/* FUNDO GRÁFICO */
+const fundoChuvaPlugin={
+  id:"fundoChuva",
+  beforeDraw(chart){
+    const {ctx,chartArea,scales}=chart;
+    ctx.save();
+    ctx.fillStyle="rgba(30,136,229,.18)";
+    diasChuvaIndices.forEach(i=>{
+      const x=scales.x.getPixelForValue(i);
+      const w=scales.x.getPixelForValue(i+1)-scales.x.getPixelForValue(i);
+      ctx.fillRect(x-w/2,chartArea.top,w,chartArea.bottom-chartArea.top);
+    });
+    ctx.restore();
+  }
+};
+
+/* RENDER */
+async function render(labels,p,c, umidadeAtual, pressaoAtual){
+  info.innerHTML=`🌬️ Pressão atual: <b>${pressaoAtual.toFixed(1)} hPa</b><br>💧 Umidade atual: <b>${umidadeAtual.toFixed(0)}%</b>`;
+
+  const mediaP = (p.reduce((a,b)=>a+b)/p.length).toFixed(1);
+  historico.innerHTML=`📊 Média 7 dias – Pressão: <b>${mediaP} hPa</b>`;
+
+  let soma=0,cont=0;
+  c.forEach((v,i)=>{if(v>1){soma+=p[i];cont++;}});
+  const mediaChuva=cont?soma/cont:null;
+
+  previsao.innerHTML=mediaChuva
+    ? (pressaoAtual<=mediaChuva?"🌧️ <b>Tendência de chuva</b>":"☀️ <b>Baixa chance de chuva</b>")
+    : "";
+
+  padrao.innerHTML=mediaChuva
+    ? `🌧️ Costuma chover quando a pressão está em torno de <b>${mediaChuva.toFixed(1)} hPa</b>`
+    : "";
+
+  alerta.className="alerta";
+  if(c.at(-1)>20){
+    alerta.classList.add("vermelho");
+    alerta.innerText="🌩️ ALERTA: Forte tempestade registrada!";
+  }else if(c.at(-1)>5){
+    alerta.classList.add("amarelo");
+    alerta.innerText="⛈️ Atenção: instabilidade atmosférica";
+  }else{
+    alerta.classList.add("verde");
+    alerta.innerText="✅ Sem indicativo de tempestade";
+  }
+
+  /* PROBABILIDADE FUTURA - HORIZONTAL COM ÍCONES PEQUENOS */
+  const r=await fetch(
+    `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=precipitation_probability_max&timezone=America/Sao_Paulo`
+  );
+  const dProb=await r.json();
+
+  probChuva.innerHTML="";
+  let maxProb=0;
+  dProb.daily.time.slice(0,5).forEach((dia,i)=>{
+    const p=dProb.daily.precipitation_probability_max[i];
+    if(p>maxProb) maxProb=p;
+
+    let icone = "";
+    if(p>=70) icone="🌧️";
+    else if(p>=40) icone="⛅";
+    else icone="☀️";
+
+    const div=document.createElement("div");
+    div.className="prob-dia";
+    div.innerHTML=`<div style="font-size:10px">${dia.split("-").reverse().join("/")}</div><div class="icon">${icone}</div><div style="font-size:10px">${p}%</div>`;
+    probChuva.appendChild(div);
+  });
+
+  ativarFundo(maxProb);
+
+  if(chart) chart.destroy();
+  chart=new Chart(document.getElementById("grafico"),{
+    type:"line",
+    data:{
+      labels,
+      datasets:[
+        {
+          label:"Pressão média diária (hPa)",
+          data:p,
+          borderColor:"#1565c0",
+          borderWidth:3,
+          tension:.4,
+          pointRadius:6,
+          pointBackgroundColor:c.map(v=>v>1?"red":"#1565c0")
+        }
+      ]
+    },
+    options:{responsive:true},
+    plugins:[fundoChuvaPlugin]
+  });
+}
+
+/* FUNDO + CHUVA + SOL/ LUA + ANIMAÇÃO SUAVE */
+function ativarFundo(maxProb){
+  const bg=document.getElementById("weather-bg");
+  bg.innerHTML="";
+
+  const hora=new Date().getHours();
+  const noite=(hora<6 || hora>=18);
+
+  if(maxProb>=70){
+    // chuva forte
+    bg.innerHTML=(noite?' <div class="moon"></div>':'')+
+                 '<div class="cloud" style="animation-duration:120s"></div>'+
+                 '<div class="cloud" style="top:200px;animation-duration:150s"></div>'+
+                 '<div class="lightning"></div>'+
+                 criarChuva(150,noite);
+  }else if(maxProb>=40){
+    // nublado leve
+    bg.innerHTML=(noite?' <div class="moon"></div>':'')+
+                 '<div class="cloud" style="animation-duration:140s"></div>'+
+                 '<div class="cloud" style="top:180px;animation-duration:170s"></div>'+
+                 criarChuva(80,noite);
+  }else{
+    // sol
+    bg.innerHTML=noite?'<div class="moon"></div>':'<div class="sun"></div>';
+  }
+}
+
+/* CRIA GOTAS COM VELOCIDADES ALEATÓRIAS */
+function criarChuva(qtd,noite){
+  let html='<div class="rain">';
+  for(let i=0;i<qtd;i++){
+    const left=Math.random()*100;
+    const dur=(Math.random()*1.5+0.7).toFixed(2);
+    const delay=(Math.random()*-5).toFixed(2);
+    const cor=noite?'rgba(180,180,255,0.6)':'rgba(255,255,255,0.6)';
+    html+=`<div class="drop" style="left:${left}%;animation-duration:${dur}s;animation-delay:${delay}s;background:${cor}"></div>`;
+  }
+  html+='</div>';
+  return html;
 }
 </script>
 
