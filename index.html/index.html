@@ -88,6 +88,19 @@ canvas{
   animation:spin 25s linear infinite;
 }
 
+/* LUA */
+.moon{
+  position:absolute;
+  top:40px;
+  right:40px;
+  width:120px;
+  height:120px;
+  border-radius:50%;
+  background:radial-gradient(circle,#f0f0f0,#b0b0b0);
+  box-shadow:0 0 20px rgba(255,255,255,.5);
+  animation:spin 30s linear infinite;
+}
+
 /* NUVENS */
 .cloud{
   position:absolute;
@@ -143,7 +156,6 @@ canvas{
     transform:translateY(110vh);
   }
 }
-
 @keyframes spin{
   from{transform:rotate(0)}
   to{transform:rotate(360deg)}
@@ -156,13 +168,11 @@ canvas{
   0%,94%,100%{opacity:0}
   95%,97%{opacity:1}
 }
-/* ================= FIM FUNDO ================= */
 </style>
 </head>
 
 <body>
 
-<!-- CAMADA DO FUNDO -->
 <div id="weather-bg"></div>
 
 <h2 id="titulo">🌦️ Clima & Pressão Atmosférica</h2>
@@ -206,7 +216,6 @@ cidade.addEventListener("input", async ()=>{
   const r=await fetch("https://geocoding-api.open-meteo.com/v1/search?name="+cidade.value+"&count=5&language=pt");
   const d=await r.json();
   if(!d.results) return;
-
   d.results.forEach(c=>{
     const div=document.createElement("div");
     div.textContent=c.name+(c.admin1?" - "+c.admin1:"");
@@ -298,7 +307,6 @@ async function render(labels,p,c){
     ? "🌧️ Costuma chover quando a pressão está em torno de <b>"+mediaChuva.toFixed(1)+" hPa</b>"
     : "";
 
-  /* ALERTA */
   alerta.className="alerta";
   if(c.at(-1)>20){
     alerta.classList.add("vermelho");
@@ -353,28 +361,39 @@ async function render(labels,p,c){
   });
 }
 
-/* FUNDO + CHUVA */
+/* FUNDO + CHUVA + SOL/ LUA */
 function ativarFundo(prob){
   const bg=document.getElementById("weather-bg");
   bg.innerHTML="";
 
+  const hora=new Date().getHours();
+  const noite=(hora<6 || hora>=18); // 6h-18h = dia
+
   if(prob>=70){
-    bg.innerHTML='<div class="cloud"></div><div class="cloud" style="top:200px"></div><div class="lightning"></div>'+criarChuva(120);
+    // Tempestade com raios e chuva
+    bg.innerHTML=(noite?' <div class="moon"></div>':'<div class="sun"></div>')+
+                 '<div class="cloud"></div><div class="cloud" style="top:200px"></div><div class="lightning"></div>'+
+                 criarChuva(150,noite);
   }else if(prob>=40){
-    bg.innerHTML='<div class="cloud"></div><div class="cloud" style="top:180px"></div>'+criarChuva(80);
+    // Chuva leve
+    bg.innerHTML=(noite?' <div class="moon"></div>':'<div class="sun"></div>')+
+                 '<div class="cloud"></div><div class="cloud" style="top:180px"></div>'+
+                 criarChuva(80,noite);
   }else{
-    bg.innerHTML='<div class="sun"></div>';
+    // Céu limpo
+    bg.innerHTML=noite?'<div class="moon"></div>':'<div class="sun"></div>';
   }
 }
 
 /* CRIA GOTAS */
-function criarChuva(qtd){
+function criarChuva(qtd,noite){
   let html='<div class="rain">';
   for(let i=0;i<qtd;i++){
     const left=Math.random()*100;
     const dur=(Math.random()*1.5+0.7).toFixed(2);
     const delay=(Math.random()*-5).toFixed(2);
-    html+=`<div class="drop" style="left:${left}%;animation-duration:${dur}s;animation-delay:${delay}s"></div>`;
+    const cor=noite?'rgba(180,180,255,0.6)':'rgba(255,255,255,0.6)';
+    html+=`<div class="drop" style="left:${left}%;animation-duration:${dur}s;animation-delay:${delay}s;background:${cor}"></div>`;
   }
   html+='</div>';
   return html;
