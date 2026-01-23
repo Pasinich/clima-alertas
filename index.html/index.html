@@ -6,396 +6,179 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <style>
-body{
-  margin:0;
-  font-family:Arial,sans-serif;
-  background:linear-gradient(135deg,#1565c0,#26c6da);
-  color:#fff;
-  padding:16px;
-}
+body{margin:0;font-family:Arial,sans-serif;background:linear-gradient(135deg,#1565c0,#26c6da);color:#fff;padding:16px;}
 h2{text-align:center;font-size:24px;}
-.card{
-  background:rgba(255,255,255,.18);
-  border-radius:16px;
-  padding:16px;
-  margin-bottom:16px;
-}
-input,button{
-  width:100%;
-  padding:12px;
-  margin-top:8px;
-  border:none;
-  border-radius:10px;
-  font-size:16px;
-}
-button{
-  background:#00e676;
-  font-weight:bold;
-  cursor:pointer;
-}
-.autocomplete{
-  background:#fff;
-  color:#000;
-  border-radius:10px;
-  margin-top:4px;
-  overflow:hidden;
-}
-.autocomplete div{
-  padding:10px;
-  cursor:pointer;
-}
+.card{background:rgba(255,255,255,.18);border-radius:16px;padding:16px;margin-bottom:16px;}
+input,button{width:100%;padding:12px;margin-top:8px;border:none;border-radius:10px;font-size:16px;}
+button{background:#00e676;font-weight:bold;cursor:pointer;}
+.autocomplete{background:#fff;color:#000;border-radius:10px;margin-top:4px;overflow:hidden;}
+.autocomplete div{padding:10px;cursor:pointer;}
 .autocomplete div:hover{background:#e0e0e0;}
-.alerta{
-  margin-top:10px;
-  padding:10px;
-  border-radius:10px;
-  font-weight:bold;
-}
+.alerta{margin-top:10px;padding:10px;border-radius:10px;font-weight:bold;}
 .alerta.verde{background:#2e7d32;}
 .alerta.amarelo{background:#f9a825;color:#000;}
 .alerta.vermelho{background:#c62828;}
-canvas{
-  background:#fff;
-  border-radius:10px;
-  padding:8px;
-}
+canvas{background:#fff;border-radius:10px;padding:8px;}
 
-/* FUNDO ANIMADO */
-#weather-bg{
-  position:fixed;
-  inset:0;
-  z-index:-1;
-  pointer-events:none;
-  overflow:hidden;
-}
-.sun{
-  position:absolute;
-  top:40px;
-  right:40px;
-  width:120px;
-  height:120px;
-  border-radius:50%;
-  background:radial-gradient(circle,#fff59d,#fbc02d);
-  box-shadow:0 0 60px rgba(255,255,0,.6);
-  animation:spin 30s linear infinite;
-}
-.moon{
-  position:absolute;
-  top:40px;
-  right:40px;
-  width:100px;
-  height:100px;
-  border-radius:50%;
-  background:radial-gradient(circle,#f0f0f0,#b0b0b0);
-  box-shadow:0 0 30px rgba(255,255,255,.5);
-  animation:spin 40s linear infinite;
-}
-.cloud{
-  position:absolute;
-  width:220px;
-  height:65px;
-  background:#fff;
-  border-radius:50px;
-  opacity:.7;
-  animation:cloudMove linear infinite;
-}
-.cloud::before,.cloud::after{
-  content:"";
-  position:absolute;
-  background:#fff;
-  width:90px;
-  height:90px;
-  border-radius:50%;
-  top:-45px;
-}
-.cloud::before{left:25px}
-.cloud::after{left:110px}
-.lightning{
-  position:absolute;
-  top:0;
-  width:4px;
-  height:100vh;
-  background:white;
-  opacity:0;
-}
-.rain{
-  position:absolute;
-  inset:0;
-}
-.drop{
-  position:absolute;
-  bottom:100%;
-  width:2px;
-  height:20px;
-  background:rgba(255,255,255,.6);
-  animation:rainFall linear infinite;
-}
+/* Sol/poente visual */
+#sol-info-title{font-weight:bold;margin-bottom:8px;font-size:16px;color:#fff;}
+#sol-info{display:flex;justify-content:space-between;margin-bottom:8px;}
+.sol-dia{flex:1;height:90px;border-radius:6px;margin:0 4px;position:relative;overflow:hidden;background:#1a237e;padding:4px;}
+.sol-dia .dia-label{width:100%;text-align:center;font-size:12px;color:#fff;margin-bottom:4px;}
+.sol-dia .dia-bar{position:relative;height:20px;background:#ffeb3b;border-radius:4px;margin:0 0 8px 0;}
+.sol-dia .icons{display:flex;justify-content:space-between;margin-bottom:4px;padding:0 6px;}
+.sol-dia .icon-nascer,.sol-dia .icon-poente{font-size:18px;color:#ff6f00;}
+.sol-dia .horas{display:flex;justify-content:space-between;padding:0 6px;}
+.sol-dia .hora-nascer,.sol-dia .hora-poente{font-size:12px;color:#fff;} /* COR ALTERADA PARA BRANCO */
+
+/* Probabilidade de chuva */
+#probChuva{display:flex;justify-content:flex-start;margin-top:10px;flex-wrap:nowrap;overflow-x:auto;}
+.prob-dia{background:rgba(255,255,255,0.18);border-radius:10px;padding:6px 4px;margin-right:4px;text-align:center;font-weight:bold;flex:0 0 auto;min-width:50px;font-size:12px;}
+.prob-dia .icon{font-size:18px;display:block;margin:2px 0;}
+
+#weather-bg{position:fixed;inset:0;z-index:-1;pointer-events:none;overflow:hidden;}
+.sun{position:absolute;top:40px;right:40px;width:120px;height:120px;border-radius:50%;background:radial-gradient(circle,#fff59d,#fbc02d);box-shadow:0 0 60px rgba(255,255,0,.6);animation:spin 30s linear infinite;}
+.moon{position:absolute;top:40px;right:40px;width:100px;height:100px;border-radius:50%;background:radial-gradient(circle,#f0f0f0,#b0b0b0);box-shadow:0 0 30px rgba(255,255,255,.5);animation:spin 40s linear infinite;}
+.cloud{position:absolute;width:220px;height:65px;background:#fff;border-radius:50px;opacity:.7;animation:cloudMove linear infinite;}
+.cloud::before,.cloud::after{content:"";position:absolute;background:#fff;width:90px;height:90px;border-radius:50%;top:-45px;}
+.cloud::before{left:25px} .cloud::after{left:110px}
+.lightning{position:absolute;top:0;width:4px;height:100vh;background:white;opacity:0;}
+.rain{position:absolute;inset:0;}
+.drop{position:absolute;bottom:100%;width:2px;height:20px;background:rgba(255,255,255,.6);animation:rainFall linear infinite;}
 @keyframes rainFall{0%{transform:translateY(0)}100%{transform:translateY(110vh)}}
 @keyframes spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
 @keyframes cloudMove{from{left:-300px}to{left:110%}}
-#probChuva{
-  display:flex;
-  justify-content:flex-start;
-  margin-top:10px;
-  flex-wrap:nowrap;
-  overflow-x:auto;
-}
-.prob-dia{
-  background:rgba(255,255,255,0.18);
-  border-radius:10px;
-  padding:6px 4px;
-  margin-right:4px;
-  text-align:center;
-  font-weight:bold;
-  flex:0 0 auto;
-  min-width:50px;
-  font-size:12px;
-}
-.prob-dia .icon{
-  font-size:18px;
-  display:block;
-  margin:2px 0;
-}
 </style>
 </head>
 <body>
-
 <div id="weather-bg"></div>
-
 <h2 id="titulo"><span id="icone-clima">🌦️</span> Clima Em: <span id="nome-cidade"></span></h2>
 
 <div class="card">
-  <input id="cidade" placeholder="Digite a cidade (ex: Chapecó)">
-  <div id="lista" class="autocomplete"></div>
-  <button onclick="buscar()">Consultar últimos 7 dias</button>
-  <div id="info"></div>
-  <div id="historico"></div>
-  <div id="previsao"></div>
-  <div id="padrao"></div>
-  <div id="probChuva"></div>
-  <div id="alerta" class="alerta"></div>
+<input id="cidade" placeholder="Digite a cidade (ex: Chapecó)">
+<div id="lista" class="autocomplete"></div>
+<button onclick="buscar()">Consultar últimos 7 dias</button>
+<div id="info"></div>
+<div id="historico"></div>
+<div id="previsao"></div>
+<div id="padrao"></div>
+<div id="probChuva"></div>
+<div id="alerta" class="alerta"></div>
 </div>
 
 <div class="card">
-  <h3>📊 Pressão atmosférica – últimos 7 dias</h3>
-  <canvas id="grafico"></canvas>
+<div id="sol-info-title">🌅 Horário do nascer e pôr do sol</div>
+<div id="sol-info"></div>
+
+<h3>📊 Pressão atmosférica – últimos 7 dias</h3>
+<canvas id="grafico"></canvas>
 </div>
 
 <script>
-let lat=null, lon=null, chart=null;
-let cidadeEscolhida="";
-let chuvaGlobal=[], diasChuvaIndices=[];
+let lat=null, lon=null, chart=null, cidadeEscolhida="", diasChuvaIndices=[];
+const cidade=document.getElementById("cidade"), lista=document.getElementById("lista"), info=document.getElementById("info"),
+historico=document.getElementById("historico"), previsao=document.getElementById("previsao"), padrao=document.getElementById("padrao"),
+alerta=document.getElementById("alerta"), probChuva=document.getElementById("probChuva"),
+nomeCidadeSpan=document.getElementById("nome-cidade"), iconeClimaSpan=document.getElementById("icone-clima"),
+solInfoDiv=document.getElementById("sol-info");
 
-const cidade=document.getElementById("cidade");
-const lista=document.getElementById("lista");
-const info=document.getElementById("info");
-const historico=document.getElementById("historico");
-const previsao=document.getElementById("previsao");
-const padrao=document.getElementById("padrao");
-const alerta=document.getElementById("alerta");
-const probChuva=document.getElementById("probChuva");
-const nomeCidadeSpan = document.getElementById("nome-cidade");
-const iconeClimaSpan = document.getElementById("icone-clima");
+window.addEventListener("load",()=>{
+  if(navigator.geolocation){
+    navigator.geolocation.getCurrentPosition(pos=>{
+      lat=pos.coords.latitude; lon=pos.coords.longitude; cidadeEscolhida="Sua localização"; buscar();
+    });
+  }
+});
 
-/* AUTOCOMPLETE */
-cidade.addEventListener("input", async ()=>{
-  lista.innerHTML="";
-  if(cidade.value.length<3) return;
+cidade.addEventListener("input",async()=>{
+  lista.innerHTML=""; if(cidade.value.length<3) return;
   const r=await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${cidade.value}&count=5&language=pt`);
-  const d=await r.json();
-  if(!d.results) return;
+  const d=await r.json(); if(!d.results) return;
   d.results.forEach(c=>{
     const div=document.createElement("div");
     div.textContent=c.name+(c.admin1?" - "+c.admin1:"");
-    div.onclick=()=>{
-      lat=c.latitude;
-      lon=c.longitude;
-      cidade.value=c.name;
-      cidadeEscolhida=c.name;
-      lista.innerHTML="";
-    };
+    div.onclick=()=>{lat=c.latitude; lon=c.longitude; cidade.value=c.name; cidadeEscolhida=c.name; lista.innerHTML="";};
     lista.appendChild(div);
   });
 });
 
-/* BUSCAR */
 async function buscar(){
   if(!lat){alert("Selecione a cidade");return;}
-  const hoje=new Date();
-  const inicio=new Date();
-  inicio.setDate(hoje.getDate()-7);
-
-  // Histórico 7 dias
-  const rHist = await fetch(
-    `https://archive-api.open-meteo.com/v1/archive?latitude=${lat}&longitude=${lon}&start_date=${inicio.toISOString().split("T")[0]}&end_date=${hoje.toISOString().split("T")[0]}&hourly=pressure_msl,precipitation&timezone=America/Sao_Paulo`
-  );
-  const dHist = await rHist.json();
-
-  // Forecast
-  const rForecast = await fetch(
-    `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&hourly=relativehumidity_2m,pressure_msl,precipitation&timezone=America/Sao_Paulo`
-  );
-  const dForecast = await rForecast.json();
-
-  const agora = new Date();
-  const idxHora = dForecast.hourly.time.findIndex(t=>new Date(t).getHours()===agora.getHours());
-  const umidadeAtual = dForecast.hourly.relativehumidity_2m[idxHora];
-  const pressaoAtual = dForecast.hourly.pressure_msl[idxHora];
-  const chuvaAtual = dForecast.hourly.precipitation[idxHora];
-
-  // ícone clima e cidade
-  let iconeClima="☀️";
-  if(chuvaAtual>=5) iconeClima="🌧️";
-  else if(chuvaAtual>=1) iconeClima="⛅";
-  iconeClimaSpan.innerText = iconeClima;
-  nomeCidadeSpan.innerText = cidadeEscolhida;
-
-  // processa histórico
-  processar(dHist, umidadeAtual, pressaoAtual);
-
-  // Previsão diária 6 dias
-  const rProb = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=precipitation_probability_max&timezone=America/Sao_Paulo`);
-  const dProb = await rProb.json();
-
-  probChuva.innerHTML="";
-  let maxProb=0;
-  dProb.daily.time.slice(0,6).forEach((dia,i)=>{ // agora 6 dias
-    const p=dProb.daily.precipitation_probability_max[i];
-    if(p>maxProb) maxProb=p;
-    let icone="";
-    if(p>=70) icone="🌧️";
-    else if(p>=40) icone="⛅";
-    else icone="☀️";
-    const div=document.createElement("div");
-    div.className="prob-dia";
-    div.innerHTML=`<div style="font-size:10px">${dia.split("-").reverse().join("/")}</div><div class="icon">${icone}</div><div style="font-size:10px">${p}%</div>`;
-    probChuva.appendChild(div);
-  });
-
-  ativarFundo(maxProb);
+  const hoje=new Date(), inicio=new Date(); inicio.setDate(hoje.getDate()-7);
+  const rHist=await fetch(`https://archive-api.open-meteo.com/v1/archive?latitude=${lat}&longitude=${lon}&start_date=${inicio.toISOString().split("T")[0]}&end_date=${hoje.toISOString().split("T")[0]}&hourly=pressure_msl,precipitation`);
+  const dHist=await rHist.json();
+  const rForecast=await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&hourly=relativehumidity_2m,pressure_msl,precipitation`);
+  const dForecast=await rForecast.json();
+  const agora=new Date();
+  const idxHora=dForecast.hourly.time.findIndex(t=>new Date(t).getHours()===agora.getHours());
+  const umidadeAtual=dForecast.hourly.relativehumidity_2m[idxHora], pressaoAtual=dForecast.hourly.pressure_msl[idxHora], chuvaAtual=dForecast.hourly.precipitation[idxHora];
+  let iconeClima="☀️"; if(chuvaAtual>=5) iconeClima="🌧️"; else if(chuvaAtual>=1) iconeClima="⛅";
+  iconeClimaSpan.innerText=iconeClima; nomeCidadeSpan.innerText=cidadeEscolhida;
+  await processar(dHist,umidadeAtual,pressaoAtual);
 }
 
-/* PROCESSAR HISTÓRICO */
-function processar(d, umidadeAtual, pressaoAtual){
+async function processar(d,umidadeAtual,pressaoAtual){
   const dias={};
-  d.hourly.time.forEach((t,i)=>{
-    const dia=t.split("T")[0];
-    if(!dias[dia]) dias[dia]={p:[],c:0};
-    dias[dia].p.push(d.hourly.pressure_msl[i]);
-    dias[dia].c += d.hourly.precipitation[i];
-  });
-  const labels=[], pressao=[], chuva=[];
-  diasChuvaIndices=[];
-  Object.keys(dias).slice(-7).forEach((dia,i)=>{
-    labels.push(dia.split("-").reverse().join("/"));
-    const mediaP=dias[dia].p.reduce((a,b)=>a+b)/dias[dia].p.length;
-    pressao.push(mediaP);
-    chuva.push(dias[dia].c);
-    if(dias[dia].c>1) diasChuvaIndices.push(i);
-  });
-  chuvaGlobal = chuva;
-  render(labels, pressao, chuva, umidadeAtual, pressaoAtual);
+  d.hourly.time.forEach((t,i)=>{const dia=t.split("T")[0]; if(!dias[dia]) dias[dia]={p:[],c:0}; dias[dia].p.push(d.hourly.pressure_msl[i]); dias[dia].c+=d.hourly.precipitation[i];});
+  const labels=[],pressao=[],chuva=[]; diasChuvaIndices=[];
+  Object.keys(dias).slice(-7).forEach((dia,i)=>{labels.push(dia.split("-").reverse().join("/")); const mediaP=dias[dia].p.reduce((a,b)=>a+b)/dias[dia].p.length; pressao.push(mediaP); chuva.push(dias[dia].c); if(dias[dia].c>1) diasChuvaIndices.push(i);});
+  
+  const rSun=await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=sunrise,sunset&timezone=America/Sao_Paulo`);
+  const dSun=await rSun.json();
+  solInfoDiv.innerHTML="";
+  for(let i=0;i<4;i++){
+    const nascer=new Date(dSun.daily.sunrise[i]), poente=new Date(dSun.daily.sunset[i]);
+    const diaDiv=document.createElement("div"); diaDiv.className="sol-dia";
+    const diaLabel=document.createElement("div"); diaLabel.className="dia-label"; diaLabel.innerText=dSun.daily.time[i].split("-").reverse().join("/");
+    diaDiv.appendChild(diaLabel);
+
+    const barra=document.createElement("div"); barra.className="dia-bar"; diaDiv.appendChild(barra);
+
+    const iconsDiv=document.createElement("div"); iconsDiv.className="icons";
+    const iconNascer=document.createElement("div"); iconNascer.className="icon-nascer"; iconNascer.innerText="🌅";
+    const iconPoente=document.createElement("div"); iconPoente.className="icon-poente"; iconPoente.innerText="🌇";
+    iconsDiv.appendChild(iconNascer); iconsDiv.appendChild(iconPoente);
+    diaDiv.appendChild(iconsDiv);
+
+    const horasDiv=document.createElement("div"); horasDiv.className="horas";
+    const horaNascer=document.createElement("div"); horaNascer.className="hora-nascer"; horaNascer.innerText=nascer.getHours().toString().padStart(2,'0')+":"+nascer.getMinutes().toString().padStart(2,'0');
+    const horaPoente=document.createElement("div"); horaPoente.className="hora-poente"; horaPoente.innerText=poente.getHours().toString().padStart(2,'0')+":"+poente.getMinutes().toString().padStart(2,'0');
+    horasDiv.appendChild(horaNascer); horasDiv.appendChild(horaPoente);
+    diaDiv.appendChild(horasDiv);
+
+    solInfoDiv.appendChild(diaDiv);
+  }
+
+  render(labels,pressao,chuva,umidadeAtual,pressaoAtual);
 }
 
-/* RENDER GRÁFICO E DADOS */
-function render(labels,p,c, umidadeAtual, pressaoAtual){
+// Gráfico
+function render(labels,p,c,umidadeAtual,pressaoAtual){
   info.innerHTML=`🌬️ Pressão atual: <b>${pressaoAtual.toFixed(1)} hPa</b><br>💧 Umidade atual: <b>${umidadeAtual.toFixed(0)}%</b>`;
-  const mediaP = (p.reduce((a,b)=>a+b)/p.length).toFixed(1);
+  const mediaP=(p.reduce((a,b)=>a+b)/p.length).toFixed(1);
   historico.innerHTML=`📊 Média 7 dias – Pressão: <b>${mediaP} hPa</b>`;
-  let soma=0,cont=0;
-  c.forEach((v,i)=>{if(v>1){soma+=p[i];cont++;}});
-  const mediaChuva=cont?soma/cont:null;
-  previsao.innerHTML=mediaChuva
-    ? (pressaoAtual<=mediaChuva?"🌧️ <b>Tendência de chuva</b>":"☀️ <b>Baixa chance de chuva</b>")
-    : "";
-  padrao.innerHTML=mediaChuva
-    ? `🌧️ Costuma chover quando a pressão está em torno de <b>${mediaChuva.toFixed(1)} hPa</b>`
-    : "";
+  let soma=0,cont=0; c.forEach((v,i)=>{if(v>1){soma+=p[i];cont++;}}); const mediaChuva=cont?soma/cont:null;
+  previsao.innerHTML=mediaChuva?(pressaoAtual<=mediaChuva?"🌧️ <b>Tendência de chuva</b>":"☀️ <b>Baixa chance de chuva</b>"):"";
+  padrao.innerHTML=mediaChuva?`🌧️ Costuma chover quando a pressão está em torno de <b>${mediaChuva.toFixed(1)} hPa</b>`:"";
   alerta.className="alerta";
   if(c.at(-1)>20){alerta.classList.add("vermelho");alerta.innerText="🌩️ ALERTA: Forte tempestade registrada!";}
   else if(c.at(-1)>5){alerta.classList.add("amarelo");alerta.innerText="⛈️ Atenção: instabilidade atmosférica";}
   else{alerta.classList.add("verde");alerta.innerText="✅ Sem indicativo de tempestade";}
   if(chart) chart.destroy();
-  chart=new Chart(document.getElementById("grafico"),{
-    type:"line",
-    data:{
-      labels,
-      datasets:[
-        {
-          label:"Dias com chuva",
-          data:c.map(v=>v>1?Math.max(...p):null),
-          backgroundColor:"rgba(255,0,0,0.18)",
-          borderWidth:0,
-          fill:true,
-          pointRadius:0
-        },
-        {
-          label:"Pressão média diária (hPa)",
-          data:p,
-          borderColor:"#1565c0",
-          borderWidth:3,
-          tension:.4,
-          pointRadius:6,
-          pointBackgroundColor:c.map(v=>v>1?"red":"#1565c0")
-        }
-      ]
-    },
-    options:{responsive:true}
-  });
+  chart=new Chart(document.getElementById("grafico"),{type:"line",data:{labels,datasets:[{label:"Dias com chuva",data:c.map(v=>v>1?Math.max(...p):null),backgroundColor:"rgba(255,0,0,0.18)",borderWidth:0,fill:true,pointRadius:0},{label:"Pressão média diária (hPa)",data:p,borderColor:"#1565c0",borderWidth:3,tension:.4,pointRadius:6,pointBackgroundColor:c.map(v=>v>1?"red":"#1565c0")}]},options:{responsive:true}});
 }
 
-/* FUNDO ANIMADO REALISTA */
+// Fundo animado
 function ativarFundo(maxProb){
-  const bg=document.getElementById("weather-bg");
-  bg.innerHTML="";
-  const hora=new Date().getHours();
-  const noite=(hora<6 || hora>=18);
-
-  if(maxProb>=70){
-    bg.innerHTML=(noite?'<div class="moon"></div>':'')+
-                 criarClouds()+
-                 criarLightning()+
-                 criarChuva(150,noite);
-  }else if(maxProb>=40){
-    bg.innerHTML=(noite?'<div class="moon"></div>':'')+
-                 criarClouds()+
-                 criarChuva(80,noite);
-  }else{
-    bg.innerHTML=noite?'<div class="moon"></div>':'<div class="sun"></div>';
-  }
+  const bg=document.getElementById("weather-bg"); bg.innerHTML="";
+  const hora=new Date().getHours(); const noite=(hora<6||hora>=18);
+  if(maxProb>=70){bg.innerHTML=(noite?'<div class="moon"></div>':'')+criarClouds()+criarLightning()+criarChuva(150,noite);}
+  else if(maxProb>=40){bg.innerHTML=(noite?'<div class="moon"></div>':'')+criarClouds()+criarChuva(80,noite);}
+  else{bg.innerHTML=noite?'<div class="moon"></div>':'<div class="sun"></div>';}
 }
-
-function criarClouds(){
-  let html="";
-  const tops=[100,180,250];
-  tops.forEach((t)=>{
-    const dur=(120+Math.random()*60).toFixed(0);
-    html+=`<div class="cloud" style="top:${t}px;left:-300px;animation-duration:${dur}s;opacity:${0.5+Math.random()*0.3}"></div>`;
-  });
-  return html;
-}
-function criarLightning(){
-  let html="";
-  for(let i=0;i<3;i++){
-    const left=Math.random()*90+5;
-    const delay=Math.random()*3;
-    html+=`<div class="lightning" style="left:${left}%;animation-delay:${delay}s;"></div>`;
-  }
-  return html;
-}
-function criarChuva(qtd,noite){
-  let html='<div class="rain">';
-  for(let i=0;i<qtd;i++){
-    const left=Math.random()*100;
-    const dur=(Math.random()*1.5+0.7).toFixed(2);
-    const delay=(Math.random()*-5).toFixed(2);
-    const cor=noite?'rgba(180,180,255,0.6)':'rgba(255,255,255,0.6)';
-    const height=(15+Math.random()*10).toFixed(0);
-    html+=`<div class="drop" style="left:${left}%;height:${height}px;animation-duration:${dur}s;animation-delay:${delay}s;background:${cor}"></div>`;
-  }
-  html+='</div>';
-  return html;
-}
+function criarClouds(){let html=""; [100,180,250].forEach(t=>{const dur=(120+Math.random()*60).toFixed(0); html+=`<div class="cloud" style="top:${t}px;left:-300px;animation-duration:${dur}s;opacity:${0.5+Math.random()*0.3}"></div>`}); return html;}
+function criarLightning(){let html=""; for(let i=0;i<3;i++){const left=Math.random()*90+5,delay=Math.random()*3; html+=`<div class="lightning" style="left:${left}%;animation-delay:${delay}s;"></div>`;} return html;}
+function criarChuva(qtd,noite){let html='<div class="rain">'; for(let i=0;i<qtd;i++){const left=Math.random()*100,dur=(Math.random()*1.5+0.7).toFixed(2),delay=(Math.random()*-5).toFixed(2),cor=noite?'rgba(180,180,255,0.6)':'rgba(255,255,255,0.6)',height=(15+Math.random()*10).toFixed(0); html+=`<div class="drop" style="left:${left}%;height:${height}px;animation-duration:${dur}s;animation-delay:${delay}s;background:${cor}"></div>`;} html+='</div>'; return html;}
 </script>
 </body>
 </html>
