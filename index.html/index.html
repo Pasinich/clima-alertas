@@ -75,7 +75,9 @@ alerta=document.getElementById("alerta"), probChuva=document.getElementById("pro
 nomeCidadeSpan=document.getElementById("nome-cidade"), iconeClimaSpan=document.getElementById("icone-clima"),
 solInfoDiv=document.getElementById("sol-info"), solTituloDiv=document.getElementById("sol-titulo");
 
+// Mensagem ao carregar a primeira vez
 window.addEventListener("load",()=>{
+  info.innerText = "Aguarde! Buscando Dados Locais!";
   if(navigator.geolocation){
     navigator.geolocation.getCurrentPosition(pos=>{
       lat=pos.coords.latitude; lon=pos.coords.longitude; cidadeEscolhida="Sua localização"; buscar();
@@ -123,6 +125,7 @@ async function buscar(){
   ativarFundo(maxProb);
 }
 
+// Resto do código continua igual, sem alterações
 async function processar(d,umidadeAtual,pressaoAtual){
   const dias={};
   d.hourly.time.forEach((t,i)=>{const dia=t.split("T")[0]; if(!dias[dia]) dias[dia]={p:[],c:0}; dias[dia].p.push(d.hourly.pressure_msl[i]); dias[dia].c+=d.hourly.precipitation[i];});
@@ -135,22 +138,16 @@ async function processar(d,umidadeAtual,pressaoAtual){
   solTituloDiv.innerText=`🌅 Nascer/Por do sol em: ${cidadeEscolhida}`;
   solInfoDiv.innerHTML="";
   for(let i=0;i<Math.min(4,dSun.daily.sunrise.length);i++){
-    // Corrige horários usando string diretamente, que já considera timezone
     const nascer=new Date(dSun.daily.sunrise[i]);
     const poente=new Date(dSun.daily.sunset[i]);
-    
     const diaDiv=document.createElement("div"); diaDiv.className="sol-dia";
     const dataDia=document.createElement("div"); dataDia.className="data-dia"; dataDia.innerText=dSun.daily.time[i].split("-").reverse().join("/"); diaDiv.appendChild(dataDia);
-    
     const durDia=(poente-nascer)/1000/3600; const larguraPerc=(durDia/24)*100;
     const barra=document.createElement("div"); barra.className="dia-bar"; barra.style.width=larguraPerc+"%"; barra.style.left=((nascer.getHours()/24)*100)+"%"; diaDiv.appendChild(barra);
-    
     const iconNascer=document.createElement("div"); iconNascer.className="icon-nascer"; iconNascer.innerText="🌅"; diaDiv.appendChild(iconNascer);
     const horaNascer=document.createElement("div"); horaNascer.className="hora-nascer"; horaNascer.innerText=nascer.getHours().toString().padStart(2,'0')+":"+nascer.getMinutes().toString().padStart(2,'0'); diaDiv.appendChild(horaNascer);
-    
     const iconPoente=document.createElement("div"); iconPoente.className="icon-poente"; iconPoente.innerText="🌇"; diaDiv.appendChild(iconPoente);
     const horaPoente=document.createElement("div"); horaPoente.className="hora-poente"; horaPoente.innerText=poente.getHours().toString().padStart(2,'0')+":"+poente.getMinutes().toString().padStart(2,'0'); diaDiv.appendChild(horaPoente);
-    
     solInfoDiv.appendChild(diaDiv);
   }
   render(labels,pressao,chuva,umidadeAtual,pressaoAtual);
