@@ -21,9 +21,10 @@ button{background:#00e676;font-weight:bold;cursor:pointer;}
 canvas{background:#fff;border-radius:10px;padding:8px;}
 #sol-titulo{margin-bottom:6px;font-weight:bold;font-size:16px;text-align:center;}
 #sol-info{display:flex;justify-content:space-between;margin-bottom:8px;}
-.sol-dia{flex:1;height:50px;border-radius:6px;margin:0 2px;position:relative;overflow:hidden;background:#1a237e;display:flex;flex-direction:column;justify-content:center;align-items:center;}
-.sol-dia .dia-bar{position:absolute;top:8px;bottom:16px;background:#ffeb3b;border-radius:3px;}
-.sol-dia .icon-nascer,.sol-dia .icon-poente{position:absolute;top:0;font-size:16px;color:#ff6f00;}
+.sol-dia{flex:1;height:100px;border-radius:6px;margin:0 4px;position:relative;overflow:hidden;background:#1a237e;display:flex;flex-direction:column;align-items:center;padding-top:18px;}
+.sol-dia .data-dia{font-size:14px;margin-bottom:6px;color:#fff;font-weight:bold;}
+.sol-dia .dia-bar{position:absolute;top:35px;bottom:20px;background:#ffeb3b;border-radius:3px;}
+.sol-dia .icon-nascer,.sol-dia .icon-poente{position:absolute;top:35px;font-size:16px;color:#ff6f00;}
 .sol-dia .icon-nascer{left:0;} 
 .sol-dia .icon-poente{right:0;}
 .sol-dia .hora-nascer,.sol-dia .hora-poente{position:absolute;font-size:12px;color:#fff;bottom:2px;}
@@ -62,11 +63,12 @@ canvas{background:#fff;border-radius:10px;padding:8px;}
 </div>
 <div class="card">
 <div id="sol-titulo"></div>
-<div id="sol-info"></div>
+<div id="sol-info" style="display:flex;gap:4px;"></div>
 <h3>📊 Pressão atmosférica – últimos 7 dias</h3>
 <canvas id="grafico"></canvas>
 </div>
 <script>
+// Mesma lógica anterior
 let lat=null, lon=null, chart=null, cidadeEscolhida="", diasChuvaIndices=[];
 const cidade=document.getElementById("cidade"), lista=document.getElementById("lista"), info=document.getElementById("info"),
 historico=document.getElementById("historico"), previsao=document.getElementById("previsao"), padrao=document.getElementById("padrao"),
@@ -97,9 +99,9 @@ cidade.addEventListener("input",async()=>{
 async function buscar(){
   if(!lat){alert("Selecione a cidade");return;}
   const hoje=new Date(), inicio=new Date(); inicio.setDate(hoje.getDate()-7);
-  const rHist=await fetch(`https://archive-api.open-meteo.com/v1/archive?latitude=${lat}&longitude=${lon}&start_date=${inicio.toISOString().split("T")[0]}&end_date=${hoje.toISOString().split("T")[0]}&hourly=pressure_msl,precipitation&timezone=America/Sao_Paulo`);
+  const rHist=await fetch(`https://archive-api.open-meteo.com/v1/archive?latitude=${lat}&longitude=${lon}&start_date=${inicio.toISOString().split("T")[0]}&end_date=${hoje.toISOString().split("T")[0]}&hourly=pressure_msl,precipitation`);
   const dHist=await rHist.json();
-  const rForecast=await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&hourly=relativehumidity_2m,pressure_msl,precipitation&timezone=America/Sao_Paulo`);
+  const rForecast=await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&hourly=relativehumidity_2m,pressure_msl,precipitation`);
   const dForecast=await rForecast.json();
   const agora=new Date();
   const idxHora=dForecast.hourly.time.findIndex(t=>new Date(t).getHours()===agora.getHours());
@@ -107,7 +109,7 @@ async function buscar(){
   let iconeClima="☀️"; if(chuvaAtual>=5) iconeClima="🌧️"; else if(chuvaAtual>=1) iconeClima="⛅";
   iconeClimaSpan.innerText=iconeClima; nomeCidadeSpan.innerText=cidadeEscolhida;
   await processar(dHist,umidadeAtual,pressaoAtual);
-  const rProb=await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=precipitation_probability_max&timezone=America/Sao_Paulo`);
+  const rProb=await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=precipitation_probability_max`);
   const dProb=await rProb.json();
   probChuva.innerHTML=""; let maxProb=0;
   dProb.daily.time.slice(0,6).forEach((dia,i)=>{
@@ -135,6 +137,7 @@ async function processar(d,umidadeAtual,pressaoAtual){
   for(let i=0;i<Math.min(4,dSun.daily.sunrise.length);i++){
     const nascer=new Date(dSun.daily.sunrise[i]), poente=new Date(dSun.daily.sunset[i]);
     const diaDiv=document.createElement("div"); diaDiv.className="sol-dia";
+    const dataDia=document.createElement("div"); dataDia.className="data-dia"; dataDia.innerText=dSun.daily.time[i].split("-").reverse().join("/"); diaDiv.appendChild(dataDia);
     const durDia=(poente-nascer)/1000/3600; const larguraPerc=(durDia/24)*100;
     const barra=document.createElement("div"); barra.className="dia-bar"; barra.style.width=larguraPerc+"%"; barra.style.left=((nascer.getHours()/24)*100)+"%"; diaDiv.appendChild(barra);
     const iconNascer=document.createElement("div"); iconNascer.className="icon-nascer"; iconNascer.innerText="🌅"; diaDiv.appendChild(iconNascer);
@@ -146,7 +149,7 @@ async function processar(d,umidadeAtual,pressaoAtual){
   render(labels,pressao,chuva,umidadeAtual,pressaoAtual);
 }
 
-// render, ativarFundo, criarClouds, criarLightning, criarChuva mantidos
+// Funções render, ativarFundo, criarClouds, criarLightning, criarChuva permanecem iguais
 function render(labels,p,c,umidadeAtual,pressaoAtual){
   info.innerHTML=`🌬️ Pressão atual: <b>${pressaoAtual.toFixed(1)} hPa</b><br>💧 Umidade atual: <b>${umidadeAtual.toFixed(0)}%</b>`;
   const mediaP=(p.reduce((a,b)=>a+b)/p.length).toFixed(1);
@@ -169,7 +172,6 @@ function ativarFundo(maxProb){
   else if(maxProb>=40){bg.innerHTML=(noite?'<div class="moon"></div>':'')+criarClouds()+criarChuva(80,noite);}
   else{bg.innerHTML=noite?'<div class="moon"></div>':'<div class="sun"></div>';}
 }
-
 function criarClouds(){let html=""; [100,180,250].forEach(t=>{const dur=(120+Math.random()*60).toFixed(0); html+=`<div class="cloud" style="top:${t}px;left:-300px;animation-duration:${dur}s;opacity:${0.5+Math.random()*0.3}"></div>`}); return html;}
 function criarLightning(){let html=""; for(let i=0;i<3;i++){const left=Math.random()*90+5,delay=Math.random()*3; html+=`<div class="lightning" style="left:${left}%;animation-delay:${delay}s;"></div>`;} return html;}
 function criarChuva(qtd,noite){let html='<div class="rain">'; for(let i=0;i<qtd;i++){const left=Math.random()*100,dur=(Math.random()*1.5+0.7).toFixed(2),delay=(Math.random()*-5).toFixed(2),cor=noite?'rgba(180,180,255,0.6)':'rgba(255,255,255,0.6)',height=(15+Math.random()*10).toFixed(0); html+=`<div class="drop" style="left:${left}%;height:${height}px;animation-duration:${dur}s;animation-delay:${delay}s;background:${cor}"></div>`;} html+='</div>'; return html;}
