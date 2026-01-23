@@ -84,6 +84,7 @@ canvas{background:#fff;border-radius:10px;padding:8px;}
 <script>
 let lat=null,lon=null,chart=null;
 
+// elementos
 const cidade=document.getElementById("cidade"),
 lista=document.getElementById("lista"),
 nomeCidade=document.getElementById("nome-cidade"),
@@ -95,6 +96,19 @@ linhaAviso=document.getElementById("linha-aviso"),
 linhaSol=document.getElementById("linha-sol"),
 previsao5=document.getElementById("previsao-5dias");
 
+// 🎯 Ao carregar, pega a localização atual
+window.addEventListener("load",()=>{
+  if(navigator.geolocation){
+    navigator.geolocation.getCurrentPosition(pos=>{
+      lat=pos.coords.latitude;
+      lon=pos.coords.longitude;
+      nomeCidade.innerText="Sua localização";
+      buscar();
+    },()=>{console.log("Permissão de localização negada")});
+  }
+});
+
+// autocomplete
 cidade.addEventListener("input",async()=>{
  lista.innerHTML="";
  if(cidade.value.length<3)return;
@@ -109,14 +123,15 @@ cidade.addEventListener("input",async()=>{
   div.onclick=()=>{
    cidade.value=c.name;
    nomeCidade.innerText=c.name;
-   lat=c.latitude;
-   lon=c.longitude;
+   lat=c.latitude; lon=c.longitude;
    lista.innerHTML="";
+   buscar(); // atualizar dados após escolha
   };
   lista.appendChild(div);
  });
 });
 
+// 🔹 Função principal
 async function buscar(){
  if(!lat||!lon){alert("Selecione a cidade");return;}
 
@@ -144,16 +159,18 @@ async function buscar(){
  montarLinhaSol(atual.daily);
  montarPrevisao5Dias(atual.daily);
 
+ // 📊 Gráfico últimos 5 dias
  const hoje=new Date();
- const inicio=new Date();inicio.setDate(hoje.getDate()-5);
+ const inicio=new Date(); inicio.setDate(hoje.getDate()-5);
 
  const rHist=await fetch(
- `https://archive-api.open-meteo.com/v1/archive?latitude=${lat}&longitude=${lon}&start_date=${inicio.toISOString().split("T")[0]}&end_date=${hoje.toISOString().split("T")[0]}&hourly=pressure_msl,precipitation&timezone=auto`
+   `https://archive-api.open-meteo.com/v1/archive?latitude=${lat}&longitude=${lon}&start_date=${inicio.toISOString().split("T")[0]}&end_date=${hoje.toISOString().split("T")[0]}&hourly=pressure_msl,precipitation&timezone=auto`
  );
  const hist=await rHist.json();
  montarGrafico(hist.hourly);
 }
 
+// define status tempo
 function definirStatus(p,c){
  linhaStatus.className="linha-status";
  if(c>8||p<1005){
@@ -168,6 +185,7 @@ function definirStatus(p,c){
  }
 }
 
+// linha nascer/pôr do sol
 function montarLinhaSol(d){
  linhaSol.innerHTML="";
  for(let i=0;i<4;i++){
@@ -182,6 +200,7 @@ function montarLinhaSol(d){
  }
 }
 
+// linha previsão 5 dias
 function montarPrevisao5Dias(d){
  previsao5.innerHTML="";
  for(let i=0;i<5;i++){
@@ -199,9 +218,9 @@ function montarPrevisao5Dias(d){
  }
 }
 
+// gráfico últimos 5 dias
 function montarGrafico(h){
  const dias={},chuvaDia={};
-
  h.time.forEach((t,i)=>{
   const d=t.split("T")[0];
   if(!dias[d]){dias[d]=[];chuvaDia[d]=0;}
