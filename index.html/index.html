@@ -233,7 +233,7 @@ function montarPrevisao5Dias(d){
  }
 }
 
-// gráfico últimos 5 dias com gradient color
+// gráfico últimos 5 dias com hover interativo
 function montarGrafico(h){
  const dias={},chuvaDia={};
  h.time.forEach((t,i)=>{
@@ -243,12 +243,13 @@ function montarGrafico(h){
   chuvaDia[d]+=h.precipitation[i];
  });
 
- const labels=[],pressao=[],cores=[];
+ const labels=[],pressao=[],cores=[],chuvaLabels=[];
  Object.keys(dias).slice(-5).forEach(d=>{
   labels.push(d.split("-").reverse().join("/"));
   const mediaDia=(dias[d].reduce((a,b)=>a+b)/dias[d].length).toFixed(1);
   pressao.push(mediaDia);
   cores.push(mediaDia>=1012?"#1565c0":mediaDia>=1005?"#f9a825":"#c62828");
+  chuvaLabels.push(chuvaDia[d].toFixed(1));
  });
 
  const fundo=filtroChuva(dias,chuvaDia);
@@ -293,6 +294,16 @@ function montarGrafico(h){
    responsive:true,
    plugins:{
     legend:{display:true,position:"bottom"},
+    tooltip:{
+      callbacks:{
+        label: function(context){
+          const idx=context.dataIndex;
+          const p=pressao[idx];
+          const c=chuvaLabels[idx];
+          return `Pressão: ${p} hPa | Chuva: ${c} mm`;
+        }
+      }
+    },
     title:{
       display:true,
       text:"Dias de chuva e Pressão atmosférica (últimos 5 dias)",
