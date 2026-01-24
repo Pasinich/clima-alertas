@@ -100,18 +100,10 @@ previsao5=document.getElementById("previsao-5dias");
 // 🎯 Ao carregar, pega a localização atual
 window.addEventListener("load",()=>{
   if(navigator.geolocation){
-    navigator.geolocation.getCurrentPosition(async pos=>{
+    navigator.geolocation.getCurrentPosition(pos=>{
       lat=pos.coords.latitude;
       lon=pos.coords.longitude;
-      // reverse geocoding para pegar nome da cidade
-      const rGeo = await fetch(`https://geocoding-api.open-meteo.com/v1/reverse?latitude=${lat}&longitude=${lon}&language=pt`);
-      const geoData = await rGeo.json();
-      if(geoData && geoData.name){
-        nomeCidade.innerText = geoData.name;
-      } else {
-        nomeCidade.innerText = "Sua localização";
-      }
-      buscar(); // atualizar dados após pegar cidade
+      buscar();
     },()=>{console.log("Permissão de localização negada")});
   }
 });
@@ -130,8 +122,9 @@ cidade.addEventListener("input",async()=>{
   div.innerText=c.name+(c.admin1?" - "+c.admin1:"");
   div.onclick=()=>{
    cidade.value=c.name;
+   nomeCidade.innerText=c.name;
+   tituloClima.innerText="Clima em:";
    lat=c.latitude; lon=c.longitude;
-   nomeCidade.innerText = c.name;
    lista.innerHTML="";
    buscar(); // atualizar dados após escolha
   };
@@ -155,6 +148,8 @@ async function buscar(){
  const pressaoAtual = atual.hourly.pressure_msl[idxHora>=0?idxHora:0];
  const umidadeAtual = atual.hourly.relativehumidity_2m[idxHora>=0?idxHora:0];
  const chuvaAtual = atual.hourly.precipitation[idxHora>=0?idxHora:0];
+
+ nomeCidade.innerText=nomeCidade.innerText||"Sua localização";
 
  info.innerHTML=`🌡️ Temperatura atual: <b>${tempAtual}°C</b>`;
  linhaPressao.innerHTML=`🌬️ Pressão atual: <b>${pressaoAtual} hPa</b>`;
