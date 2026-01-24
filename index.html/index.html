@@ -60,7 +60,7 @@ canvas{background:#fff;border-radius:10px;padding:8px;}
 
 <body>
 
-<h2>🌦️ Clima em <span id="nome-cidade"></span></h2>
+<h2>🌦️ <span id="titulo-clima">Clima em:</span> <span id="nome-cidade"></span></h2>
 
 <div class="card">
 <input id="cidade" placeholder="Digite a cidade">
@@ -88,6 +88,7 @@ let lat=null,lon=null,chart=null;
 const cidade=document.getElementById("cidade"),
 lista=document.getElementById("lista"),
 nomeCidade=document.getElementById("nome-cidade"),
+tituloClima=document.getElementById("titulo-clima"),
 info=document.getElementById("info"),
 linhaPressao=document.getElementById("linha-pressao"),
 linhaUmidade=document.getElementById("linha-umidade"),
@@ -102,7 +103,6 @@ window.addEventListener("load",()=>{
     navigator.geolocation.getCurrentPosition(pos=>{
       lat=pos.coords.latitude;
       lon=pos.coords.longitude;
-      nomeCidade.innerText="Sua localização";
       buscar();
     },()=>{console.log("Permissão de localização negada")});
   }
@@ -123,6 +123,7 @@ cidade.addEventListener("input",async()=>{
   div.onclick=()=>{
    cidade.value=c.name;
    nomeCidade.innerText=c.name;
+   tituloClima.innerText="Clima em:";
    lat=c.latitude; lon=c.longitude;
    lista.innerHTML="";
    buscar(); // atualizar dados após escolha
@@ -147,6 +148,8 @@ async function buscar(){
  const pressaoAtual = atual.hourly.pressure_msl[idxHora>=0?idxHora:0];
  const umidadeAtual = atual.hourly.relativehumidity_2m[idxHora>=0?idxHora:0];
  const chuvaAtual = atual.hourly.precipitation[idxHora>=0?idxHora:0];
+
+ nomeCidade.innerText=nomeCidade.innerText||"Sua localização";
 
  info.innerHTML=`🌡️ Temperatura atual: <b>${tempAtual}°C</b>`;
  linhaPressao.innerHTML=`🌬️ Pressão atual: <b>${pressaoAtual} hPa</b>`;
