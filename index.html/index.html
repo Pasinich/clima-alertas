@@ -233,7 +233,7 @@ function montarPrevisao5Dias(d){
  }
 }
 
-// gráfico últimos 5 dias
+// gráfico últimos 5 dias com gradient color
 function montarGrafico(h){
  const dias={},chuvaDia={};
  h.time.forEach((t,i)=>{
@@ -243,17 +243,21 @@ function montarGrafico(h){
   chuvaDia[d]+=h.precipitation[i];
  });
 
- const labels=[],pressao=[],fundo=[],cores=[];
+ const labels=[],pressao=[],cores=[];
  Object.keys(dias).slice(-5).forEach(d=>{
   labels.push(d.split("-").reverse().join("/"));
   const mediaDia=(dias[d].reduce((a,b)=>a+b)/dias[d].length).toFixed(1);
   pressao.push(mediaDia);
-  fundo.push(chuvaDia[d]>1?1050:null);
-  cores.push(chuvaDia[d]>1?"red":"#1565c0");
+  cores.push(mediaDia>=1012?"#1565c0":mediaDia>=1005?"#f9a825":"#c62828");
  });
 
+ const fundo=filtroChuva(dias,chuvaDia);
+
  if(chart) chart.destroy();
- chart=new Chart(document.getElementById("grafico"),{
+
+ const ctx=document.getElementById("grafico").getContext("2d");
+
+ chart=new Chart(ctx,{
   data:{
    labels,
    datasets:[
@@ -268,10 +272,19 @@ function montarGrafico(h){
      type:"line",
      label:"Pressão atmosférica (hPa)",
      data:pressao,
-     borderColor:"#1565c0",
      borderWidth:3,
      pointRadius:6,
      pointBackgroundColor:cores,
+     borderColor: function(context){
+       const chart = context.chart;
+       const {ctx, chartArea} = chart;
+       if (!chartArea) return;
+       const gradient = ctx.createLinearGradient(0,0,chartArea.right,0);
+       gradient.addColorStop(0,"#1565c0");
+       gradient.addColorStop(0.5,"#f9a825");
+       gradient.addColorStop(1,"#c62828");
+       return gradient;
+     },
      tension:0.4
     }
    ]
@@ -288,6 +301,15 @@ function montarGrafico(h){
    }
   }
  });
+}
+
+// função para dados de fundo vermelho nos dias de chuva
+function filtroChuva(dias,chuvaDia){
+ const fundo=[];
+ Object.keys(dias).slice(-5).forEach(d=>{
+   fundo.push(chuvaDia[d]>1?1050:null);
+ });
+ return fundo;
 }
 </script>
 
