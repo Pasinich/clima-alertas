@@ -54,6 +54,10 @@ input{width:100%;padding:12px;margin-top:8px;border:none;border-radius:10px;font
 .previsao-dia .icon{font-size:18px;margin:2px 0;}
 .previsao-dia .chuva{font-size:11px;color:#fff;}
 
+#linha-aviso.verde{background:#2e7d32;padding:6px;border-radius:6px;color:#fff;}
+#linha-aviso.amarelo{background:#f9a825;padding:6px;border-radius:6px;color:#000;}
+#linha-aviso.vermelho{background:#c62828;padding:6px;border-radius:6px;color:#fff;}
+
 canvas{background:#fff;border-radius:10px;padding:8px;}
 </style>
 </head>
@@ -156,7 +160,16 @@ async function buscar(){
 
  definirStatus(pressaoAtual,chuvaAtual);
 
- linhaAviso.innerHTML=`🌧️ <b>Costuma chover</b> quando a pressão atmosférica está abaixo de <b>1010 hPa</b>.`;
+ // 🔹 Atualiza aviso com cores conforme pressão
+ linhaAviso.className="linha-info";
+ if(pressaoAtual>=1012){
+   linhaAviso.classList.add("verde");
+ } else if(pressaoAtual>=1005){
+   linhaAviso.classList.add("amarelo");
+ } else {
+   linhaAviso.classList.add("vermelho");
+ }
+ linhaAviso.innerHTML=`🌧️ <b>Costuma chover</b> quando a pressão atmosférica está abaixo de <b>${Math.round(pressaoAtual)} hPa</b>.`;
 
  montarLinhaSol(atual.daily);
  montarPrevisao5Dias(atual.daily);
