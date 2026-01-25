@@ -5,6 +5,7 @@
 <title>Clima & Pressão Atmosférica</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
 <style>
 body{margin:0;font-family:Arial,sans-serif;background:linear-gradient(135deg,#1565c0,#26c6da);color:#fff;padding:16px;}
 h2{text-align:center;font-size:24px;}
@@ -23,10 +24,10 @@ input{width:100%;padding:12px;margin-top:8px;border:none;border-radius:10px;font
 .sol-data{font-size:13px;margin-bottom:6px;}
 #previsao-5dias{display:flex;gap:6px;margin-top:8px;overflow-x:auto;}
 .previsao-dia{flex:0 0 auto;background:rgba(255,255,255,.18);border-radius:10px;padding:6px;min-width:90px;text-align:center;font-weight:bold;font-size:12px;}
-.previsao-dia .icon{font-size:18px;margin:2px 0;}
 canvas{background:#fff;border-radius:10px;padding:8px;}
 </style>
 </head>
+
 <body>
 
 <h2>🌡️ Clima em: <span id="nome-cidade"></span></h2>
@@ -63,10 +64,7 @@ linhaAviso=document.getElementById("linha-aviso"),
 linhaSol=document.getElementById("linha-sol"),
 previsao5=document.getElementById("previsao-5dias");
 
-cidade.addEventListener("focus",()=>{
- cidade.value="";
- lista.innerHTML="";
-});
+cidade.addEventListener("focus",()=>{cidade.value="";lista.innerHTML="";});
 
 cidade.addEventListener("input",async()=>{
  lista.innerHTML="";
@@ -77,15 +75,16 @@ cidade.addEventListener("input",async()=>{
  if(!d.results) return;
 
  d.results.forEach(c=>{
-  const nome = c.admin1 ? `${c.name} - ${c.admin1}` : `${c.name} - ${c.country}`;
+  const nomeCompleto=c.admin1?`${c.name} - ${c.admin1}`:`${c.name} - ${c.country}`;
   const div=document.createElement("div");
-  div.innerText=nome;
+  div.innerText=nomeCompleto;
   div.onclick=()=>{
-    nomeCidade.innerText=nome;
-    lat=c.latitude;
-    lon=c.longitude;
-    lista.innerHTML="";
-    buscar();
+   cidade.value=nomeCompleto;
+   nomeCidade.innerText=nomeCompleto;
+   lat=c.latitude;
+   lon=c.longitude;
+   lista.innerHTML="";
+   buscar();
   };
   lista.appendChild(div);
  });
@@ -94,22 +93,33 @@ cidade.addEventListener("input",async()=>{
 async function buscar(){
  if(!lat||!lon) return;
 
+ /* ===== DADOS ATUAIS ===== */
  const rAtual=await fetch(
-  `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&hourly=temperature_2m,relativehumidity_2m,pressure_msl,precipitation&daily=sunrise,sunset,temperature_2m_min,temperature_2m_max,precipitation_probability_max,precipitation_sum&timezone=auto`
+  `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&hourly=apparent_temperature,relativehumidity_2m,pressure_msl,precipitation&daily=sunrise,sunset,temperature_2m_min,temperature_2m_max,precipitation_probability_max,precipitation_sum&timezone=auto`
  );
  const atual=await rAtual.json();
 
- const agora=new Date();
- const idx=atual.hourly.time.findIndex(t=>new Date(t).getHours()===agora.getHours());
+ const agora=Date.now();
+ let idx=0,min=Infinity;
+ atual.hourly.time.forEach((t,i)=>{
+  const d=Math.abs(new Date(t).getTime()-agora);
+  if(d<min){min=d;idx=i;}
+ });
 
- info.innerHTML=`🌡️ Temperatura atual: <b>${atual.hourly.temperature_2m[idx]}°C</b>`;
- linhaPressao.innerHTML=`🌬️ Pressão atual: <b>${atual.hourly.pressure_msl[idx]} hPa</b>`;
- linhaUmidade.innerHTML=`💧 Umidade atual: <b>${atual.hourly.relativehumidity_2m[idx]}%</b>`;
+ info.innerHTML =
+  `🌡️ Temperatura atual: <b>${atual.current_weather.temperature}°C</b> • Sensação: <b>${atual.hourly.apparent_temperature[idx]}°C</b>`;
+
+ linhaPressao.innerHTML =
+  `🌬️ Pressão atmosférica atual: <b>${atual.hourly.pressure_msl[idx]} hPa</b>`;
+
+ linhaUmidade.innerHTML =
+  `💧 Umidade atual: <b>${atual.hourly.relativehumidity_2m[idx]}%</b> • 💨 Vento: <b>${atual.current_weather.windspeed} km/h</b>`;
 
  definirStatus(atual.hourly.pressure_msl[idx],atual.hourly.precipitation[idx]);
  montarLinhaSol(atual.daily);
  montarPrevisao5Dias(atual.daily);
 
+ /* ===== HISTÓRICO ===== */
  const hoje=new Date();
  const ini=new Date(); ini.setDate(hoje.getDate()-30);
 
@@ -130,34 +140,15 @@ function definirStatus(p,c){
 }
 
 function calcularPressaoChuva(h){
- let pressoes=[];
-
- // Chuva significativa
- h.precipitation.forEach((v,i)=>{
-  if(v>=0.5) pressoes.push(h.pressure_msl[i]);
- });
-
- // Relaxa critério
- if(pressoes.length<5){
-  h.precipitation.forEach((v,i)=>{
-   if(v>=0.1) pressoes.push(h.pressure_msl[i]);
-  });
- }
-
- // Fallback climatológico
- if(pressoes.length<5){
-  linhaAviso.innerHTML=
-   "🌧️ <b>Nesta cidade costuma chover</b> quando a pressão está abaixo de <b>1013 hPa</b> (referência climatológica).";
+ let p=[];
+ h.precipitation.forEach((v,i)=>{if(v>=0.3)p.push(h.pressure_msl[i]);});
+ if(p.length<5){
+  linhaAviso.innerHTML="🌧️ <b>Nesta cidade costuma chover</b> quando a pressão está abaixo de <b>1013 hPa</b>.";
   return;
  }
-
- // Estatística: metade inferior
- pressoes.sort((a,b)=>a-b);
- const metade=Math.floor(pressoes.length/2);
- const media=pressoes.slice(0,metade).reduce((a,b)=>a+b)/metade;
-
- linhaAviso.innerHTML=
-  `🌧️ <b>Nesta cidade costuma chover</b> quando a pressão está abaixo de <b>${media.toFixed(1)} hPa</b>.`;
+ p.sort((a,b)=>a-b);
+ const m=p.slice(0,Math.floor(p.length/2)).reduce((a,b)=>a+b)/Math.floor(p.length/2);
+ linhaAviso.innerHTML=`🌧️ <b>Nesta cidade costuma chover</b> quando a pressão está abaixo de <b>${m.toFixed(1)} hPa</b>.`;
 }
 
 function montarLinhaSol(d){
@@ -195,12 +186,11 @@ function montarGrafico(h){
   chuva[d]+=h.precipitation[i];
  });
 
- const labels=[],pressao=[],fundo=[],pontos=[];
+ const labels=[],pressao=[],barras=[];
  Object.keys(dias).slice(-5).forEach(d=>{
   labels.push(d.split("-").reverse().join("/"));
   pressao.push((dias[d].reduce((a,b)=>a+b)/dias[d].length).toFixed(1));
-  fundo.push(chuva[d]>1?1050:null);
-  pontos.push(chuva[d]>1?"red":"#1565c0");
+  barras.push(chuva[d]>1?1050:null);
  });
 
  if(chart) chart.destroy();
@@ -208,8 +198,8 @@ function montarGrafico(h){
   data:{
    labels,
    datasets:[
-    {type:"bar",label:"Dias de chuva",data:fundo,backgroundColor:"rgba(255,0,0,0.18)"},
-    {type:"line",label:"Pressão atmosférica (hPa)",data:pressao,borderColor:"#1565c0",borderWidth:3,pointRadius:6,pointBackgroundColor:pontos,tension:0.4}
+    {type:"bar",label:"Dias de chuva",data:barras,backgroundColor:"rgba(255,0,0,0.18)"},
+    {type:"line",label:"Pressão atmosférica (hPa)",data:pressao,borderColor:"#1565c0",borderWidth:3,tension:0.4}
    ]
   },
   options:{plugins:{title:{display:true,text:"Dias de chuva e Pressão atmosférica – últimos 5 dias"}}}
@@ -220,6 +210,7 @@ window.addEventListener("load",()=>{
  navigator.geolocation?.getCurrentPosition(p=>{
   lat=p.coords.latitude;
   lon=p.coords.longitude;
+  nomeCidade.innerText="Sua localização";
   buscar();
  });
 });
