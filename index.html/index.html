@@ -12,7 +12,7 @@
  --bg2:#26c6da;
  --card:rgba(255,255,255,.18);
  --text:#fff;
- --grafico:#ffffff;
+ --grafico:#fff;
 }
 
 body.dark{
@@ -40,14 +40,12 @@ header{
 }
 
 h2{
- font-size:18px;
- font-weight:normal;
+ font-size:17px;
  margin:0;
+ font-weight:normal;
 }
 
-h2 span{
- font-weight:bold;
-}
+h2 span{font-weight:bold;}
 
 button.toggle{
  background:rgba(255,255,255,.25);
@@ -69,7 +67,6 @@ button.toggle{
 input{
  width:100%;
  padding:12px;
- margin-top:8px;
  border:none;
  border-radius:10px;
  font-size:16px;
@@ -80,7 +77,6 @@ input{
  color:#000;
  border-radius:10px;
  margin-top:4px;
- overflow:hidden;
  position:absolute;
  z-index:10;
  width:calc(100% - 32px);
@@ -91,6 +87,7 @@ input{
 
 .linha-info{margin-top:6px;font-size:14px;}
 .linha-status{margin-top:10px;font-size:15px;font-weight:bold;padding:8px;border-radius:10px;}
+
 .bom{background:#2e7d32;}
 .chuva{background:#f9a825;color:#000;}
 .tempestade{background:#c62828;}
@@ -163,7 +160,7 @@ canvas{
 </div>
 
 <script>
-let lat=null,lon=null,chart=null,ultimoHist=null;
+let lat=null,lon=null,chart=null,histSalvo=null;
 
 const cidade=document.getElementById("cidade"),
 lista=document.getElementById("lista"),
@@ -182,7 +179,7 @@ function aplicarModo(m){
  document.body.classList.toggle("dark",m==="dark");
  btnModo.textContent=m==="dark"?"☀️":"🌙";
  localStorage.setItem("modo",m);
- if(ultimoHist) montarGrafico(ultimoHist);
+ if(histSalvo) montarGrafico(histSalvo);
 }
 
 function modoAuto(){
@@ -253,13 +250,41 @@ async function buscar(){
   `https://archive-api.open-meteo.com/v1/archive?latitude=${lat}&longitude=${lon}&start_date=${ini.toISOString().split("T")[0]}&end_date=${hoje.toISOString().split("T")[0]}&hourly=pressure_msl,precipitation&timezone=auto`
  );
  const hist=await rHist.json();
- ultimoHist=hist.hourly;
+ histSalvo=hist.hourly;
 
  calcularPressaoChuva(hist.hourly);
  montarGrafico(hist.hourly);
 }
 
-/* ===== FUNÇÕES AUX ===== */
+/* ===== LÓGICA CORRETA DA CHUVA ===== */
+function calcularPressaoChuva(h){
+ const dias={};
+
+ h.time.forEach((t,i)=>{
+  const d=t.split("T")[0];
+  if(!dias[d]) dias[d]={p:[],mm:0};
+  dias[d].p.push(h.pressure_msl[i]);
+  dias[d].mm+=h.precipitation[i];
+ });
+
+ const pressoes=[];
+ Object.values(dias).forEach(d=>{
+  if(d.mm>=1){
+   pressoes.push(d.p.reduce((a,b)=>a+b)/d.p.length);
+  }
+ });
+
+ if(pressoes.length<3){
+  linhaAviso.innerHTML="🌧️ <b>Dados insuficientes</b> para identificar um padrão confiável entre pressão e chuva.";
+  return;
+ }
+
+ const media=pressoes.reduce((a,b)=>a+b)/pressoes.length;
+
+ linhaAviso.innerHTML=
+  `🌧️ <b>Nesta região, a chuva costuma ocorrer</b> quando a pressão média diária está em torno de <b>${media.toFixed(1)} hPa</b>.`;
+}
+
 function definirStatus(p,c){
  linhaStatus.className="linha-status";
  if(c>8||p<1005){linhaStatus.classList.add("tempestade");linhaStatus.innerText="⛈️ Risco de tempestade";}
@@ -267,23 +292,15 @@ function definirStatus(p,c){
  else{linhaStatus.classList.add("bom");linhaStatus.innerText="☀️ Tempo bom";}
 }
 
-function calcularPressaoChuva(h){
- let p=[];
- h.precipitation.forEach((v,i)=>v>=0.3&&p.push(h.pressure_msl[i]));
- linhaAviso.innerHTML=p.length
- ? `🌧️ Normalmente chove abaixo de <b>${p.sort((a,b)=>a-b)[Math.floor(p.length/2)].toFixed(1)} hPa</b>.`
- : "🌧️ Normalmente chove abaixo de <b>1013 hPa</b>.";
-}
-
 function montarLinhaSol(d){
  linhaSol.innerHTML="";
  for(let i=0;i<4;i++){
   linhaSol.innerHTML+=`
-  <div class="sol-dia">
-   ${d.time[i].split("-").reverse().join("/")}<br>
-   🌅 ${d.sunrise[i].slice(11,16)}<br>
-   🌇 ${d.sunset[i].slice(11,16)}
-  </div>`;
+   <div class="sol-dia">
+    ${d.time[i].split("-").reverse().join("/")}<br>
+    🌅 ${d.sunrise[i].slice(11,16)}<br>
+    🌇 ${d.sunset[i].slice(11,16)}
+   </div>`;
  }
 }
 
@@ -291,28 +308,30 @@ function montarPrevisao5Dias(d){
  previsao5.innerHTML="";
  for(let i=0;i<5;i++){
   previsao5.innerHTML+=`
-  <div class="previsao-dia">
-   ${d.time[i].split("-").reverse().join("/")}<br>
-   🌧️ ${d.precipitation_sum[i]} mm • ${d.precipitation_probability_max[i]}%<br>
-   ${d.temperature_2m_min[i]}° / ${d.temperature_2m_max[i]}°
-  </div>`;
+   <div class="previsao-dia">
+    ${d.time[i].split("-").reverse().join("/")}<br>
+    🌧️ ${d.precipitation_sum[i]} mm • ${d.precipitation_probability_max[i]}%<br>
+    ${d.temperature_2m_min[i]}° / ${d.temperature_2m_max[i]}°
+   </div>`;
  }
 }
 
+/* ===== GRÁFICO ===== */
 function montarGrafico(h){
- const dias={},mm={};
+ const dias={},chuva={};
+
  h.time.forEach((t,i)=>{
   const d=t.split("T")[0];
   dias[d]??=[];
-  mm[d]=(mm[d]||0)+h.precipitation[i];
+  chuva[d]=(chuva[d]||0)+h.precipitation[i];
   dias[d].push(h.pressure_msl[i]);
  });
 
- const labels=[],pressao=[],chuva=[];
+ const labels=[],pressao=[],mm=[];
  Object.keys(dias).slice(-5).forEach(d=>{
   labels.push(d.split("-").reverse().join("/"));
   pressao.push((dias[d].reduce((a,b)=>a+b)/dias[d].length).toFixed(1));
-  chuva.push(mm[d].toFixed(1));
+  mm.push(chuva[d].toFixed(1));
  });
 
  chart?.destroy();
@@ -320,8 +339,8 @@ function montarGrafico(h){
   data:{
    labels,
    datasets:[
-    {type:"bar",label:"Chuva (mm)",data:chuva,backgroundColor:"rgba(66,165,245,.6)",yAxisID:"y1"},
-    {type:"line",label:"Pressão (hPa)",data:pressao,borderColor:"#ffeb3b",borderWidth:3,tension:.4,yAxisID:"y"}
+    {type:"bar",label:"Chuva (mm)",data:mm,backgroundColor:"rgba(66,165,245,.6)",yAxisID:"y1"},
+    {type:"line",label:"Pressão atmosférica (hPa)",data:pressao,borderColor:"#ffeb3b",borderWidth:3,tension:.4,yAxisID:"y"}
    ]
   },
   options:{
