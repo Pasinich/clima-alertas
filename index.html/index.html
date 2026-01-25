@@ -29,7 +29,7 @@ canvas{background:#fff;border-radius:10px;padding:8px;}
 </head>
 <body>
 
-<h2><span id="titulo-clima">Clima em:</span> <span id="nome-cidade"></span></h2>
+<h2>🌡️ Clima em: <span id="nome-cidade"></span></h2>
 
 <div class="card">
 <input id="cidade" placeholder="Digite a cidade">
@@ -50,11 +50,11 @@ canvas{background:#fff;border-radius:10px;padding:8px;}
 </div>
 
 <script>
-let lat=null, lon=null, chart=null;
+let lat=null,lon=null,chart=null;
+
 const cidade=document.getElementById("cidade"),
 lista=document.getElementById("lista"),
 nomeCidade=document.getElementById("nome-cidade"),
-tituloClima=document.getElementById("titulo-clima"),
 info=document.getElementById("info"),
 linhaPressao=document.getElementById("linha-pressao"),
 linhaUmidade=document.getElementById("linha-umidade"),
@@ -63,202 +63,165 @@ linhaAviso=document.getElementById("linha-aviso"),
 linhaSol=document.getElementById("linha-sol"),
 previsao5=document.getElementById("previsao-5dias");
 
-// limpar campo ao focar
 cidade.addEventListener("focus",()=>{
-  cidade.value="";
-  lista.innerHTML="";
+ cidade.value="";
+ lista.innerHTML="";
 });
 
-// função para remover acentos
-function removerAcentos(texto){
-  return texto.normalize("NFD").replace(/[\u0300-\u036f]/g,"");
-}
-
-// autocomplete com filtro cidade
 cidade.addEventListener("input",async()=>{
-  lista.innerHTML="";
-  if(cidade.value.length<2) return;
+ lista.innerHTML="";
+ if(cidade.value.length<2) return;
 
-  const query = removerAcentos(cidade.value.toLowerCase());
-  const r=await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(cidade.value)}&count=10&language=pt`);
-  const d=await r.json();
-  if(!d.results) return;
+ const r=await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(cidade.value)}&count=5&language=pt`);
+ const d=await r.json();
+ if(!d.results) return;
 
-  const mostrados = new Set();
-  let count=0;
-
-  d.results.forEach(c=>{
-    if(count>=5) return;
-
-    const nomeCidadeNormalizado = removerAcentos(c.name.toLowerCase());
-    if(!nomeCidadeNormalizado.includes(query)) return;
-
-    // construir nome exibido: cidade - estado (Brasil) ou cidade - país
-    let nomeExibir = c.name;
-    if(c.country === "Brazil" && c.admin1) nomeExibir += " - " + c.admin1;
-    else if(c.country) nomeExibir += " - " + c.country;
-
-    if(mostrados.has(nomeExibir)) return;
-    mostrados.add(nomeExibir);
-
-    const div=document.createElement("div");
-    div.innerText = nomeExibir;
-    div.onclick=()=>{
-      cidade.value = c.name;
-      nomeCidade.innerText = nomeExibir;
-      lat=c.latitude; lon=c.longitude;
-      lista.innerHTML="";
-      buscar();
-    };
-    lista.appendChild(div);
-    count++;
-  });
+ d.results.forEach(c=>{
+  const nome = c.admin1 ? `${c.name} - ${c.admin1}` : `${c.name} - ${c.country}`;
+  const div=document.createElement("div");
+  div.innerText=nome;
+  div.onclick=()=>{
+    nomeCidade.innerText=nome;
+    lat=c.latitude;
+    lon=c.longitude;
+    lista.innerHTML="";
+    buscar();
+  };
+  lista.appendChild(div);
+ });
 });
 
-// buscar dados
 async function buscar(){
-  if(!lat||!lon) return;
+ if(!lat||!lon) return;
 
-  const rAtual=await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&hourly=temperature_2m,relativehumidity_2m,pressure_msl,precipitation&daily=sunrise,sunset,temperature_2m_min,temperature_2m_max,precipitation_probability_max,precipitation_sum&timezone=auto`);
-  const atual=await rAtual.json();
+ const rAtual=await fetch(
+  `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&hourly=temperature_2m,relativehumidity_2m,pressure_msl,precipitation&daily=sunrise,sunset,temperature_2m_min,temperature_2m_max,precipitation_probability_max,precipitation_sum&timezone=auto`
+ );
+ const atual=await rAtual.json();
 
-  const agora=new Date();
-  const idxHora=atual.hourly.time.findIndex(t=>new Date(t).getHours()===agora.getHours());
+ const agora=new Date();
+ const idx=atual.hourly.time.findIndex(t=>new Date(t).getHours()===agora.getHours());
 
-  const tempAtual = atual.hourly.temperature_2m[idxHora>=0?idxHora:0];
-  const pressaoAtual = atual.hourly.pressure_msl[idxHora>=0?idxHora:0];
-  const umidadeAtual = atual.hourly.relativehumidity_2m[idxHora>=0?idxHora:0];
-  const chuvaAtual = atual.hourly.precipitation[idxHora>=0?idxHora:0];
+ info.innerHTML=`🌡️ Temperatura atual: <b>${atual.hourly.temperature_2m[idx]}°C</b>`;
+ linhaPressao.innerHTML=`🌬️ Pressão atual: <b>${atual.hourly.pressure_msl[idx]} hPa</b>`;
+ linhaUmidade.innerHTML=`💧 Umidade atual: <b>${atual.hourly.relativehumidity_2m[idx]}%</b>`;
 
-  info.innerHTML=`🌡️ Temperatura atual: <b>${tempAtual}°C</b>`;
-  linhaPressao.innerHTML=`🌬️ Pressão atual: <b>${pressaoAtual} hPa</b>`;
-  linhaUmidade.innerHTML=`💧 Umidade atual: <b>${umidadeAtual}%</b>`;
+ definirStatus(atual.hourly.pressure_msl[idx],atual.hourly.precipitation[idx]);
+ montarLinhaSol(atual.daily);
+ montarPrevisao5Dias(atual.daily);
 
-  definirStatus(pressaoAtual,chuvaAtual);
+ const hoje=new Date();
+ const ini=new Date(); ini.setDate(hoje.getDate()-30);
 
-  // gráfico últimos 5 dias
-  const hoje=new Date();
-  const inicio=new Date(); inicio.setDate(hoje.getDate()-5);
+ const rHist=await fetch(
+  `https://archive-api.open-meteo.com/v1/archive?latitude=${lat}&longitude=${lon}&start_date=${ini.toISOString().split("T")[0]}&end_date=${hoje.toISOString().split("T")[0]}&hourly=pressure_msl,precipitation&timezone=auto`
+ );
+ const hist=await rHist.json();
 
-  const rHist=await fetch(`https://archive-api.open-meteo.com/v1/archive?latitude=${lat}&longitude=${lon}&start_date=${inicio.toISOString().split("T")[0]}&end_date=${hoje.toISOString().split("T")[0]}&hourly=pressure_msl,precipitation&timezone=auto`);
-  const hist=await rHist.json();
-
-  // calcular pressão para "costuma chover"
-  const pressaoDias = {};
-  hist.hourly.time.forEach((t,i)=>{
-    const d=t.split("T")[0];
-    if(!pressaoDias[d]) pressaoDias[d]=[];
-    pressaoDias[d].push(hist.hourly.pressure_msl[i]);
-  });
-  const mediasPressao = Object.keys(pressaoDias).slice(-5).map(d=>Math.min(...pressaoDias[d]));
-  const pressaoChuva = Math.round(Math.min(...mediasPressao));
-
-  linhaAviso.innerHTML=`🌧️ <b>Costuma chover</b> quando a pressão atmosférica está abaixo de <b>${pressaoChuva} hPa</b>.`;
-
-  montarLinhaSol(atual.daily);
-  montarPrevisao5Dias(atual.daily);
-  montarGrafico(hist.hourly);
+ calcularPressaoChuva(hist.hourly);
+ montarGrafico(hist.hourly);
 }
 
-// status do tempo
 function definirStatus(p,c){
  linhaStatus.className="linha-status";
- if(c>8||p<1005){linhaStatus.classList.add("tempestade"); linhaStatus.innerText="⛈️ Risco de tempestade";}
- else if(c>1||p<1012){linhaStatus.classList.add("chuva"); linhaStatus.innerText="🌧️ Possibilidade de chuva";}
- else{linhaStatus.classList.add("bom"); linhaStatus.innerText="☀️ Tempo bom";}
+ if(c>8||p<1005){linhaStatus.classList.add("tempestade");linhaStatus.innerText="⛈️ Risco de tempestade";}
+ else if(c>1||p<1012){linhaStatus.classList.add("chuva");linhaStatus.innerText="🌧️ Possibilidade de chuva";}
+ else{linhaStatus.classList.add("bom");linhaStatus.innerText="☀️ Tempo bom";}
 }
 
-// linha nascer/pôr do sol
+function calcularPressaoChuva(h){
+ let pressoes=[];
+
+ // Chuva significativa
+ h.precipitation.forEach((v,i)=>{
+  if(v>=0.5) pressoes.push(h.pressure_msl[i]);
+ });
+
+ // Relaxa critério
+ if(pressoes.length<5){
+  h.precipitation.forEach((v,i)=>{
+   if(v>=0.1) pressoes.push(h.pressure_msl[i]);
+  });
+ }
+
+ // Fallback climatológico
+ if(pressoes.length<5){
+  linhaAviso.innerHTML=
+   "🌧️ <b>Nesta cidade costuma chover</b> quando a pressão está abaixo de <b>1013 hPa</b> (referência climatológica).";
+  return;
+ }
+
+ // Estatística: metade inferior
+ pressoes.sort((a,b)=>a-b);
+ const metade=Math.floor(pressoes.length/2);
+ const media=pressoes.slice(0,metade).reduce((a,b)=>a+b)/metade;
+
+ linhaAviso.innerHTML=
+  `🌧️ <b>Nesta cidade costuma chover</b> quando a pressão está abaixo de <b>${media.toFixed(1)} hPa</b>.`;
+}
+
 function montarLinhaSol(d){
  linhaSol.innerHTML="";
  for(let i=0;i<4;i++){
-   const div=document.createElement("div");
-   div.className="sol-dia";
-   div.innerHTML=`
-     <div class="sol-data">${d.time[i].split("-").reverse().join("/")}</div>
-     <div>🌅 ${d.sunrise[i].slice(11,16)}</div>
-     <div>🌇 ${d.sunset[i].slice(11,16)}</div>
-   `;
-   linhaSol.appendChild(div);
+  linhaSol.innerHTML+=`
+   <div class="sol-dia">
+    <div class="sol-data">${d.time[i].split("-").reverse().join("/")}</div>
+    🌅 ${d.sunrise[i].slice(11,16)}<br>
+    🌇 ${d.sunset[i].slice(11,16)}
+   </div>`;
  }
 }
 
-// linha previsão 5 dias
 function montarPrevisao5Dias(d){
  previsao5.innerHTML="";
  for(let i=0;i<5;i++){
-   const div=document.createElement("div");
-   div.className="previsao-dia";
-   let icone="☀️";
-   if(d.precipitation_sum[i]>5) icone="🌧️";
-   else if(d.precipitation_sum[i]>0) icone="⛅";
-   div.innerHTML=`
-     ${d.time[i].split("-").reverse().join("/")}<br>
-     <div class="icon">${icone} ${d.precipitation_probability_max[i]}%</div>
-     <b>${d.temperature_2m_min[i]}°C / ${d.temperature_2m_max[i]}°C</b>
-   `;
-   previsao5.appendChild(div);
+  const ic=d.precipitation_sum[i]>5?"🌧️":d.precipitation_sum[i]>0?"⛅":"☀️";
+  previsao5.innerHTML+=`
+   <div class="previsao-dia">
+    ${d.time[i].split("-").reverse().join("/")}<br>
+    <div class="icon">${ic} ${d.precipitation_probability_max[i]}%</div>
+    <b>${d.temperature_2m_min[i]}°C / ${d.temperature_2m_max[i]}°C</b>
+   </div>`;
  }
 }
 
-// gráfico últimos 5 dias
 function montarGrafico(h){
- const dias={},chuvaDia={};
+ const dias={},chuva={};
+
  h.time.forEach((t,i)=>{
-   const d=t.split("T")[0];
-   if(!dias[d]){dias[d]=[];chuvaDia[d]=0;}
-   dias[d].push(h.pressure_msl[i]);
-   chuvaDia[d]+=h.precipitation[i];
+  const d=t.split("T")[0];
+  if(!dias[d]){dias[d]=[];chuva[d]=0;}
+  dias[d].push(h.pressure_msl[i]);
+  chuva[d]+=h.precipitation[i];
  });
 
- const labels=[],pressao=[],fundo=[],cores=[];
+ const labels=[],pressao=[],fundo=[],pontos=[];
  Object.keys(dias).slice(-5).forEach(d=>{
-   labels.push(d.split("-").reverse().join("/"));
-   const mediaDia=(dias[d].reduce((a,b)=>a+b)/dias[d].length).toFixed(1);
-   pressao.push(mediaDia);
-   fundo.push(chuvaDia[d]>1?1050:null);
-   cores.push(chuvaDia[d]>1?"red":"#1565c0");
+  labels.push(d.split("-").reverse().join("/"));
+  pressao.push((dias[d].reduce((a,b)=>a+b)/dias[d].length).toFixed(1));
+  fundo.push(chuva[d]>1?1050:null);
+  pontos.push(chuva[d]>1?"red":"#1565c0");
  });
 
  if(chart) chart.destroy();
  chart=new Chart(document.getElementById("grafico"),{
-   data:{
-     labels,
-     datasets:[
-       {type:"bar", label:"Dias de chuva", data:fundo, backgroundColor:"rgba(255,0,0,0.18)", borderWidth:0},
-       {type:"line", label:"Pressão atmosférica (hPa)", data:pressao, borderColor:"#1565c0", borderWidth:3, pointRadius:6, pointBackgroundColor:cores, tension:0.4}
-     ]
-   },
-   options:{
-     responsive:true,
-     plugins:{
-       legend:{display:true,position:"bottom"},
-       title:{display:true,text:"Dias de chuva e Pressão atmosférica (últimos 5 dias)", font:{size:16,fontStyle:"bold"}}
-     }
-   }
+  data:{
+   labels,
+   datasets:[
+    {type:"bar",label:"Dias de chuva",data:fundo,backgroundColor:"rgba(255,0,0,0.18)"},
+    {type:"line",label:"Pressão atmosférica (hPa)",data:pressao,borderColor:"#1565c0",borderWidth:3,pointRadius:6,pointBackgroundColor:pontos,tension:0.4}
+   ]
+  },
+  options:{plugins:{title:{display:true,text:"Dias de chuva e Pressão atmosférica – últimos 5 dias"}}}
  });
 }
 
-// pegar localização ao abrir
 window.addEventListener("load",()=>{
-  if(navigator.geolocation){
-    navigator.geolocation.getCurrentPosition(async pos=>{
-      lat=pos.coords.latitude;
-      lon=pos.coords.longitude;
-
-      // pegar cidade e estado/país via reverse geocoding
-      const rGeo=await fetch(`https://geocoding-api.open-meteo.com/v1/reverse?latitude=${lat}&longitude=${lon}&language=pt`);
-      const geo=await rGeo.json();
-      if(geo && geo.name){
-        let nomeExibir = geo.name;
-        if(geo.country === "Brazil" && geo.admin1) nomeExibir += " - " + geo.admin1;
-        else if(geo.country) nomeExibir += " - " + geo.country;
-        nomeCidade.innerText = nomeExibir;
-      }
-
-      buscar();
-    },()=>{console.log("Permissão de localização negada")});
-  }
+ navigator.geolocation?.getCurrentPosition(p=>{
+  lat=p.coords.latitude;
+  lon=p.coords.longitude;
+  buscar();
+ });
 });
 </script>
 </body>
