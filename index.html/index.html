@@ -209,12 +209,16 @@ cidade.addEventListener("input",async()=>{
  if(!d.results) return;
 
  d.results.forEach(c=>{
-  const nome=`${c.name} - ${c.admin1||c.country}`;
+  let local="";
+  // CORREÇÃO: usar admin1 somente se country_code === "BR"
+  if(c.country_code==="BR" && c.admin1) local=`${c.name} - ${c.admin1}`;
+  else local=`${c.name} - ${c.country}`;
+  
   const div=document.createElement("div");
-  div.innerText=nome;
+  div.innerText=local;
   div.onclick=()=>{
-   cidade.value=nome;
-   nomeCidade.innerText=nome;
+   cidade.value=local;
+   nomeCidade.innerText=local;
    lat=c.latitude; lon=c.longitude;
    lista.innerHTML="";
    buscar();
