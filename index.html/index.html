@@ -44,7 +44,6 @@ h2{
  margin:0;
  font-weight:normal;
 }
-
 h2 span{font-weight:bold;}
 
 button.toggle{
@@ -91,6 +90,12 @@ input{
 .bom{background:#2e7d32;}
 .chuva{background:#f9a825;color:#000;}
 .tempestade{background:#c62828;}
+
+.aq-bom{color:#4caf50;font-weight:bold;}
+.aq-mod{color:#ffeb3b;font-weight:bold;}
+.aq-ruim{color:#ff9800;font-weight:bold;}
+.aq-muito{color:#f44336;font-weight:bold;}
+.aq-extremo{color:#b71c1c;font-weight:bold;}
 
 #linha-sol{display:flex;gap:8px;margin-top:12px;}
 .sol-dia{
@@ -174,24 +179,22 @@ linhaSol=document.getElementById("linha-sol"),
 previsao5=document.getElementById("previsao-5dias"),
 btnModo=document.getElementById("toggleModo");
 
-/* ===== MODO NOTURNO ===== */
+/* ===== MODO ===== */
 function aplicarModo(m){
  document.body.classList.toggle("dark",m==="dark");
  btnModo.textContent=m==="dark"?"☀️":"🌙";
  localStorage.setItem("modo",m);
  if(histSalvo) montarGrafico(histSalvo);
 }
-
 function modoAuto(){
  const h=new Date().getHours();
  const sys=matchMedia("(prefers-color-scheme: dark)").matches;
  return (h>=18||h<=6||sys)?"dark":"light";
 }
-
 aplicarModo(localStorage.getItem("modo")||modoAuto());
 btnModo.onclick=()=>aplicarModo(document.body.classList.contains("dark")?"light":"dark");
 
-/* ===== LIMPAR AO CLICAR ===== */
+/* ===== LIMPAR ===== */
 cidade.addEventListener("focus",()=>{
  cidade.value="";
  lista.innerHTML="";
@@ -201,7 +204,6 @@ cidade.addEventListener("focus",()=>{
 cidade.addEventListener("input",async()=>{
  lista.innerHTML="";
  if(cidade.value.length<2) return;
-
  const r=await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(cidade.value)}&count=5&language=pt`);
  const d=await r.json();
  if(!d.results) return;
@@ -228,6 +230,11 @@ async function buscar(){
  );
  const atual=await rAtual.json();
 
+ const rAQ=await fetch(
+  `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lon}&hourly=european_aqi&timezone=auto`
+ );
+ const aq=await rAQ.json();
+
  const agora=Date.now();
  let idx=0,min=Infinity;
  atual.hourly.time.forEach((t,i)=>{
@@ -236,7 +243,10 @@ async function buscar(){
  });
 
  info.innerHTML=`🌡️ <b>${atual.current_weather.temperature}°C</b> • Sensação ${atual.hourly.apparent_temperature[idx]}°C`;
- linhaPressao.innerHTML=`🌬️ Pressão: <b>${atual.hourly.pressure_msl[idx]} hPa</b>`;
+
+ linhaPressao.innerHTML=
+ `🌬️ Pressão: <b>${atual.hourly.pressure_msl[idx]} hPa</b> • 🌫️ Qualid. do ar: ${formatarAQ(aq.hourly.european_aqi[idx])}`;
+
  linhaUmidade.innerHTML=`💧 Umidade: <b>${atual.hourly.relativehumidity_2m[idx]}%</b> • 💨 Vento: <b>${atual.current_weather.windspeed} km/h</b>`;
 
  definirStatus(atual.hourly.pressure_msl[idx],atual.hourly.precipitation[idx]);
@@ -256,33 +266,34 @@ async function buscar(){
  montarGrafico(hist.hourly);
 }
 
-/* ===== LÓGICA CORRETA DA CHUVA ===== */
+/* ===== QUALIDADE DO AR ===== */
+function formatarAQ(v){
+ if(v<=20) return `<span class="aq-bom">Boa (${v})</span>`;
+ if(v<=40) return `<span class="aq-mod">Moderada (${v})</span>`;
+ if(v<=60) return `<span class="aq-ruim">Ruim (${v})</span>`;
+ if(v<=80) return `<span class="aq-muito">Muito ruim (${v})</span>`;
+ return `<span class="aq-extremo">Extrema (${v})</span>`;
+}
+
+/* ===== RESTANTE ===== */
 function calcularPressaoChuva(h){
  const dias={};
-
  h.time.forEach((t,i)=>{
   const d=t.split("T")[0];
   if(!dias[d]) dias[d]={p:[],mm:0};
   dias[d].p.push(h.pressure_msl[i]);
   dias[d].mm+=h.precipitation[i];
  });
-
  const pressoes=[];
  Object.values(dias).forEach(d=>{
-  if(d.mm>=1){
-   pressoes.push(d.p.reduce((a,b)=>a+b)/d.p.length);
-  }
+  if(d.mm>=1) pressoes.push(d.p.reduce((a,b)=>a+b)/d.p.length);
  });
-
  if(pressoes.length<3){
-  linhaAviso.innerHTML="🌧️ <b>Dados insuficientes</b> para identificar um padrão confiável entre pressão e chuva.";
+  linhaAviso.innerHTML="🌧️ Dados insuficientes para padrão confiável.";
   return;
  }
-
  const media=pressoes.reduce((a,b)=>a+b)/pressoes.length;
-
- linhaAviso.innerHTML=
-  `🌧️ <b>Nesta região, a chuva costuma ocorrer</b> quando a pressão média diária está em torno de <b>${media.toFixed(1)} hPa</b>.`;
+ linhaAviso.innerHTML=`🌧️ Chove geralmente com pressão média de <b>${media.toFixed(1)} hPa</b>.`;
 }
 
 function definirStatus(p,c){
@@ -319,35 +330,31 @@ function montarPrevisao5Dias(d){
 /* ===== GRÁFICO ===== */
 function montarGrafico(h){
  const dias={},chuva={};
-
  h.time.forEach((t,i)=>{
   const d=t.split("T")[0];
   dias[d]??=[];
   chuva[d]=(chuva[d]||0)+h.precipitation[i];
   dias[d].push(h.pressure_msl[i]);
  });
-
  const labels=[],pressao=[],mm=[];
  Object.keys(dias).slice(-5).forEach(d=>{
   labels.push(d.split("-").reverse().join("/"));
   pressao.push((dias[d].reduce((a,b)=>a+b)/dias[d].length).toFixed(1));
   mm.push(chuva[d].toFixed(1));
  });
-
  chart?.destroy();
  chart=new Chart(document.getElementById("grafico"),{
   data:{
    labels,
    datasets:[
-    {type:"bar",label:"Chuva (mm)",data:mm,backgroundColor:"rgba(66,165,245,.6)",yAxisID:"y1"},
-    {type:"line",label:"Pressão atmosférica (hPa)",data:pressao,borderColor:"#ffeb3b",borderWidth:3,tension:.4,yAxisID:"y"}
+    {type:"bar",label:"Chuva (mm)",data:mm,yAxisID:"y1"},
+    {type:"line",label:"Pressão (hPa)",data:pressao,yAxisID:"y",borderWidth:3,tension:.4}
    ]
   },
   options:{
-   plugins:{legend:{onClick:(e,i,l)=>{l.chart.toggleDataVisibility(i.datasetIndex);l.chart.update();}}},
    scales:{
-    y:{title:{display:true,text:"Pressão (hPa)"}},
-    y1:{position:"right",title:{display:true,text:"Chuva (mm)"},beginAtZero:true,grid:{drawOnChartArea:false}}
+    y:{title:{display:true,text:"Pressão"}},
+    y1:{position:"right",title:{display:true,text:"Chuva"},beginAtZero:true,grid:{drawOnChartArea:false}}
    }
   }
  });
@@ -360,5 +367,6 @@ navigator.geolocation?.getCurrentPosition(p=>{
  buscar();
 });
 </script>
+
 </body>
 </html>
