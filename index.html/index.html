@@ -96,12 +96,12 @@ canvas{
 /* ===== MENSAGEM DENTRO DO INPUT ===== */
 #mensagem-inicial{
  position:absolute;
- top:16px;
- left:16px;
- right:16px;
+ top:12px;
+ left:12px;
  color:#555;
- pointer-events:none;
  font-style:italic;
+ pointer-events:none;
+ transition:0.3s;
 }
 </style>
 </head>
@@ -150,23 +150,19 @@ linhaSol=document.getElementById("linha-sol"),
 previsao5=document.getElementById("previsao-5dias"),
 msgInicial=document.getElementById("mensagem-inicial");
 
-/* ===== MOSTRAR MENSAGEM NA PRIMEIRA VEZ OU REFRESH ===== */
-msgInicial.style.display = "block";
+/* ===== MENSAGEM INICIAL ===== */
+msgInicial.style.display="block";
 
 /* ===== LIMPAR MENSAGEM QUANDO DIGITAR ===== */
-cidade.addEventListener("input",()=>{
- msgInicial.style.display="none";
- lista.innerHTML="";
-});
+cidade.addEventListener("input",()=>msgInicial.style.display="none");
 
 /* ===== AUTOCOMPLETE ===== */
 cidade.addEventListener("input",async()=>{
+ lista.innerHTML="";
  if(cidade.value.length<2) return;
  const r=await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(cidade.value)}&count=5&language=pt`);
  const d=await r.json();
  if(!d.results) return;
-
- lista.innerHTML="";
  d.results.forEach(c=>{
   const local=c.country_code==="BR"&&c.admin1?`${c.name} - ${c.admin1}`:`${c.name} - ${c.country}`;
   const div=document.createElement("div");
@@ -182,56 +178,60 @@ cidade.addEventListener("input",async()=>{
  });
 });
 
-/* ===== BUSCA ===== */
+/* ===== FUNÇÃO PRINCIPAL DE BUSCA ===== */
 async function buscar(){
- msgInicial.style.display="none"; // sumir mensagem ao buscar
- const rAtual=await fetch(
-  `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&hourly=apparent_temperature,relativehumidity_2m,pressure_msl,precipitation&daily=sunrise,sunset,temperature_2m_min,temperature_2m_max,precipitation_sum,precipitation_probability_max&timezone=auto`
- );
- const atual=await rAtual.json();
+ if(lat===null || lon===null) return;
 
- const rAQ=await fetch(
-  `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lon}&hourly=european_aqi&timezone=auto`
- );
- const aq=await rAQ.json();
+ msgInicial.style.display="none";
 
- const agora=Date.now();
- let idx=0,min=Infinity;
- atual.hourly.time.forEach((t,i)=>{
-  const d=Math.abs(new Date(t).getTime()-agora);
-  if(d<min){min=d;idx=i;}
- });
+ try {
+  const rAtual=await fetch(
+   `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&hourly=apparent_temperature,relativehumidity_2m,pressure_msl,precipitation&daily=sunrise,sunset,temperature_2m_min,temperature_2m_max,precipitation_sum,precipitation_probability_max&timezone=auto`
+  );
+  const atual=await rAtual.json();
 
- info.innerHTML=`🌡️ <b>${atual.current_weather.temperature}°C</b> • Sensação ${atual.hourly.apparent_temperature[idx]}°C`;
+  const rAQ=await fetch(
+   `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lon}&hourly=european_aqi&timezone=auto`
+  );
+  const aq=await rAQ.json();
 
- linhaPressao.innerHTML=
- `🌬️ Pressão: <b>${atual.hourly.pressure_msl[idx]} hPa</b> • 🌫️ Qualid. do ar: ${formatarAQ(aq.hourly.european_aqi[idx])}`;
+  const agora=Date.now();
+  let idx=0,min=Infinity;
+  atual.hourly.time.forEach((t,i)=>{
+   const d=Math.abs(new Date(t).getTime()-agora);
+   if(d<min){min=d;idx=i;}
+  });
 
- linhaUmidade.innerHTML=
- `💧 Umidade: <b>${atual.hourly.relativehumidity_2m[idx]}%</b> • 💨 Vento: <b>${atual.current_weather.windspeed} km/h</b>`;
+  info.innerHTML=`🌡️ <b>${atual.current_weather.temperature}°C</b> • Sensação ${atual.hourly.apparent_temperature[idx]}°C`;
+  linhaPressao.innerHTML=`🌬️ Pressão: <b>${atual.hourly.pressure_msl[idx]} hPa</b> • 🌫️ Qualid. do ar: ${formatarAQ(aq.hourly.european_aqi[idx])}`;
+  linhaUmidade.innerHTML=`💧 Umidade: <b>${atual.hourly.relativehumidity_2m[idx]}%</b> • 💨 Vento: <b>${atual.current_weather.windspeed} km/h</b>`;
 
- const lua=calcularLua(new Date());
- linhaLua.innerHTML=`🌙 Lua: <b>${lua.fase}</b> • Iluminação: <b>${lua.iluminacao}%</b>`;
+  const lua=calcularLua(new Date());
+  linhaLua.innerHTML=`🌙 Lua: <b>${lua.fase}</b> • Iluminação: <b>${lua.iluminacao}%</b>`;
 
- definirStatus(atual.hourly.pressure_msl[idx],atual.hourly.precipitation[idx]);
- montarLinhaSol(atual.daily);
- montarPrevisao5Dias(atual.daily);
+  definirStatus(atual.hourly.pressure_msl[idx],atual.hourly.precipitation[idx]);
+  montarLinhaSol(atual.daily);
+  montarPrevisao5Dias(atual.daily);
 
- const hoje=new Date();
- const ontem=new Date(hoje); ontem.setDate(hoje.getDate()-1);
- const ini=new Date(ontem); ini.setDate(ontem.getDate()-30);
+  // Histórico e gráfico
+  const hoje=new Date();
+  const ontem=new Date(hoje); ontem.setDate(hoje.getDate()-1);
+  const ini=new Date(ontem); ini.setDate(ontem.getDate()-30);
 
- const rHist=await fetch(
-  `https://archive-api.open-meteo.com/v1/archive?latitude=${lat}&longitude=${lon}&start_date=${ini.toISOString().split("T")[0]}&end_date=${ontem.toISOString().split("T")[0]}&hourly=pressure_msl,precipitation&timezone=UTC`
- );
- const hist=await rHist.json();
- histSalvo=hist.hourly;
+  const rHist=await fetch(
+   `https://archive-api.open-meteo.com/v1/archive?latitude=${lat}&longitude=${lon}&start_date=${ini.toISOString().split("T")[0]}&end_date=${ontem.toISOString().split("T")[0]}&hourly=pressure_msl,precipitation&timezone=UTC`
+  );
+  const hist=await rHist.json();
+  histSalvo=hist.hourly;
+  calcularPressaoChuva(hist.hourly);
+  montarGrafico(hist.hourly);
 
- calcularPressaoChuva(hist.hourly);
- montarGrafico(hist.hourly);
+ } catch(e){
+   msgInicial.innerText="⚠️ Não foi possível obter os dados";
+ }
 }
 
-/* ===== FUNÇÕES AUXILIARES ===== */
+/* ===== AUXILIARES ===== */
 function calcularLua(d){
  const lp=2551443; const now=d/1000; const nm=592500;
  const phase=((now-nm)%lp)/lp;
@@ -305,13 +305,22 @@ function montarGrafico(h){
  });
 }
 
-/* ===== PEGAR LOCALIZAÇÃO AUTOMÁTICA ===== */
-navigator.geolocation?.getCurrentPosition(p=>{
- lat=p.coords.latitude;
- lon=p.coords.longitude;
- nomeCidade.innerText="Sua localização";
- buscar();
-});
+/* ===== PEGAR LOCALIZAÇÃO AUTOMÁTICA COM FALLBACK ===== */
+navigator.geolocation?.getCurrentPosition(
+ pos=>{
+   lat=pos.coords.latitude;
+   lon=pos.coords.longitude;
+   nomeCidade.innerText="Sua localização";
+   buscar();
+ },
+ err=>{
+   // fallback: São Paulo
+   lat=-23.55052;
+   lon=-46.633308;
+   nomeCidade.innerText="São Paulo (padrão)";
+   buscar();
+ }
+);
 </script>
 
 </body>
