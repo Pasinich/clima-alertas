@@ -258,17 +258,39 @@ async function buscar(){
 }
 
 /* ===== LUA ===== */
-function calcularLua(d){
- const lp=2551443;
- const now=d/1000;
- const nm=592500;
- const phase=((now-nm)%lp)/lp;
- const iluminacao=Math.round((1-Math.cos(2*Math.PI*phase))/2*100);
- let fase="Lua Nova 🌑";
- if(phase<0.25) fase="Lua Crescente 🌒";
- else if(phase<0.5) fase="Lua Cheia 🌕";
- else if(phase<0.75) fase="Lua Minguante 🌘";
- return {fase,iluminacao};
+function calcularLua(data){
+    // Ajusta para UTC
+    const d = new Date(Date.UTC(
+        data.getFullYear(),
+        data.getMonth(),
+        data.getDate(),
+        data.getHours(),
+        data.getMinutes(),
+        data.getSeconds()
+    ));
+
+    // Número de dias desde a lua nova conhecida: 2000-01-06 18:14 UTC
+    const novaLua = new Date(Date.UTC(2000,0,6,18,14,0));
+    const diff = d - novaLua;
+    const dias = diff / (1000*60*60*24);
+
+    const ciclo = 29.53058867; // duração média do ciclo lunar em dias
+    const fase = (dias % ciclo + ciclo) % ciclo; // fase em dias no ciclo
+
+    let nomeFase="";
+    let iluminacao=0;
+
+    if(fase < 1.84566){ nomeFase="Lua Nova 🌑"; iluminacao=0; }
+    else if(fase < 5.53699){ nomeFase="Lua Crescente 🌒"; iluminacao=Math.round((fase-1.84566)/3.69133*50); }
+    else if(fase < 9.22831){ nomeFase="Lua Crescente 🌔"; iluminacao=Math.round(50 + (fase-5.53699)/3.69132*50); }
+    else if(fase < 12.91963){ nomeFase="Lua Cheia 🌕"; iluminacao=100; }
+    else if(fase < 16.61096){ nomeFase="Lua Minguante 🌖"; iluminacao=Math.round(100 - (fase-12.91963)/3.69133*50); }
+    else if(fase < 20.30228){ nomeFase="Lua Minguante 🌘"; iluminacao=Math.round(50 - (fase-16.61096)/3.69132*50); }
+    else if(fase < 23.99361){ nomeFase="Lua Nova 🌑"; iluminacao=0; }
+    else if(fase < 27.68493){ nomeFase="Lua Crescente 🌒"; iluminacao=Math.round((fase-23.99361)/3.69132*50); }
+    else { nomeFase="Lua Crescente 🌔"; iluminacao=Math.round(50 + (fase-27.68493)/3.69134*50); }
+
+    return {fase: nomeFase, iluminacao};
 }
 
 /* ===== AQ ===== */
