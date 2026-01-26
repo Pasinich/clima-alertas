@@ -151,9 +151,7 @@ previsao5=document.getElementById("previsao-5dias"),
 msgInicial=document.getElementById("mensagem-inicial");
 
 /* ===== MOSTRAR MENSAGEM NA PRIMEIRA VEZ OU REFRESH ===== */
-if(!localStorage.getItem("primeiroAcessoOK")){
- msgInicial.style.display="block";
-}
+msgInicial.style.display = "block";
 
 /* ===== LIMPAR MENSAGEM QUANDO DIGITAR ===== */
 cidade.addEventListener("input",()=>{
@@ -231,11 +229,9 @@ async function buscar(){
 
  calcularPressaoChuva(hist.hourly);
  montarGrafico(hist.hourly);
-
- localStorage.setItem("primeiroAcessoOK","1");
 }
 
-/* ===== RESTANTE DO CÓDIGO DE CÁLCULO DE LUA, AQ, STATUS, SOL, GRÁFICO ===== */
+/* ===== FUNÇÕES AUXILIARES ===== */
 function calcularLua(d){
  const lp=2551443; const now=d/1000; const nm=592500;
  const phase=((now-nm)%lp)/lp;
@@ -309,7 +305,7 @@ function montarGrafico(h){
  });
 }
 
-/* ===== PEGAR LOCALIZAÇÃO ===== */
+/* ===== PEGAR LOCALIZAÇÃO AUTOMÁTICA ===== */
 navigator.geolocation?.getCurrentPosition(p=>{
  lat=p.coords.latitude;
  lon=p.coords.longitude;
