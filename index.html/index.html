@@ -22,14 +22,6 @@ body{
  padding:16px;
  transition:.3s;
 }
-header{
- display:flex;
- justify-content:space-between;
- align-items:center;
- margin-bottom:10px;
-}
-h2{font-size:17px;margin:0;font-weight:normal;}
-h2 span{font-weight:bold;}
 button.toggle{
  background:rgba(255,255,255,.25);
  border:none;
@@ -117,13 +109,8 @@ canvas{
 
 <body>
 
-<header>
- <h2>🌡️ Clima em: <span id="nome-cidade">⏳ Buscando…</span></h2>
- <button class="toggle" id="toggleModo">🌙</button>
-</header>
-
 <div class="card">
- <input id="cidade" placeholder="Digite a cidade" value="⏳ Buscando sua cidade…">
+ <input id="cidade" value="⏳ Buscando sua cidade…">
  <div id="lista" class="autocomplete"></div>
 
  <div id="info"></div>
@@ -146,7 +133,6 @@ let lat=null, lon=null, chart=null, histSalvo=null;
 
 const cidade=document.getElementById("cidade"),
       lista=document.getElementById("lista"),
-      nomeCidade=document.getElementById("nome-cidade"),
       info=document.getElementById("info"),
       linhaPressao=document.getElementById("linha-pressao"),
       linhaUmidade=document.getElementById("linha-umidade"),
@@ -154,12 +140,11 @@ const cidade=document.getElementById("cidade"),
       linhaStatus=document.getElementById("linha-status"),
       linhaAviso=document.getElementById("linha-aviso"),
       linhaSol=document.getElementById("linha-sol"),
-      previsao5=document.getElementById("previsao-5dias"),
-      btnModo=document.getElementById("toggleModo");
+      previsao5=document.getElementById("previsao-5dias");
 
-// ===== LIMPAR INPUT =====
+// ===== LIMPAR INPUT AO DIGITAR =====
 cidade.addEventListener("focus",()=>{
- if(cidade.value.startsWith("⏳")) cidade.value="";
+ if(!lat) cidade.value="";
  lista.innerHTML="";
 });
 
@@ -177,7 +162,6 @@ cidade.addEventListener("input", async ()=>{
   div.innerText = local;
   div.onclick = ()=>{
    cidade.value=local;
-   nomeCidade.innerText=local;
    lat=c.latitude; lon=c.longitude;
    lista.innerHTML="";
    buscar();
@@ -189,6 +173,13 @@ cidade.addEventListener("input", async ()=>{
 // ===== BUSCA =====
 async function buscar(){
  if(!lat || !lon) return;
+
+ // Preenche input com cidade assim que encontrar
+ const rGeo = await fetch(`https://geocoding-api.open-meteo.com/v1/reverse?latitude=${lat}&longitude=${lon}`);
+ const dGeo = await rGeo.json();
+ if(dGeo.results && dGeo.results.length>0){
+   cidade.value = dGeo.results[0].name;
+ }
 
  const rAtual = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&hourly=apparent_temperature,relativehumidity_2m,pressure_msl,precipitation&daily=sunrise,sunset,temperature_2m_min,temperature_2m_max,precipitation_sum,precipitation_probability_max&timezone=auto`);
  const atual = await rAtual.json();
@@ -204,9 +195,7 @@ async function buscar(){
  });
 
  info.innerHTML=`🌡️ <b>${atual.current_weather.temperature}°C</b> • Sensação ${atual.hourly.apparent_temperature[idx]}°C`;
-
  linhaPressao.innerHTML=`🌬️ Pressão: <b>${atual.hourly.pressure_msl[idx]} hPa</b> • 🌫️ Qualid. do ar: ${formatarAQ(aq.hourly.european_aqi[idx])}`;
-
  linhaUmidade.innerHTML=`💧 Umidade: <b>${atual.hourly.relativehumidity_2m[idx]}%</b> • 💨 Vento: <b>${atual.current_weather.windspeed} km/h</b>`;
 
  const lua=calcularLua(new Date());
@@ -229,7 +218,7 @@ async function buscar(){
  montarGrafico(hist.hourly);
 }
 
-// ===== LUA =====
+// ===== FUNÇÕES AUXILIARES =====
 function calcularLua(d){
  const lp=2551443;
  const now=d/1000;
@@ -243,7 +232,6 @@ function calcularLua(d){
  return {fase, iluminacao};
 }
 
-// ===== AQ =====
 function formatarAQ(v){
  if(v<=20) return `<span class="aq-bom">Boa (${v})</span>`;
  if(v<=40) return `<span class="aq-mod">Moderada (${v})</span>`;
@@ -252,7 +240,6 @@ function formatarAQ(v){
  return `<span class="aq-extremo">Extrema (${v})</span>`;
 }
 
-// ===== ANÁLISE =====
 function calcularPressaoChuva(h){
  const dias={};
  h.time.forEach((t,i)=>{
@@ -280,7 +267,6 @@ function definirStatus(p,c){
  else{linhaStatus.classList.add("bom");linhaStatus.innerText="☀️ Tempo bom";}
 }
 
-// ===== SOL =====
 function montarLinhaSol(d){
  linhaSol.innerHTML="";
  for(let i=0;i<4;i++){
@@ -305,7 +291,6 @@ function montarPrevisao5Dias(d){
  }
 }
 
-// ===== GRÁFICO =====
 function montarGrafico(h){
  const dias={}, chuva={};
  h.time.forEach((t,i)=>{
@@ -346,15 +331,6 @@ navigator.geolocation?.getCurrentPosition(p=>{
  lat=p.coords.latitude;
  lon=p.coords.longitude;
  buscar();
- fetch(`https://geocoding-api.open-meteo.com/v1/reverse?latitude=${lat}&longitude=${lon}`)
-  .then(r=>r.json())
-  .then(d=>{
-   if(d.results && d.results.length>0){
-    const cityName = d.results[0].name;
-    nomeCidade.innerText = cityName;
-    cidade.value = cityName;
-   }
-  });
 });
 </script>
 
