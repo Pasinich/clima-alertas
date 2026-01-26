@@ -123,7 +123,7 @@ canvas{
 </header>
 
 <div class="card">
- <input id="cidade" placeholder="Digite a cidade" value="">
+ <input id="cidade" placeholder="Digite a cidade" value="⏳ Buscando sua cidade…">
  <div id="lista" class="autocomplete"></div>
 
  <div id="info"></div>
@@ -350,8 +350,9 @@ navigator.geolocation?.getCurrentPosition(p=>{
   .then(r=>r.json())
   .then(d=>{
    if(d.results && d.results.length>0){
-    nomeCidade.innerText=d.results[0].name;
-    cidade.value = d.results[0].name;
+    const cityName = d.results[0].name;
+    nomeCidade.innerText = cityName;
+    cidade.value = cityName;
    }
   });
 });
