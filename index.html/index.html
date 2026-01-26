@@ -244,10 +244,11 @@ async function buscar(){
  montarPrevisao5Dias(atual.daily);
 
  const hoje=new Date();
- const ini=new Date(); ini.setDate(hoje.getDate()-30);
+ const ontem=new Date(hoje); ontem.setDate(hoje.getDate()-1);
+ const ini=new Date(ontem); ini.setDate(ontem.getDate()-30);
 
  const rHist=await fetch(
-  `https://archive-api.open-meteo.com/v1/archive?latitude=${lat}&longitude=${lon}&start_date=${ini.toISOString().split("T")[0]}&end_date=${hoje.toISOString().split("T")[0]}&hourly=pressure_msl,precipitation&timezone=auto`
+  `https://archive-api.open-meteo.com/v1/archive?latitude=${lat}&longitude=${lon}&start_date=${ini.toISOString().split("T")[0]}&end_date=${ontem.toISOString().split("T")[0]}&hourly=pressure_msl,precipitation&timezone=UTC`
  );
  const hist=await rHist.json();
  histSalvo=hist.hourly;
@@ -256,7 +257,7 @@ async function buscar(){
  montarGrafico(hist.hourly);
 }
 
-/* ===== LUA (SEM API) ===== */
+/* ===== LUA ===== */
 function calcularLua(d){
  const lp=2551443;
  const now=d/1000;
@@ -270,7 +271,7 @@ function calcularLua(d){
  return {fase,iluminacao};
 }
 
-/* ===== QUALIDADE DO AR ===== */
+/* ===== AQ ===== */
 function formatarAQ(v){
  if(v<=20) return `<span class="aq-bom">Boa (${v})</span>`;
  if(v<=40) return `<span class="aq-mod">Moderada (${v})</span>`;
@@ -279,7 +280,7 @@ function formatarAQ(v){
  return `<span class="aq-extremo">Extrema (${v})</span>`;
 }
 
-/* ===== RESTANTE ===== */
+/* ===== ANÁLISE ===== */
 function calcularPressaoChuva(h){
  const dias={};
  h.time.forEach((t,i)=>{
@@ -307,6 +308,7 @@ function definirStatus(p,c){
  else{linhaStatus.classList.add("bom");linhaStatus.innerText="☀️ Tempo bom";}
 }
 
+/* ===== SOL ===== */
 function montarLinhaSol(d){
  linhaSol.innerHTML="";
  for(let i=0;i<4;i++){
@@ -340,12 +342,16 @@ function montarGrafico(h){
   chuva[d]=(chuva[d]||0)+h.precipitation[i];
   dias[d].push(h.pressure_msl[i]);
  });
+
+ const datas=Object.keys(dias).sort();
+
  const labels=[],press=[],mm=[];
- Object.keys(dias).slice(-5).forEach(d=>{
+ datas.slice(-5).forEach(d=>{
   labels.push(d.split("-").reverse().join("/"));
   press.push((dias[d].reduce((a,b)=>a+b)/dias[d].length).toFixed(1));
   mm.push(chuva[d].toFixed(1));
  });
+
  chart?.destroy();
  chart=new Chart(document.getElementById("grafico"),{
   data:{
@@ -357,8 +363,15 @@ function montarGrafico(h){
   },
   options:{
    scales:{
-    y:{title:{display:true,text:"Pressão"}},
-    y1:{position:"right",beginAtZero:true,grid:{drawOnChartArea:false}}
+    y:{
+     title:{display:true,text:"Pressão (hPa)"}
+    },
+    y1:{
+     position:"right",
+     beginAtZero:true,
+     grid:{drawOnChartArea:false},
+     title:{display:true,text:"Chuva (mm)"}
+    }
    }
   }
  });
