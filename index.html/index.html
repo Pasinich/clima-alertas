@@ -126,7 +126,7 @@ canvas{
 <body>
 
 <header>
- <h2>🌡️Clima em: <span id="nome-cidade"></span></h2>
+ <h2>🌡️ Clima em: <span id="nome-cidade"></span></h2>
  <button class="toggle" id="toggleModo">🌙</button>
 </header>
 
@@ -259,7 +259,6 @@ async function buscar(){
 
 /* ===== LUA ===== */
 function calcularLua(data){
-    // Ajusta para UTC
     const d = new Date(Date.UTC(
         data.getFullYear(),
         data.getMonth(),
@@ -269,13 +268,12 @@ function calcularLua(data){
         data.getSeconds()
     ));
 
-    // Número de dias desde a lua nova conhecida: 2000-01-06 18:14 UTC
     const novaLua = new Date(Date.UTC(2000,0,6,18,14,0));
     const diff = d - novaLua;
     const dias = diff / (1000*60*60*24);
 
-    const ciclo = 29.53058867; // duração média do ciclo lunar em dias
-    const fase = (dias % ciclo + ciclo) % ciclo; // fase em dias no ciclo
+    const ciclo = 29.53058867;
+    const fase = (dias % ciclo + ciclo) % ciclo;
 
     let nomeFase="";
     let iluminacao=0;
@@ -384,6 +382,14 @@ function montarGrafico(h){
    ]
   },
   options:{
+   plugins:{
+     title:{
+       display:true,
+       text:"Pressão ATM/Chuva - Últimos 5 Dias",
+       color:document.body.classList.contains("dark")?"#e6edf3":"#000",
+       font:{size:16,weight:"bold"}
+     }
+   },
    scales:{
     y:{
      title:{display:true,text:"Pressão (hPa)"}
