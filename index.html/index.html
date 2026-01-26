@@ -218,7 +218,7 @@ cidade.addEventListener("input",async()=>{
 /* ===== BUSCA ===== */
 async function buscar(){
  const rAtual=await fetch(
-  `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&hourly=apparent_temperature,relativehumidity_2m,pressure_msl,precipitation,precipitation_probability&daily=sunrise,sunset,temperature_2m_min,temperature_2m_max,precipitation_sum,precipitation_probability_max&timezone=auto`
+  `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&hourly=apparent_temperature,relativehumidity_2m,pressure_msl,precipitation,precipitation_probability&daily=sunrise,sunset,temperature_2m_min,temperature_2m_max,precipitation_sum,precipitation_probability_max,uv_index_max&timezone=auto`
  );
  const atual=await rAtual.json();
 
@@ -234,12 +234,15 @@ async function buscar(){
   if(d<min){min=d;idx=i;}
  });
 
- info.innerHTML=`🌡️ <b>${atual.current_weather.temperature}°C</b> • Sensação ${atual.hourly.apparent_temperature[idx]}°C`;
+ // UV atual (aproxima pelo índice máximo do dia)
+ const uvIndex = atual.daily.uv_index_max?.[0] ?? 0;
+ const {classe,descricao} = formatarUV(uvIndex);
+
+ info.innerHTML=`🌡️ <b>${atual.current_weather.temperature}°C</b> • <span style="font-size:smaller">Sensação: ${atual.hourly.apparent_temperature[idx]}°C</span> • ☀️ UV: <b class="${classe}">${uvIndex}</b> <span style="font-size:smaller">(${descricao})</span>`;
 
  linhaPressao.innerHTML=
  `🌬️ Pressão: <b>${atual.hourly.pressure_msl[idx]} hPa</b> • 🌫️ Qualid. do ar: ${formatarAQ(aq.hourly.european_aqi[idx])}`;
 
- // CHUVA COM COR SEGUNDO PROBABILIDADE
  const chuvaHora = atual.hourly.precipitation_probability?.[idx] ?? 0;
  linhaUmidade.innerHTML=
  `💧 Umidade: <b>${atual.hourly.relativehumidity_2m[idx]}%</b> • 💨 Vento: <b>${atual.current_weather.windspeed} km/h</b> • 🌧️ Chuva: <b class="${formatarChuvaClasse(chuvaHora)}">${chuvaHora}%</b>`;
@@ -272,6 +275,17 @@ function formatarChuvaClasse(v){
  if(v<=60) return "chuva-ruim";
  if(v<=80) return "chuva-muito";
  return "chuva-extremo";
+}
+
+/* ===== FORMATA UV ===== */
+function formatarUV(v){
+ let classe="", descricao="";
+ if(v<=2){ classe="aq-bom"; descricao="Baixo"; }
+ else if(v<=5){ classe="aq-mod"; descricao="Médio"; }
+ else if(v<=7){ classe="aq-ruim"; descricao="Alto"; }
+ else if(v<=10){ classe="aq-muito"; descricao="Muito alto"; }
+ else{ classe="aq-extremo"; descricao="Extremo"; }
+ return {classe,descricao};
 }
 
 /* ===== LUA ===== */
