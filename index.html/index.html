@@ -377,10 +377,20 @@ function montarGrafico(h){
  });
 }
 
-navigator.geolocation?.getCurrentPosition(p=>{
+/* ===== PEGAR LOCALIZAÇÃO REAL E NOME DA CIDADE ===== */
+navigator.geolocation?.getCurrentPosition(async p=>{
  lat=p.coords.latitude;
  lon=p.coords.longitude;
- nomeCidade.innerText="Sua localização";
+
+ // busca nome da cidade via geocoding reverso
+ const rGeo = await fetch(`https://geocoding-api.open-meteo.com/v1/reverse?latitude=${lat}&longitude=${lon}&language=pt`);
+ const dGeo = await rGeo.json();
+ if(dGeo && dGeo.name){
+   nomeCidade.innerText = dGeo.name;
+   cidade.value = dGeo.name;
+ } else {
+   nomeCidade.innerText = "Sua localização";
+ }
  buscar();
 });
 </script>
