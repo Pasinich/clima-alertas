@@ -126,7 +126,7 @@ canvas{
 
 /* ===== MENSAGEM INICIAL ===== */
 #mensagem-inicial{
- display:none;
+ display:block;
  background:rgba(0,0,0,.35);
  border-radius:12px;
  padding:12px;
@@ -183,17 +183,10 @@ previsao5=document.getElementById("previsao-5dias"),
 btnModo=document.getElementById("toggleModo"),
 msgInicial=document.getElementById("mensagem-inicial");
 
-/* ===== MENSAGEM PRIMEIRO ACESSO ===== */
-if(!localStorage.getItem("primeiroAcessoOK")){
- cidade.placeholder="⏳ Aguarde, buscando Informações Locais…";
- cidade.disabled=true;
-}
-
 /* ===== MODO ===== */
 function aplicarModo(m){
  document.body.classList.toggle("dark",m==="dark");
  btnModo.textContent=m==="dark"?"☀️":"🌙";
- localStorage.setItem("modo",m);
  if(histSalvo) montarGrafico(histSalvo);
 }
 function modoAuto(){
@@ -201,7 +194,7 @@ function modoAuto(){
  const sys=matchMedia("(prefers-color-scheme: dark)").matches;
  return (h>=18||h<=6||sys)?"dark":"light";
 }
-aplicarModo(localStorage.getItem("modo")||modoAuto());
+aplicarModo(modoAuto());
 btnModo.onclick=()=>aplicarModo(document.body.classList.contains("dark")?"light":"dark");
 
 /* ===== LIMPAR ===== */
@@ -235,6 +228,7 @@ cidade.addEventListener("input",async()=>{
 
 /* ===== BUSCA ===== */
 async function buscar(){
+ msgInicial.style.display="block"; // mostrar mensagem no início
  const rAtual=await fetch(
   `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&hourly=apparent_temperature,relativehumidity_2m,pressure_msl,precipitation&daily=sunrise,sunset,temperature_2m_min,temperature_2m_max,precipitation_sum,precipitation_probability_max&timezone=auto`
  );
@@ -280,9 +274,7 @@ async function buscar(){
  calcularPressaoChuva(hist.hourly);
  montarGrafico(hist.hourly);
 
- cidade.disabled=false;
- cidade.placeholder="Digite a cidade";
- localStorage.setItem("primeiroAcessoOK","1");
+ msgInicial.style.display="none"; // sumir mensagem após buscar
 }
 
 /* ===== LUA ===== */
