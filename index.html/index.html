@@ -118,12 +118,12 @@ canvas{
 <body>
 
 <header>
- <h2>🌡️ Clima em pp: <span id="nome-cidade"></span></h2>
+ <h2>🌡️ Clima em: <span id="nome-cidade">⏳ Buscando…</span></h2>
  <button class="toggle" id="toggleModo">🌙</button>
 </header>
 
 <div class="card">
- <input id="cidade" placeholder="Digite a cidade" value="⏳ Buscando sua cidade…">
+ <input id="cidade" placeholder="Digite a cidade" value="">
  <div id="lista" class="autocomplete"></div>
 
  <div id="info"></div>
@@ -157,12 +157,9 @@ const cidade=document.getElementById("cidade"),
       previsao5=document.getElementById("previsao-5dias"),
       btnModo=document.getElementById("toggleModo");
 
-// ===== MODO =====
-btnModo.onclick=()=>{};
-  
 // ===== LIMPAR INPUT =====
 cidade.addEventListener("focus",()=>{
- if(cidade.value==="⏳ Buscando sua cidade…") cidade.value="";
+ if(cidade.value.startsWith("⏳")) cidade.value="";
  lista.innerHTML="";
 });
 
@@ -191,7 +188,6 @@ cidade.addEventListener("input", async ()=>{
 
 // ===== BUSCA =====
 async function buscar(){
- cidade.placeholder = "Digite a cidade"; // placeholder normal
  if(!lat || !lon) return;
 
  const rAtual = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&hourly=apparent_temperature,relativehumidity_2m,pressure_msl,precipitation&daily=sunrise,sunset,temperature_2m_min,temperature_2m_max,precipitation_sum,precipitation_probability_max&timezone=auto`);
