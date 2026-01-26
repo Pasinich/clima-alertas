@@ -258,10 +258,9 @@ async function buscar(){
  calcularPressaoChuva(hist.hourly);
  montarGrafico(hist.hourly);
 
- // Limpa mensagem de busca no input
- if(cidade.placeholder.includes("Buscando")){
-  cidade.placeholder = "Digite a cidade";
- }
+ // Limpa placeholder
+ cidade.placeholder = "Digite a cidade";
+ cidade.value = "";
 }
 
 /* ===== LUA ===== */
@@ -382,16 +381,15 @@ navigator.geolocation?.getCurrentPosition(async p=>{
  lat=p.coords.latitude;
  lon=p.coords.longitude;
 
- // busca nome da cidade via geocoding reverso
+ // geocoding reverso correto
  const rGeo = await fetch(`https://geocoding-api.open-meteo.com/v1/reverse?latitude=${lat}&longitude=${lon}&language=pt`);
  const dGeo = await rGeo.json();
- if(dGeo && dGeo.name){
-   nomeCidade.innerText = dGeo.name;
-   cidade.value = ""; // mantém input vazio, mas placeholder mostra mensagem
-   cidade.placeholder = "⏳ Buscando sua cidade…";
+ if(dGeo && dGeo.results && dGeo.results.length>0){
+   nomeCidade.innerText = dGeo.results[0].name;
  } else {
-   nomeCidade.innerText = "Sua localização";
+   nomeCidade.innerText = "Sua cidade";
  }
+
  await buscar();
 });
 </script>
