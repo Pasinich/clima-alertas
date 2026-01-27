@@ -125,6 +125,7 @@ canvas{
  background:var(--grafico);
  border-radius:10px;
  padding:8px;
+ margin-top:10px;
 }
 </style>
 </head>
@@ -152,11 +153,16 @@ canvas{
 </div>
 
 <div class="card">
+ <canvas id="graficoPrevisao"></canvas>
+</div>
+
+<div class="card">
  <canvas id="grafico"></canvas>
 </div>
 
 <script>
 let lat=null,lon=null,chart=null,histSalvo=null;
+let chartPrevisao=null;
 
 const cidade=document.getElementById("cidade"),
 lista=document.getElementById("lista"),
@@ -177,6 +183,7 @@ function aplicarModo(m){
  btnModo.textContent=m==="dark"?"☀️":"🌙";
  localStorage.setItem("modo",m);
  if(histSalvo) montarGrafico(histSalvo);
+ if(chartPrevisao) chartPrevisao.update();
 }
 function modoAuto(){
  const h=new Date().getHours();
@@ -224,166 +231,109 @@ cidade.addEventListener("keydown",e=>{
 });
 
 /* ===== BUSCA ===== */
-async function buscar(){
-
+async function buscar() {
  if(lat===null || lon===null){
   info.innerHTML="📍 Selecione a cidade na lista";
   return;
  }
- const rAtual=await fetch(
+
+ const rAtual = await fetch(
   `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&hourly=apparent_temperature,relativehumidity_2m,pressure_msl,precipitation,precipitation_probability&daily=sunrise,sunset,temperature_2m_min,temperature_2m_max,precipitation_sum,precipitation_probability_max,uv_index_max&timezone=auto`
  );
- const atual=await rAtual.json();
+ const atual = await rAtual.json();
 
- const rAQ=await fetch(
+ const rAQ = await fetch(
   `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lon}&hourly=european_aqi&timezone=auto`
  );
- const aq=await rAQ.json();
+ const aq = await rAQ.json();
 
- const agora=Date.now();
- let idx=0,min=Infinity;
+ const agora = Date.now();
+ let idx=0, min=Infinity;
  atual.hourly.time.forEach((t,i)=>{
   const d=Math.abs(new Date(t).getTime()-agora);
   if(d<min){min=d;idx=i;}
  });
 
- const uvIndex=atual.daily.uv_index_max?.[0]??0;
- const {classe,descricao}=formatarUV(uvIndex);
+ const uvIndex = atual.daily.uv_index_max?.[0] ?? 0;
+ const {classe, descricao} = formatarUV(uvIndex);
 
- info.innerHTML=`🌡️ <b>${atual.current_weather.temperature}°C</b> • <span style="font-size:smaller">Sensação: ${atual.hourly.apparent_temperature[idx]}°C</span> • ☀️ UV: <b class="${classe}">${uvIndex}</b> <span style="font-size:smaller">(${descricao})</span>`;
+ info.innerHTML = `🌡️ <b>${atual.current_weather.temperature}°C</b> • <span style="font-size:smaller">Sensação: ${atual.hourly.apparent_temperature[idx]}°C</span> • ☀️ UV: <b class="${classe}">${uvIndex}</b> <span style="font-size:smaller">(${descricao})</span>`;
 
- linhaPressao.innerHTML=
- `🌬️ Pressão: <b>${atual.hourly.pressure_msl[idx]} hPa</b> • 🌫️ Qualid. do ar: ${formatarAQ(aq.hourly.european_aqi[idx])}`;
+ linhaPressao.innerHTML = `🌬️ Pressão: <b>${atual.hourly.pressure_msl[idx]} hPa</b> • 🌫️ Qualid. do ar: ${formatarAQ(aq.hourly.european_aqi[idx])}`;
 
- const chuvaHora=atual.hourly.precipitation_probability?.[idx]??0;
- linhaUmidade.innerHTML=
- `💧 Umidade: <b>${atual.hourly.relativehumidity_2m[idx]}%</b> • 💨 Vento: <b>${atual.current_weather.windspeed} km/h</b> • 🌧️ Chuva: <b class="${formatarChuvaClasse(chuvaHora)}">${chuvaHora}%</b>`;
+ const chuvaHora = atual.hourly.precipitation_probability?.[idx] ?? 0;
+ linhaUmidade.innerHTML = `💧 Umidade: <b>${atual.hourly.relativehumidity_2m[idx]}%</b> • 💨 Vento: <b>${atual.current_weather.windspeed} km/h</b> • 🌧️ Chuva: <b class="${formatarChuvaClasse(chuvaHora)}">${chuvaHora}%</b>`;
 
- const lua=calcularLua(new Date());
- linhaLua.innerHTML=`🌙 Lua: <b>${lua.fase}</b> • Iluminação: <b>${lua.iluminacao}%</b>`;
+ const lua = calcularLua(new Date());
+ linhaLua.innerHTML = `🌙 Lua: <b>${lua.fase}</b> • Iluminação: <b>${lua.iluminacao}%</b>`;
 
  definirStatus(atual.hourly.pressure_msl[idx],atual.hourly.precipitation[idx]);
  montarLinhaSol(atual.daily);
  montarPrevisao5Dias(atual.daily);
 
- const hoje=new Date();
- const ontem=new Date(hoje); ontem.setDate(hoje.getDate()-1);
- const ini=new Date(ontem); ini.setDate(ontem.getDate()-30);
+ // GRÁFICO DE PREVISÃO FUTURA
+ montarGraficoPrevisao(atual.daily);
 
- const rHist=await fetch(
+ // GRÁFICO HISTÓRICO
+ const hoje = new Date();
+ const ontem = new Date(hoje); ontem.setDate(hoje.getDate()-1);
+ const ini = new Date(ontem); ini.setDate(ontem.getDate()-30);
+
+ const rHist = await fetch(
   `https://archive-api.open-meteo.com/v1/archive?latitude=${lat}&longitude=${lon}&start_date=${ini.toISOString().split("T")[0]}&end_date=${ontem.toISOString().split("T")[0]}&hourly=pressure_msl,precipitation&timezone=UTC`
  );
- const hist=await rHist.json();
- histSalvo=hist.hourly;
+ const hist = await rHist.json();
+ histSalvo = hist.hourly;
 
  calcularPressaoChuva(hist.hourly);
  montarGrafico(hist.hourly);
 }
 
-/* ===== FORMATA CHUVA ===== */
-function formatarChuvaClasse(v){
- if(v<=20) return "chuva-bom";
- if(v<=40) return "chuva-mod";
- if(v<=60) return "chuva-ruim";
- if(v<=80) return "chuva-muito";
- return "chuva-extremo";
-}
-
-/* ===== FORMATA UV ===== */
-function formatarUV(v){
- let classe="",descricao="";
- if(v<=2){classe="aq-bom";descricao="Baixo";}
- else if(v<=5){classe="aq-mod";descricao="Médio";}
- else if(v<=7){classe="aq-ruim";descricao="Alto";}
- else if(v<=10){classe="aq-muito";descricao="Muito alto";}
- else{classe="aq-extremo";descricao="Extremo";}
- return {classe,descricao};
-}
-
-/* ===== LUA (ASTRONÔMICA CORRETA) ===== */
-function calcularLua(data){
- const ref=new Date(Date.UTC(2000,0,6,18,14,0));
- const ciclo=29.53058867;
- const dias=(data-ref)/86400000;
- const idade=((dias%ciclo)+ciclo)%ciclo;
- const fracao=idade/ciclo;
-
- const iluminacao=Math.round(
-  (1-Math.cos(2*Math.PI*fracao))/2*100
- );
-
- let fase="";
- if(idade < 1.84566) fase = "Lua Nova 🌑";
-else if(idade < 14.765) fase = "Lua Crescente 🌒";
-else if(idade < 16.61096) fase = "Lua Cheia 🌕";
-else if(idade < 29.53) fase = "Lua Minguante 🌖";
-
- return {fase,iluminacao};
-}
-
-/* ===== AQ ===== */
-function formatarAQ(v){
- if(v<=20) return `<span class="aq-bom">Boa (${v})</span>`;
- if(v<=40) return `<span class="aq-mod">Moderada (${v})</span>`;
- if(v<=60) return `<span class="aq-ruim">Ruim (${v})</span>`;
- if(v<=80) return `<span class="aq-muito">Muito ruim (${v})</span>`;
- return `<span class="aq-extremo">Extrema (${v})</span>`;
-}
-
-/* ===== ANÁLISE ===== */
-function calcularPressaoChuva(h){
- const dias={};
- h.time.forEach((t,i)=>{
-  const d=t.split("T")[0];
-  if(!dias[d]) dias[d]={p:[],mm:0};
-  dias[d].p.push(h.pressure_msl[i]);
-  dias[d].mm+=h.precipitation[i];
+/* ===== GRÁFICO DE PREVISÃO FUTURA ===== */
+function montarGraficoPrevisao(d){
+ const labels=[],chuva=[],prob=[],tempMin=[],tempMax=[];
+ d.time.forEach((t,i)=>{
+  labels.push(t.split("-").reverse().join("/"));
+  chuva.push(d.precipitation_sum[i]);
+  prob.push(d.precipitation_probability_max[i]);
+  tempMin.push(d.temperature_2m_min[i]);
+  tempMax.push(d.temperature_2m_max[i]);
  });
- const press=[];
- Object.values(dias).forEach(d=>{
-  if(d.mm>=1) press.push(d.p.reduce((a,b)=>a+b)/d.p.length);
+
+ chartPrevisao?.destroy();
+ chartPrevisao = new Chart(document.getElementById("graficoPrevisao"),{
+  data:{
+   labels,
+   datasets:[
+    {type:"bar",label:"Chuva (mm)",data:chuva,yAxisID:"y1",backgroundColor:"#42a5f5"},
+    {type:"bar",label:"Prob. Chuva (%)",data:prob,yAxisID:"y1",backgroundColor:"#90caf9"},
+    {type:"line",label:"Temp Min (°C)",data:tempMin,yAxisID:"y",borderColor:"#ff7043",borderWidth:2,tension:0.3},
+    {type:"line",label:"Temp Max (°C)",data:tempMax,yAxisID:"y",borderColor:"#ffca28",borderWidth:2,tension:0.3}
+   ]
+  },
+  options:{
+   plugins:{
+    title:{display:true,text:"Previsão 5 Dias",color:document.body.classList.contains("dark")?"#e6edf3":"#000",font:{size:16,weight:"bold"}}
+   },
+   scales:{
+    y:{position:"left",title:{display:true,text:"Temp (°C)"}},
+    y1:{position:"right",beginAtZero:true,grid:{drawOnChartArea:false},title:{display:true,text:"Chuva / Probabilidade"}}
+   }
+  }
  });
- if(press.length<3){
-  linhaAviso.innerHTML="🌧️ Dados insuficientes para padrão confiável.";
-  return;
- }
- const m=press.reduce((a,b)=>a+b)/press.length;
- linhaAviso.innerHTML=`🌧️ Chove geralmente com pressão média de <b>${m.toFixed(1)} hPa</b>.`;
 }
 
-function definirStatus(p,c){
- linhaStatus.className="linha-status";
- if(c>8||p<1005){linhaStatus.classList.add("tempestade");linhaStatus.innerText="⛈️ Risco de tempestade";}
- else if(c>1||p<1012){linhaStatus.classList.add("chuva");linhaStatus.innerText="🌧️ Possibilidade de chuva";}
- else{linhaStatus.classList.add("bom");linhaStatus.innerText="☀️ Tempo bom";}
-}
+/* ===== RESTANTE DAS FUNÇÕES ===== */
+function formatarChuvaClasse(v){if(v<=20)return"chuva-bom";if(v<=40)return"chuva-mod";if(v<=60)return"chuva-ruim";if(v<=80)return"chuva-muito";return"chuva-extremo";}
+function formatarUV(v){let classe="",descricao="";if(v<=2){classe="aq-bom";descricao="Baixo";}else if(v<=5){classe="aq-mod";descricao="Médio";}else if(v<=7){classe="aq-ruim";descricao="Alto";}else if(v<=10){classe="aq-muito";descricao="Muito alto";}else{classe="aq-extremo";descricao="Extremo";}return {classe,descricao};}
+function calcularLua(data){const ref=new Date(Date.UTC(2000,0,6,18,14,0));const ciclo=29.53058867;const dias=(data-ref)/86400000;const idade=((dias%ciclo)+ciclo)%ciclo;const fracao=idade/ciclo;const iluminacao=Math.round((1-Math.cos(2*Math.PI*fracao))/2*100);let fase="";if(idade<1.84566) fase="Lua Nova 🌑";else if(idade<14.765) fase="Lua Crescente 🌒";else if(idade<16.61096) fase="Lua Cheia 🌕";else if(idade<29.53) fase="Lua Minguante 🌖";return {fase,iluminacao};}
+function formatarAQ(v){if(v<=20) return `<span class="aq-bom">Boa (${v})</span>`; if(v<=40) return `<span class="aq-mod">Moderada (${v})</span>`; if(v<=60) return `<span class="aq-ruim">Ruim (${v})</span>`; if(v<=80) return `<span class="aq-muito">Muito ruim (${v})</span>`; return `<span class="aq-extremo">Extrema (${v})</span>`;}
+function calcularPressaoChuva(h){const dias={};h.time.forEach((t,i)=>{const d=t.split("T")[0];if(!dias[d])dias[d]={p:[],mm:0};dias[d].p.push(h.pressure_msl[i]);dias[d].mm+=h.precipitation[i];});const press=[];Object.values(dias).forEach(d=>{if(d.mm>=1)press.push(d.p.reduce((a,b)=>a+b)/d.p.length);});if(press.length<3){linhaAviso.innerHTML="🌧️ Dados insuficientes para padrão confiável.";return;}const m=press.reduce((a,b)=>a+b)/press.length;linhaAviso.innerHTML=`🌧️ Chove geralmente com pressão média de <b>${m.toFixed(1)} hPa</b>`;}
+function definirStatus(p,c){linhaStatus.className="linha-status";if(c>8||p<1005){linhaStatus.classList.add("tempestade");linhaStatus.innerText="⛈️ Risco de tempestade";}else if(c>1||p<1012){linhaStatus.classList.add("chuva");linhaStatus.innerText="🌧️ Possibilidade de chuva";}else{linhaStatus.classList.add("bom");linhaStatus.innerText="☀️ Tempo bom";}}
+function montarLinhaSol(d){linhaSol.innerHTML="";for(let i=0;i<4;i++){linhaSol.innerHTML+=`<div class="sol-dia">${d.time[i].split("-").reverse().join("/")}<br>🌅 ${d.sunrise[i].slice(11,16)}<br>🌇 ${d.sunset[i].slice(11,16)}</div>`;}}
+function montarPrevisao5Dias(d){previsao5.innerHTML="";for(let i=0;i<5;i++){previsao5.innerHTML+=`<div class="previsao-dia">${d.time[i].split("-").reverse().join("/")}<br>🌧️ ${d.precipitation_sum[i]} mm • ${d.precipitation_probability_max[i]}%<br>${d.temperature_2m_min[i]}° / ${d.temperature_2m_max[i]}°</div>`;}}
 
-/* ===== SOL ===== */
-function montarLinhaSol(d){
- linhaSol.innerHTML="";
- for(let i=0;i<4;i++){
-  linhaSol.innerHTML+=`
-   <div class="sol-dia">
-    ${d.time[i].split("-").reverse().join("/")}<br>
-    🌅 ${d.sunrise[i].slice(11,16)}<br>
-    🌇 ${d.sunset[i].slice(11,16)}
-   </div>`;
- }
-}
-
-function montarPrevisao5Dias(d){
- previsao5.innerHTML="";
- for(let i=0;i<5;i++){
-  previsao5.innerHTML+=`
-   <div class="previsao-dia">
-    ${d.time[i].split("-").reverse().join("/")}<br>
-    🌧️ ${d.precipitation_sum[i]} mm • ${d.precipitation_probability_max[i]}%<br>
-    ${d.temperature_2m_min[i]}° / ${d.temperature_2m_max[i]}°
-   </div>`;
- }
-}
-
-/* ===== GRÁFICO ===== */
+/* ===== GRÁFICO HISTÓRICO ===== */
 function montarGrafico(h){
  const dias={},chuva={};
  h.time.forEach((t,i)=>{
@@ -395,7 +345,6 @@ function montarGrafico(h){
 
  const datas=Object.keys(dias).sort();
  const labels=[],press=[],mm=[];
-
  datas.slice(-5).forEach(d=>{
   labels.push(d.split("-").reverse().join("/"));
   press.push((dias[d].reduce((a,b)=>a+b)/dias[d].length).toFixed(1));
@@ -408,7 +357,7 @@ function montarGrafico(h){
    labels,
    datasets:[
     {type:"bar",label:"Chuva (mm)",data:mm,yAxisID:"y1"},
-    {type:"line",label:"Pressão (hPa)",data:press,yAxisID:"y",borderWidth:3,tension:.4}
+ {type:"line",label:"Pressão (hPa)",data:press,yAxisID:"y",borderWidth:3,tension:.4}
    ]
   },
   options:{
@@ -428,6 +377,7 @@ function montarGrafico(h){
  });
 }
 
+/* ===== GEOLOCALIZAÇÃO INICIAL ===== */
 navigator.geolocation?.getCurrentPosition(p=>{
  lat=p.coords.latitude;
  lon=p.coords.longitude;
