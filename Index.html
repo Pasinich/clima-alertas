@@ -78,11 +78,17 @@ input{
 .chuva{background:#f9a825;color:#000;}
 .tempestade{background:#c62828;}
 
-.aq-bom{color:#4caf50;font-weight:bold;}
+.aq-bom{color:#0A3D0A;font-weight:bold;}
 .aq-mod{color:#ffeb3b;font-weight:bold;}
 .aq-ruim{color:#ff9800;font-weight:bold;}
 .aq-muito{color:#f44336;font-weight:bold;}
 .aq-extremo{color:#b71c1c;font-weight:bold;}
+
+.chuva-bom{color:#0A3D0A;font-weight:bold;}
+.chuva-mod{color:#ffeb3b;font-weight:bold;}
+.chuva-ruim{color:#ff9800;font-weight:bold;}
+.chuva-muito{color:#f44336;font-weight:bold;}
+.chuva-extremo{color:#6a1b9a;font-weight:bold;}
 
 #linha-sol{display:flex;gap:8px;margin-top:12px;}
 .sol-dia{
@@ -209,10 +215,23 @@ cidade.addEventListener("input",async()=>{
  });
 });
 
+/* ===== ENTER SELECIONA PRIMEIRA OPÇÃO ===== */
+cidade.addEventListener("keydown",e=>{
+ if(e.key==="Enter"){
+  const item=lista.querySelector("div");
+  if(item) item.click();
+ }
+});
+
 /* ===== BUSCA ===== */
 async function buscar(){
+
+ if(lat===null || lon===null){
+  info.innerHTML="📍 Selecione a cidade na lista";
+  return;
+ }
  const rAtual=await fetch(
-  `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&hourly=apparent_temperature,relativehumidity_2m,pressure_msl,precipitation&daily=sunrise,sunset,temperature_2m_min,temperature_2m_max,precipitation_sum,precipitation_probability_max&timezone=auto`
+  `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&hourly=apparent_temperature,relativehumidity_2m,pressure_msl,precipitation,precipitation_probability&daily=sunrise,sunset,temperature_2m_min,temperature_2m_max,precipitation_sum,precipitation_probability_max,uv_index_max&timezone=auto`
  );
  const atual=await rAtual.json();
 
@@ -228,13 +247,17 @@ async function buscar(){
   if(d<min){min=d;idx=i;}
  });
 
- info.innerHTML=`🌡️ <b>${atual.current_weather.temperature}°C</b> • Sensação ${atual.hourly.apparent_temperature[idx]}°C`;
+ const uvIndex=atual.daily.uv_index_max?.[0]??0;
+ const {classe,descricao}=formatarUV(uvIndex);
+
+ info.innerHTML=`🌡️ <b>${atual.current_weather.temperature}°C</b> • <span style="font-size:smaller">Sensação: ${atual.hourly.apparent_temperature[idx]}°C</span> • ☀️ UV: <b class="${classe}">${uvIndex}</b> <span style="font-size:smaller">(${descricao})</span>`;
 
  linhaPressao.innerHTML=
  `🌬️ Pressão: <b>${atual.hourly.pressure_msl[idx]} hPa</b> • 🌫️ Qualid. do ar: ${formatarAQ(aq.hourly.european_aqi[idx])}`;
 
+ const chuvaHora=atual.hourly.precipitation_probability?.[idx]??0;
  linhaUmidade.innerHTML=
- `💧 Umidade: <b>${atual.hourly.relativehumidity_2m[idx]}%</b> • 💨 Vento: <b>${atual.current_weather.windspeed} km/h</b>`;
+ `💧 Umidade: <b>${atual.hourly.relativehumidity_2m[idx]}%</b> • 💨 Vento: <b>${atual.current_weather.windspeed} km/h</b> • 🌧️ Chuva: <b class="${formatarChuvaClasse(chuvaHora)}">${chuvaHora}%</b>`;
 
  const lua=calcularLua(new Date());
  linhaLua.innerHTML=`🌙 Lua: <b>${lua.fase}</b> • Iluminação: <b>${lua.iluminacao}%</b>`;
@@ -257,17 +280,44 @@ async function buscar(){
  montarGrafico(hist.hourly);
 }
 
-/* ===== LUA ===== */
-function calcularLua(d){
- const lp=2551443;
- const now=d/1000;
- const nm=592500;
- const phase=((now-nm)%lp)/lp;
- const iluminacao=Math.round((1-Math.cos(2*Math.PI*phase))/2*100);
- let fase="Lua Nova 🌑";
- if(phase<0.25) fase="Lua Crescente 🌒";
- else if(phase<0.5) fase="Lua Cheia 🌕";
- else if(phase<0.75) fase="Lua Minguante 🌘";
+/* ===== FORMATA CHUVA ===== */
+function formatarChuvaClasse(v){
+ if(v<=20) return "chuva-bom";
+ if(v<=40) return "chuva-mod";
+ if(v<=60) return "chuva-ruim";
+ if(v<=80) return "chuva-muito";
+ return "chuva-extremo";
+}
+
+/* ===== FORMATA UV ===== */
+function formatarUV(v){
+ let classe="",descricao="";
+ if(v<=2){classe="aq-bom";descricao="Baixo";}
+ else if(v<=5){classe="aq-mod";descricao="Médio";}
+ else if(v<=7){classe="aq-ruim";descricao="Alto";}
+ else if(v<=10){classe="aq-muito";descricao="Muito alto";}
+ else{classe="aq-extremo";descricao="Extremo";}
+ return {classe,descricao};
+}
+
+/* ===== LUA (ASTRONÔMICA CORRETA) ===== */
+function calcularLua(data){
+ const ref=new Date(Date.UTC(2000,0,6,18,14,0));
+ const ciclo=29.53058867;
+ const dias=(data-ref)/86400000;
+ const idade=((dias%ciclo)+ciclo)%ciclo;
+ const fracao=idade/ciclo;
+
+ const iluminacao=Math.round(
+  (1-Math.cos(2*Math.PI*fracao))/2*100
+ );
+
+ let fase="";
+ if(idade < 1.84566) fase = "Lua Nova 🌑";
+else if(idade < 14.765) fase = "Lua Crescente 🌒";
+else if(idade < 16.61096) fase = "Lua Cheia 🌕";
+else if(idade < 29.53) fase = "Lua Minguante 🌖";
+
  return {fase,iluminacao};
 }
 
@@ -344,8 +394,8 @@ function montarGrafico(h){
  });
 
  const datas=Object.keys(dias).sort();
-
  const labels=[],press=[],mm=[];
+
  datas.slice(-5).forEach(d=>{
   labels.push(d.split("-").reverse().join("/"));
   press.push((dias[d].reduce((a,b)=>a+b)/dias[d].length).toFixed(1));
@@ -362,16 +412,17 @@ function montarGrafico(h){
    ]
   },
   options:{
-   scales:{
-    y:{
-     title:{display:true,text:"Pressão (hPa)"}
-    },
-    y1:{
-     position:"right",
-     beginAtZero:true,
-     grid:{drawOnChartArea:false},
-     title:{display:true,text:"Chuva (mm)"}
+   plugins:{
+    title:{
+     display:true,
+     text:"Pressão ATM/Chuva - Últimos 5 Dias",
+     color:document.body.classList.contains("dark")?"#e6edf3":"#000",
+     font:{size:16,weight:"bold"}
     }
+   },
+   scales:{
+    y:{title:{display:true,text:"Pressão (hPa)"}},
+    y1:{position:"right",beginAtZero:true,grid:{drawOnChartArea:false},title:{display:true,text:"Chuva (mm)"}}
    }
   }
  });
