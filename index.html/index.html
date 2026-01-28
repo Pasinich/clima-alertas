@@ -26,7 +26,7 @@ body{
  font-family:Arial,sans-serif;
  background:linear-gradient(135deg,var(--bg1),var(--bg2));
  color:var(--text);
- padding:16px;
+ padding:14px;
  transition:.3s;
 }
 header{
@@ -41,7 +41,7 @@ button.toggle{
  background:rgba(255,255,255,.25);
  border:none;
  border-radius:50px;
- padding:6px 12px;
+ padding:6px;
  font-size:14px;
  cursor:pointer;
  color:var(--text);
@@ -72,7 +72,7 @@ input{
 .autocomplete div:hover{background:#e0e0e0;}
 
 .linha-info{margin-top:6px;font-size:14px;}
-.linha-status{margin-top:8px;font-size:13px;font-weight:bold;padding:6px;border-radius:8px;}
+.linha-status{margin-top:6px;font-size:13px;font-weight:bold;padding:6px;border-radius:8px;}
 
 .bom{background:#2e7d32;}
 .chuva{background:#f9a825;color:#000;}
@@ -97,7 +97,7 @@ input{
  background:#1a237e;
  border-radius:10px;
  padding:6px;
- height:55px;
+ height:45px;
  display:flex;
  flex-direction:column;
  justify-content:center;
@@ -118,7 +118,7 @@ body.dark .sol-dia{background:#0b3c5d;}
  background:rgba(255,255,255,.18);
  border-radius:10px;
  padding:6px;
- min-width:90px;
+ min-width:80px;
  text-align:center;
  font-size:10px;
  font-weight:bold;
@@ -127,7 +127,7 @@ canvas{
  background:var(--grafico);
  border-radius:10px;
  padding:8px;
- margin-top:2px;
+ margin-top:1px;
 }
 </style>
 </head>
@@ -181,9 +181,13 @@ btnModo=document.getElementById("toggleModo");
 
 /* ===== MODO ===== */
 function aplicarModo(m){
- document.body.classList.toggle("dark",m==="dark");
- btnModo.textContent=m==="dark"?"☀️":"🌙";
- localStorage.setItem("modo",m);
+ document.body.classList.toggle("dark", m==="dark");
+
+ btnModo.innerHTML = m==="dark"
+  ? "☀️ <span style='font-size:10px'>Modo Dia</span>"
+  : "🌙 <span style='font-size:10px'>Modo Noite</span>";
+
+ localStorage.setItem("modo", m);
  if(histSalvo) montarGrafico(histSalvo);
  if(chartPrevisao) chartPrevisao.update();
 }
@@ -262,6 +266,24 @@ async function buscar() {
   const d=Math.abs(new Date(t).getTime()-agora);
   if(d<minAQ){minAQ=d;idxAQ=i;}
  });
+/* ===== PRÓXIMA CHUVA (NOVA LÓGICA) ===== */
+let proximaChuva = "—";
+let probChuva = 0;
+
+// percorre horários da API a partir do índice atual
+for (let i = idx; i < atual.hourly.time.length; i++) {
+  const mm = atual.hourly.precipitation?.[i] ?? 0;
+  const prob = atual.hourly.precipitation_probability?.[i] ?? 0;
+
+  if (mm > 0 || prob >= 20) {
+    const timeStr = atual.hourly.time[i]; // ex: "2026-01-28T17:34"
+    
+    // Extrai HH:MM → já é hora local da cidade
+    proximaChuva = timeStr.slice(11,16);
+    probChuva = prob;
+    break;
+  }
+}
 
  const uvIndex = atual.daily.uv_index_max?.[0] ?? 0;
  const {classe, descricao} = formatarUV(uvIndex);
@@ -280,7 +302,19 @@ async function buscar() {
  linhaLua.innerHTML = `🌙 Lua: <b>${lua.fase}</b> • Iluminação: <b>${lua.iluminacao}%</b>`;
 
  definirStatus(atual.hourly.pressure_msl[idx],atual.hourly.precipitation[idx]);
- montarLinhaSol(atual.daily);
+ 
+/* ===== HORA LOCAL ATUAL DA CIDADE ===== */
+// Pega a hora atual da cidade direto do current_weather (já ajustada para timezone=auto)
+let horaAtualCidade = atual.current_weather?.time?.slice(11,16) ?? "—";
+
+/* ===== ACRESCENTA NA LINHA VERDE ===== */
+if (proximaChuva !== "—") {
+  linhaStatus.innerHTML += ` • 🌧️Chuva as: <b>${proximaChuva} (${probChuva}%)</b> • Hora Local: ${horaAtualCidade}`;
+linhaStatus.style.fontSize = "12px";
+}
+
+
+montarLinhaSol(atual.daily);
  montarPrevisao5Dias(atual.daily); // <-- aqui vai dia da semana
  montarGraficoPrevisao(atual.daily);
 
@@ -354,8 +388,8 @@ function formatarChuvaClasse(v){
 
 function definirStatus(p,c){
   linhaStatus.className="linha-status";
-  if(c>8||p<1005){linhaStatus.classList.add("tempestade");linhaStatus.innerText="⛈️ Risco de tempestade";}
-  else if(c>1||p<1012){linhaStatus.classList.add("chuva");linhaStatus.innerText="🌧️ Possibilidade de chuva";}
+  if(c>8||p<1005){linhaStatus.classList.add("tempestade");linhaStatus.innerText="⛈️ Risco de temp.";}
+  else if(c>1||p<1012){linhaStatus.classList.add("chuva");linhaStatus.innerText="🌧️ Possib. chuva";}
   else{linhaStatus.classList.add("bom");linhaStatus.innerText="☀️ Tempo bom";}
 }
 
@@ -429,11 +463,11 @@ function montarGraficoPrevisao(d){
     data:{labels,datasets:[
       {type:"bar",label:"Chuva (mm)",data:chuva,yAxisID:"y1",backgroundColor:"#c62828"},
       {type:"bar",label:"Prob. Chuva (%)",data:prob,yAxisID:"y1",backgroundColor:"#90caf9"},
-      {type:"line",label:"Temp Min (°C)",data:tempMin,yAxisID:"y",borderColor:"#ff7043",borderWidth:2,tension:0.3},
-      {type:"line",label:"Temp Max (°C)",data:tempMax,yAxisID:"y",borderColor:"#ffca28",borderWidth:2,tension:0.3}
+      {type:"line",label:"Temp Min (°C)",data:tempMin,yAxisID:"y",borderColor:"#ff7043",borderWidth:1,tension:0.3},
+      {type:"line",label:"Temp Max (°C)",data:tempMax,yAxisID:"y",borderColor:"#ffca28",borderWidth:1,tension:0.3}
     ]},
     options:{
-      plugins:{title:{display:true,text:"Previsão Chuva/Temperatura - 7 Dias",color:document.body.classList.contains("dark")?"#e6edf3":"#000",font:{size:16,weight:"bold"}}},
+      plugins:{title:{display:true,text:"Previsão Chuva/Temperatura - 7 Dias",color:document.body.classList.contains("dark")?"#e6edf3":"#000",font:{size:12,weight:"bold"}}},
       scales:{
         y:{position:"left",title:{display:true,text:"Temp (°C)"}},
         y1:{position:"right",beginAtZero:true,grid:{drawOnChartArea:false},title:{display:true,text:"Chuva / Probabilidade"}}
@@ -466,7 +500,7 @@ function montarGrafico(h){
       {type:"line",label:"Pressão (hPa)",data:press,yAxisID:"y",borderWidth:3,tension:.4}
     ]},
     options:{
-      plugins:{title:{display:true,text:"Pressão ATM/Chuva - Últimos 5 Dias",color:document.body.classList.contains("dark")?"#e6edf3":"#000",font:{size:16,weight:"bold"}}},
+      plugins:{title:{display:true,text:"Pressão ATM/Chuva - Últimos 5 Dias",color:document.body.classList.contains("dark")?"#e6edf3":"#000",font:{size:12,weight:"bold"}}},
       scales:{y:{title:{display:true,text:"Pressão (hPa)"}},y1:{position:"right",beginAtZero:true,grid:{drawOnChartArea:false},title:{display:true,text:"Chuva (mm)"}}}
     }
   });
@@ -476,7 +510,7 @@ function montarGrafico(h){
 navigator.geolocation?.getCurrentPosition(p=>{
  lat=p.coords.latitude;
  lon=p.coords.longitude;
- nomeCidade.innerText="Sua localização";
+ nomeCidade.innerText="Sua Localização";
  buscar();
 });
 </script>
