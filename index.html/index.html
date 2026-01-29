@@ -309,7 +309,7 @@ let horaAtualCidade = atual.current_weather?.time?.slice(11,16) ?? "—";
 
 /* ===== ACRESCENTA NA LINHA VERDE ===== */
 if (proximaChuva !== "—") {
-  linhaStatus.innerHTML += ` • 🌧️Chuva as: <b>${proximaChuva} (${probChuva}%)</b> • Hora Local: ${horaAtualCidade}`;
+  linhaStatus.innerHTML += ` • 🌧️Chuva as: <b>${proximaChuva} (${probChuva}%)</b> • Hora Leitura: ${horaAtualCidade}`;
 linhaStatus.style.fontSize = "12px";
 }
 
