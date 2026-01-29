@@ -275,7 +275,7 @@ for (let i = idx; i < atual.hourly.time.length; i++) {
   const mm = atual.hourly.precipitation?.[i] ?? 0;
   const prob = atual.hourly.precipitation_probability?.[i] ?? 0;
 
-  if (mm > 0 || prob >= 20) {
+  if (mm > 0 || prob >= 50) {
     const timeStr = atual.hourly.time[i]; // ex: "2026-01-28T17:34"
     
     // Extrai HH:MM → já é hora local da cidade
@@ -386,11 +386,21 @@ function formatarChuvaClasse(v){
   return "chuva-extremo";
 }
 
-function definirStatus(p,c){
+function definirStatus(pressao, chuva, probChuva=0){
   linhaStatus.className="linha-status";
-  if(c>8||p<1005){linhaStatus.classList.add("tempestade");linhaStatus.innerText="⛈️ Risco de temp.";}
-  else if(c>1||p<1012){linhaStatus.classList.add("chuva");linhaStatus.innerText="🌧️ Possib. chuva";}
-  else{linhaStatus.classList.add("bom");linhaStatus.innerText="☀️ Tempo bom";}
+
+  if(probChuva >= 60 || chuva > 5 || pressao < 1008){
+    linhaStatus.classList.add("tempestade");
+    linhaStatus.innerText="⛈️ Risco Tempest.";
+  }
+  else if(probChuva >= 30 || chuva > 0){
+    linhaStatus.classList.add("chuva");
+    linhaStatus.innerText="🌧️ Possib. Chuva";
+  }
+  else{
+    linhaStatus.classList.add("bom");
+    linhaStatus.innerText="☀️ Tempo bom";
+  }
 }
 
 function montarLinhaSol(d){
