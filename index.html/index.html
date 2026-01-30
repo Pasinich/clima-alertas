@@ -335,10 +335,10 @@ const deg = atual.current_weather.winddirection ?? null;
 function degParaDirecao(d){
   if(d==null) return "—";
   const dirs = [
-    "Norte","Norte-Nordeste","Nordeste","Leste-Nordeste",
-    "Leste","Leste-Sudeste","Sudeste","Sul-Sudeste",
-    "Sul","Sul-Sudoeste","Sudoeste","Oeste-Sudoeste",
-    "Oeste","Oeste-Noroeste","Noroeste","Norte-Noroeste"
+    "Norte","Norte-Norde.","Nordeste","Leste-Nordes",
+    "Leste","Leste-Sudes","Sudeste","Sul-Sudeste",
+    "Sul","Sul-Sudoeste","Sudoeste","Oeste-Sudo",
+    "Oeste","Oeste-Noro","Noroeste","Norte-Noro"
   ];
   const ix = Math.round(d / 22.5) % 16;
   return dirs[ix];
@@ -346,7 +346,7 @@ function degParaDirecao(d){
 
 const direcaoVento = degParaDirecao(deg);
 
-linhaVisibilidade.innerHTML = `👁️ Visib.: <b>${visibilidade} km</b> • 💨 Vento: <b>${atual.current_weather.windspeed} km/h</b> • Direção: <b>${direcaoVento}</b>`;
+linhaVisibilidade.innerHTML = `👁️Visib.:<b>${visibilidade} km</b> • 💨Vento:<b>${atual.current_weather.windspeed} km/h</b> •Direção:<b>${direcaoVento}</b>`;
  
  const chuvaHora = atual.hourly.precipitation_probability?.[idx] ?? 0;
  linhaUmidade.innerHTML = `💧 Umidade: <b>${atual.hourly.relativehumidity_2m[idx]}%</b> • 🌧️ Chuva: <b class="${formatarChuvaClasse(chuvaHora)}">${chuvaHora}%</b>`;
