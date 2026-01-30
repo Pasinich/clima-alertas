@@ -557,11 +557,32 @@ function montarGrafico(h){
 }
 
 /* ===== GEOLOCALIZAÇÃO INICIAL ===== */
-navigator.geolocation?.getCurrentPosition(p=>{
- lat=p.coords.latitude;
- lon=p.coords.longitude;
- nomeCidade.innerText="Sua Localização";
- buscar();
+navigator.geolocation?.getCurrentPosition(async p => {
+  const lat = p.coords.latitude;
+  const lon = p.coords.longitude;
+
+  try {
+    // Geocodificação reversa com Nominatim (OpenStreetMap)
+    const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&accept-language=pt`);
+    const data = await res.json();
+
+    // Pega cidade e estado
+    const cidade = data.address?.city 
+                  || data.address?.town 
+                  || data.address?.village 
+                  || data.address?.municipality 
+                  || "";
+    const estado = data.address?.state || "";
+
+    nomeCidade.innerText = cidade ? `${cidade}${estado ? ", " + estado : ""}` : "Sua Localização";
+
+  } catch (e) {
+    console.error("Erro ao obter cidade:", e);
+    nomeCidade.innerText = "Sua Localização";
+  }
+
+  // Chama função de buscar clima usando lat/lon
+  buscar();
 });
 </script>
 </body>
