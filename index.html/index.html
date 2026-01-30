@@ -145,6 +145,8 @@ canvas{
 
  <div id="info"></div>
  <div id="linha-pressao" class="linha-info"></div>
+  <div id="linha-visibilidade" class="linha-info"></div>
+  <div id="linha-vento" class="linha-info"></div>
  <div id="linha-umidade" class="linha-info"></div>
  <div id="linha-lua" class="linha-info"></div>
  <div id="linha-status" class="linha-status"></div>
@@ -171,6 +173,7 @@ lista=document.getElementById("lista"),
 nomeCidade=document.getElementById("nome-cidade"),
 info=document.getElementById("info"),
 linhaPressao=document.getElementById("linha-pressao"),
+linhaVisibilidade=document.getElementById("linha-visibilidade"),
 linhaUmidade=document.getElementById("linha-umidade"),
 linhaLua=document.getElementById("linha-lua"),
 linhaStatus=document.getElementById("linha-status"),
@@ -178,6 +181,7 @@ linhaAviso=document.getElementById("linha-aviso"),
 linhaSol=document.getElementById("linha-sol"),
 previsao5=document.getElementById("previsao-5dias"),
 btnModo=document.getElementById("toggleModo");
+linhaVento = document.getElementById("linha-vento");
 
 /* ===== MODO ===== */
 function aplicarModo(m){
@@ -243,8 +247,9 @@ async function buscar() {
   return;
  }
 
+ // API com visibility incluído
  const rAtual = await fetch(
-  `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&hourly=apparent_temperature,relativehumidity_2m,pressure_msl,precipitation,precipitation_probability&daily=sunrise,sunset,temperature_2m_min,temperature_2m_max,precipitation_sum,precipitation_probability_max,uv_index_max&timezone=auto`
+  `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&hourly=apparent_temperature,relativehumidity_2m,pressure_msl,precipitation,precipitation_probability,visibility&daily=sunrise,sunset,temperature_2m_min,temperature_2m_max,precipitation_sum,precipitation_probability_max,uv_index_max&timezone=auto`
  );
  const atual = await rAtual.json();
 
@@ -266,6 +271,7 @@ async function buscar() {
   const d=Math.abs(new Date(t).getTime()-agora);
   if(d<minAQ){minAQ=d;idxAQ=i;}
  });
+
 /* ===== PRÓXIMA CHUVA (NOVA LÓGICA) ===== */
 let proximaChuva = "—";
 let probChuva = 0;
@@ -275,7 +281,7 @@ for (let i = idx; i < atual.hourly.time.length; i++) {
   const mm = atual.hourly.precipitation?.[i] ?? 0;
   const prob = atual.hourly.precipitation_probability?.[i] ?? 0;
 
-  if (mm > 0 || prob >= 50) {
+  if (mm > 0 || prob >= 20) {
     const timeStr = atual.hourly.time[i]; // ex: "2026-01-28T17:34"
     
     // Extrai HH:MM → já é hora local da cidade
@@ -293,10 +299,57 @@ for (let i = idx; i < atual.hourly.time.length; i++) {
  const pm25 = aq.hourly.pm2_5[idxAQ] ?? 0;
  const usAQI = pm25ToUSAQI(pm25);
 
- linhaPressao.innerHTML = `🌬️ Pressão: <b>${atual.hourly.pressure_msl[idx]} hPa</b>-🌫️ Qual. Ar: ${formatarAQ(usAQI)}`;
+ // LINHA PRESSÃO
+linhaPressao.innerHTML = `🌬️ Pressão: <b>${atual.hourly.pressure_msl[idx]} hPa</b> • 🌫️ Qual. Ar: ${formatarAQ(usAQI)}`;
 
+// ===== VISIBILIDADE (pega próximo valor válido) =====
+let vis = null;
+
+// percorre os horários a partir do índice atual até achar valor válido
+for (let i = idx; i < atual.hourly.visibility.length; i++) {
+    const v = atual.hourly.visibility[i];
+    if (v != null && v <= 20000) { // verifica se não é nulo e não é absurdo
+        vis = v;
+        break;
+    }
+}
+
+// caso não ache nenhum válido, tenta horários anteriores
+if(vis === null){
+    for(let i = idx-1; i >= 0; i--){
+        const v = atual.hourly.visibility[i];
+        if (v != null && v <= 20000) {
+            vis = v;
+            break;
+        }
+    }
+}
+
+let visibilidade = vis != null ? (vis / 1000).toFixed(1) : "—";
+
+ linhaVisibilidade.innerHTML = `👁️ Visibilidade: <b>${visibilidade} km</b>`;
+ 
+ // ===== VISIBILIDADE + VENTO NA MESMA LINHA =====
+const deg = atual.current_weather.winddirection ?? null;
+
+function degParaDirecao(d){
+  if(d==null) return "—";
+  const dirs = [
+    "Norte","Norte-Nordeste","Nordeste","Leste-Nordeste",
+    "Leste","Leste-Sudeste","Sudeste","Sul-Sudeste",
+    "Sul","Sul-Sudoeste","Sudoeste","Oeste-Sudoeste",
+    "Oeste","Oeste-Noroeste","Noroeste","Norte-Noroeste"
+  ];
+  const ix = Math.round(d / 22.5) % 16;
+  return dirs[ix];
+}
+
+const direcaoVento = degParaDirecao(deg);
+
+linhaVisibilidade.innerHTML = `👁️ Visib.: <b>${visibilidade} km</b> • 💨 Vento: <b>${atual.current_weather.windspeed} km/h</b> • Direção: <b>${direcaoVento}</b>`;
+ 
  const chuvaHora = atual.hourly.precipitation_probability?.[idx] ?? 0;
- linhaUmidade.innerHTML = `💧 Umidade: <b>${atual.hourly.relativehumidity_2m[idx]}%</b> • 💨 Vento: <b>${atual.current_weather.windspeed} km/h</b> • 🌧️ Chuva: <b class="${formatarChuvaClasse(chuvaHora)}">${chuvaHora}%</b>`;
+ linhaUmidade.innerHTML = `💧 Umidade: <b>${atual.hourly.relativehumidity_2m[idx]}%</b> • 🌧️ Chuva: <b class="${formatarChuvaClasse(chuvaHora)}">${chuvaHora}%</b>`;
 
  const lua = calcularLua(new Date());
  linhaLua.innerHTML = `🌙 Lua: <b>${lua.fase}</b> • Iluminação: <b>${lua.iluminacao}%</b>`;
@@ -304,32 +357,30 @@ for (let i = idx; i < atual.hourly.time.length; i++) {
  definirStatus(atual.hourly.pressure_msl[idx],atual.hourly.precipitation[idx]);
  
 /* ===== HORA LOCAL ATUAL DA CIDADE ===== */
-// Pega a hora atual da cidade direto do current_weather (já ajustada para timezone=auto)
 let horaAtualCidade = atual.current_weather?.time?.slice(11,16) ?? "—";
 
 /* ===== ACRESCENTA NA LINHA VERDE ===== */
 if (proximaChuva !== "—") {
   linhaStatus.innerHTML += ` • 🌧️Chuva as: <b>${proximaChuva} (${probChuva}%)</b> • Hora Coleta: ${horaAtualCidade}`;
-linhaStatus.style.fontSize = "12px";
+  linhaStatus.style.fontSize = "12px";
 }
 
-
 montarLinhaSol(atual.daily);
- montarPrevisao5Dias(atual.daily); // <-- aqui vai dia da semana
- montarGraficoPrevisao(atual.daily);
+montarPrevisao5Dias(atual.daily);
+montarGraficoPrevisao(atual.daily);
 
- const hoje = new Date();
- const ontem = new Date(hoje); ontem.setDate(hoje.getDate()-1);
- const ini = new Date(ontem); ini.setDate(ontem.getDate()-30);
+const hoje = new Date();
+const ontem = new Date(hoje); ontem.setDate(hoje.getDate()-1);
+const ini = new Date(ontem); ini.setDate(ontem.getDate()-30);
 
- const rHist = await fetch(
+const rHist = await fetch(
   `https://archive-api.open-meteo.com/v1/archive?latitude=${lat}&longitude=${lon}&start_date=${ini.toISOString().split("T")[0]}&end_date=${ontem.toISOString().split("T")[0]}&hourly=pressure_msl,precipitation&timezone=UTC`
- );
- const hist = await rHist.json();
- histSalvo = hist.hourly;
+);
+const hist = await rHist.json();
+histSalvo = hist.hourly;
 
- calcularPressaoChuva(hist.hourly);
- montarGrafico(hist.hourly);
+calcularPressaoChuva(hist.hourly);
+montarGrafico(hist.hourly);
 }
 
 /* ===== CONVERSÃO PM2.5 -> US AQI ===== */
@@ -386,21 +437,11 @@ function formatarChuvaClasse(v){
   return "chuva-extremo";
 }
 
-function definirStatus(pressao, chuva, probChuva=0){
+function definirStatus(p,c){
   linhaStatus.className="linha-status";
-
-  if(probChuva >= 60 || chuva > 5 || pressao < 1008){
-    linhaStatus.classList.add("tempestade");
-    linhaStatus.innerText="⛈️ Risco Tempest.";
-  }
-  else if(probChuva >= 30 || chuva > 0){
-    linhaStatus.classList.add("chuva");
-    linhaStatus.innerText="🌧️ Possib. Chuva";
-  }
-  else{
-    linhaStatus.classList.add("bom");
-    linhaStatus.innerText="☀️ Tempo bom";
-  }
+  if(c>8||p<1005){linhaStatus.classList.add("tempestade");linhaStatus.innerText="⛈️ Risco de temp.";}
+  else if(c>1||p<1012){linhaStatus.classList.add("chuva");linhaStatus.innerText="🌧️ Possib. chuva";}
+  else{linhaStatus.classList.add("bom");linhaStatus.innerText="☀️ Tempo bom";}
 }
 
 function montarLinhaSol(d){
@@ -420,14 +461,12 @@ function montarLinhaSol(d){
   }
 }
 
-/* ===== MONTAR PREVISÃO 5 DIAS COM DIA DA SEMANA ===== */
 function montarPrevisao5Dias(d){
   if(!d?.time) return;
   const diasSemana = ["Dom.","Seg.","Ter.","Qua.","Qui.","Sex.","Sáb."];
   previsao5.innerHTML="";
   for(let i=0;i<5;i++){
     const partes = d.time[i].split("-");
-    // Mês é 0-indexado, por isso subtraímos 1
     const data = new Date(partes[0], partes[1]-1, partes[2]);
     const dia = diasSemana[data.getDay()];
     previsao5.innerHTML+=`<div class="previsao-dia">
@@ -438,6 +477,7 @@ function montarPrevisao5Dias(d){
     </div>`;
   }
 }
+
 function calcularPressaoChuva(h){
   if(!h?.time) return;
   const dias={};
