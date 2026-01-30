@@ -562,13 +562,22 @@ navigator.geolocation?.getCurrentPosition(async p => {
   const lon = p.coords.longitude;
 
   try {
-    // Faz geocodificação reversa pra pegar o nome da cidade
+    // Geocodificação reversa Open-Meteo
     const res = await fetch(`https://geocoding-api.open-meteo.com/v1/reverse?latitude=${lat}&longitude=${lon}&language=pt`);
     const data = await res.json();
-    
-    const cidade = data?.results?.[0]?.name ?? "Sua Localização";
-    nomeCidade.innerText = cidade; // mostra a cidade real
-    
+
+    if (data && data.results && data.results.length > 0) {
+      const result = data.results[0];
+      const cidade = result.name ?? "";
+      const estado = result.admin1 ?? "";
+      
+      // Mostra "Cidade, Estado" se disponível
+      nomeCidade.innerText = cidade ? `${cidade}${estado ? ", " + estado : ""}` : "Sua Localização";
+    } else {
+      // Fallback caso não venha nada da API
+      nomeCidade.innerText = "Sua Localização";
+    }
+
   } catch (e) {
     console.error("Erro ao obter cidade:", e);
     nomeCidade.innerText = "Sua Localização";
