@@ -249,7 +249,7 @@ async function buscar() {
 
  // API com visibility incluído
  const rAtual = await fetch(
-  `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&hourly=apparent_temperature,relativehumidity_2m,pressure_msl,precipitation,precipitation_probability,visibility&daily=sunrise,sunset,temperature_2m_min,temperature_2m_max,precipitation_sum,precipitation_probability_max,uv_index_max&timezone=auto`
+  `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&hourly=apparent_temperature,relativehumidity_2m,pressure_msl,precipitation,precipitation_probability,visibility,cloudcover&daily=sunrise,sunset,temperature_2m_min,temperature_2m_max,precipitation_sum,precipitation_probability_max,uv_index_max&timezone=auto`
  );
  const atual = await rAtual.json();
 
@@ -276,15 +276,12 @@ async function buscar() {
 let proximaChuva = "—";
 let probChuva = 0;
 
-// percorre horários da API a partir do índice atual
 for (let i = idx; i < atual.hourly.time.length; i++) {
   const mm = atual.hourly.precipitation?.[i] ?? 0;
   const prob = atual.hourly.precipitation_probability?.[i] ?? 0;
 
   if (mm > 0 || prob >= 20) {
-    const timeStr = atual.hourly.time[i]; // ex: "2026-01-28T17:34"
-    
-    // Extrai HH:MM → já é hora local da cidade
+    const timeStr = atual.hourly.time[i];
     proximaChuva = timeStr.slice(11,16);
     probChuva = prob;
     break;
@@ -294,28 +291,28 @@ for (let i = idx; i < atual.hourly.time.length; i++) {
  const uvIndex = atual.daily.uv_index_max?.[0] ?? 0;
  const {classe, descricao} = formatarUV(uvIndex);
 
- info.innerHTML = `🌡️ <b>${atual.current_weather.temperature}°C</b> • <span style="font-size:smaller">Sensação: ${atual.hourly.apparent_temperature[idx]}°C</span> • ☀️ UV: <b class="${classe}">${uvIndex}</b> <span style="font-size:smaller">(${descricao})</span>`;
-
+ info.innerHTML = `
+<span style="font-size:13px">
+ 🌡️ <b>${atual.current_weather.temperature}°C</b> • 
+ Sensação: ${atual.hourly.apparent_temperature[idx]}°C • 
+ ☀️ UV: <b class="${classe}">${uvIndex}</b> (${descricao})
+</span>`;
  const pm25 = aq.hourly.pm2_5[idxAQ] ?? 0;
  const usAQI = pm25ToUSAQI(pm25);
 
  // LINHA PRESSÃO
-linhaPressao.innerHTML = `🌬️ Pressão: <b>${atual.hourly.pressure_msl[idx]} hPa</b> • 🌫️ Qual. Ar: ${formatarAQ(usAQI)}`;
+ linhaPressao.innerHTML = `🌬️ Pressão: <b>${atual.hourly.pressure_msl[idx]} hPa</b> • 🌫️ Qual. Ar: ${formatarAQ(usAQI)}`;
 
-// ===== VISIBILIDADE (pega próximo valor válido) =====
-let vis = null;
-
-// percorre os horários a partir do índice atual até achar valor válido
-for (let i = idx; i < atual.hourly.visibility.length; i++) {
+ // ===== VISIBILIDADE (pega próximo valor válido) =====
+ let vis = null;
+ for (let i = idx; i < atual.hourly.visibility.length; i++) {
     const v = atual.hourly.visibility[i];
-    if (v != null && v <= 20000) { // verifica se não é nulo e não é absurdo
+    if (v != null && v <= 20000) {
         vis = v;
         break;
     }
-}
-
-// caso não ache nenhum válido, tenta horários anteriores
-if(vis === null){
+ }
+ if(vis === null){
     for(let i = idx-1; i >= 0; i--){
         const v = atual.hourly.visibility[i];
         if (v != null && v <= 20000) {
@@ -323,64 +320,81 @@ if(vis === null){
             break;
         }
     }
-}
+ }
+ let visibilidade = vis != null ? (vis / 1000).toFixed(1) : "—";
 
-let visibilidade = vis != null ? (vis / 1000).toFixed(1) : "—";
-
- linhaVisibilidade.innerHTML = `👁️ Visibilidade: <b>${visibilidade} km</b>`;
- 
- // ===== VISIBILIDADE + VENTO NA MESMA LINHA =====
-const deg = atual.current_weather.winddirection ?? null;
-
-function degParaDirecao(d){
+ const deg = atual.current_weather.winddirection ?? null;
+ function degParaDirecao(d){
   if(d==null) return "—";
   const dirs = [
-    "Norte","Norte-Norde.","Nordeste","Leste-Nordes",
-    "Leste","Leste-Sudes","Sudeste","Sul-Sudes",
-    "Sul","Sul-Sudoeste","Sudoeste","Oeste-Sudo",
-    "Oeste","Oeste-Noro","Noroeste","Norte-Noro"
+    "Norte","Norte-Nordeste","Nordeste","Leste-Nordeste",
+    "Leste","Leste-Sudeste","Sudeste","Sul-Sudeste",
+    "Sul","Sul-Sudoeste","Sudoeste","Oeste-Sudoeste",
+    "Oeste","Oeste-Noroeste","Noroeste","Norte-Noroeste"
   ];
   const ix = Math.round(d / 22.5) % 16;
   return dirs[ix];
+ }
+ const direcaoVento = degParaDirecao(deg);
+
+ linhaVisibilidade.innerHTML = `👁️Visib.:<b>${visibilidade} km</b> • 💨Vento:<b>${atual.current_weather.windspeed} km/h</b>(<b>${direcaoVento})</b>`;
+
+ // ===== UMIDADE, CHUVA E NEBULOSIDADE =====
+ const chuvaHora = atual.hourly.precipitation_probability?.[idx] ?? 0;
+ 
+ // ===== NEBULOSIDADE (valor válido mais próximo) =====
+let neb = null;
+
+for (let i = idx; i < atual.hourly.cloudcover.length; i++) {
+  const v = atual.hourly.cloudcover[i];
+  if (v != null && v >= 0 && v <= 100) {
+    neb = v;
+    break;
+  }
 }
 
-const direcaoVento = degParaDirecao(deg);
+if (neb === null) {
+  for (let i = idx - 1; i >= 0; i--) {
+    const v = atual.hourly.cloudcover[i];
+    if (v != null && v >= 0 && v <= 100) {
+      neb = v;
+      break;
+    }
+  }
+}
 
-linhaVisibilidade.innerHTML = `👁️Visib.:<b>${visibilidade} km</b> • 💨Vento:<b>${atual.current_weather.windspeed} km/h</b> •Direção:<b>${direcaoVento}</b>`;
- 
- const chuvaHora = atual.hourly.precipitation_probability?.[idx] ?? 0;
- linhaUmidade.innerHTML = `💧 Umidade: <b>${atual.hourly.relativehumidity_2m[idx]}%</b> • 🌧️ Chuva: <b class="${formatarChuvaClasse(chuvaHora)}">${chuvaHora}%</b>`;
+const nebulosidade = neb !== null ? neb : "—";
+
+ linhaUmidade.innerHTML = `💧 Umidade: <b>${atual.hourly.relativehumidity_2m[idx]}%</b> • 🌧️ Chuva: <b class="${formatarChuvaClasse(chuvaHora)}">${chuvaHora}%</b> •☁️Nebulosidade: <b>${nebulosidade}%</b>`;
 
  const lua = calcularLua(new Date());
  linhaLua.innerHTML = `🌙 Lua: <b>${lua.fase}</b> • Iluminação: <b>${lua.iluminacao}%</b>`;
 
  definirStatus(atual.hourly.pressure_msl[idx],atual.hourly.precipitation[idx]);
- 
-/* ===== HORA LOCAL ATUAL DA CIDADE ===== */
-let horaAtualCidade = atual.current_weather?.time?.slice(11,16) ?? "—";
 
-/* ===== ACRESCENTA NA LINHA VERDE ===== */
-if (proximaChuva !== "—") {
+ let horaAtualCidade = atual.current_weather?.time?.slice(11,16) ?? "—";
+
+ if (proximaChuva !== "—") {
   linhaStatus.innerHTML += ` • 🌧️Chuva as: <b>${proximaChuva} (${probChuva}%)</b> • Hora Coleta: ${horaAtualCidade}`;
   linhaStatus.style.fontSize = "12px";
-}
+ }
 
-montarLinhaSol(atual.daily);
-montarPrevisao5Dias(atual.daily);
-montarGraficoPrevisao(atual.daily);
+ montarLinhaSol(atual.daily);
+ montarPrevisao5Dias(atual.daily);
+ montarGraficoPrevisao(atual.daily);
 
-const hoje = new Date();
-const ontem = new Date(hoje); ontem.setDate(hoje.getDate()-1);
-const ini = new Date(ontem); ini.setDate(ontem.getDate()-30);
+ const hoje = new Date();
+ const ontem = new Date(hoje); ontem.setDate(hoje.getDate()-1);
+ const ini = new Date(ontem); ini.setDate(ontem.getDate()-30);
 
-const rHist = await fetch(
+ const rHist = await fetch(
   `https://archive-api.open-meteo.com/v1/archive?latitude=${lat}&longitude=${lon}&start_date=${ini.toISOString().split("T")[0]}&end_date=${ontem.toISOString().split("T")[0]}&hourly=pressure_msl,precipitation&timezone=UTC`
-);
-const hist = await rHist.json();
-histSalvo = hist.hourly;
+ );
+ const hist = await rHist.json();
+ histSalvo = hist.hourly;
 
-calcularPressaoChuva(hist.hourly);
-montarGrafico(hist.hourly);
+ calcularPressaoChuva(hist.hourly);
+ montarGrafico(hist.hourly);
 }
 
 /* ===== CONVERSÃO PM2.5 -> US AQI ===== */
@@ -400,7 +414,7 @@ function formatarAQ(v){
   if(v<=50) return `<span class="aq-bom">Boa (${v})</span>`;
   if(v<=100) return `<span class="aq-mod">Moderada (${v})</span>`;
   if(v<=150) return `<span class="aq-ruim">Insalubre (${v})</span>`;
-  if(v<=200) return `<span class="aq-muito">Muito Insalubre (${v})</span>`;
+  if(v<=200) return `<span class="aq-muito">Muito Insalub. (${v})</span>`;
   if(v<=300) return `<span class="aq-severo">Severo (${v})</span>`;
   return `<span class="aq-extremo">Extrema (${v})</span>`;
 }
