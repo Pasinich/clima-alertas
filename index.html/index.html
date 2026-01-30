@@ -213,7 +213,7 @@ cidade.addEventListener("focus",()=>{
 cidade.addEventListener("input",async()=>{
  lista.innerHTML="";
  if(cidade.value.length<2) return;
- const r=await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(cidade.value)}&count=5&language=pt`);
+ const r=await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(cidade.value)}&count=10&language=pt`);
  const d=await r.json();
  if(!d.results) return;
 
