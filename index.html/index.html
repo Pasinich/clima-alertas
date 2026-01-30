@@ -451,7 +451,7 @@ async function buscar(){
  linhaUmidade.innerHTML =
   `💧 Umidade: <b>${atual.hourly.relativehumidity_2m[idx]}%</b> • ` +
   `🌧️ Chuva: <b class="${formatarChuvaClasse(chuvaHora)}">${chuvaHora}%</b> • ` +
-  `☁️ Nebulosidade: <b>${nebulosidade}%</b>`;
+  `☁️Nebulosidade: <b>${nebulosidade}%</b>`;
 
  /* =========================
     LUA
@@ -473,8 +473,7 @@ async function buscar(){
 
  if(proximaChuva !== "—"){
   linhaStatus.innerHTML +=
-   ` • 🌧️ Chuva às: <b>${proximaChuva} (${probChuva}%)</b> • ` +
-   `Hora coleta: ${horaAtualCidade}`;
+   ` • 🌧️Chuva às: <b>${proximaChuva} (${probChuva}%)</b> • ` + `Hora coleta:${horaAtualCidade}`;
   linhaStatus.style.fontSize = "12px";
  }
  /* =========================
@@ -573,7 +572,7 @@ function definirStatus(p,c){
  linhaStatus.className="linha-status";
  if(c>8||p<1005){
   linhaStatus.classList.add("tempestade");
-  linhaStatus.innerText="⛈️ Risco de tempestade";
+  linhaStatus.innerText="⛈️Risco tempest.";
  }
  else if(c>1||p<1012){
   linhaStatus.classList.add("chuva");
