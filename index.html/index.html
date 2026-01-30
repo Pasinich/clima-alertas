@@ -7,6 +7,9 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
+/* =========================
+   VARIÁVEIS DE TEMA
+========================= */
 :root{
  --bg1:#1565c0;
  --bg2:#26c6da;
@@ -21,6 +24,10 @@ body.dark{
  --text:#e6edf3;
  --grafico:#0d1117;
 }
+
+/* =========================
+   ESTILO GLOBAL
+========================= */
 body{
  margin:0;
  font-family:Arial,sans-serif;
@@ -46,6 +53,10 @@ button.toggle{
  cursor:pointer;
  color:var(--text);
 }
+
+/* =========================
+   CARDS E INPUT
+========================= */
 .card{
  background:var(--card);
  border-radius:16px;
@@ -59,6 +70,10 @@ input{
  border-radius:10px;
  font-size:14px;
 }
+
+/* =========================
+   AUTOCOMPLETE
+========================= */
 .autocomplete{
  background:#fff;
  color:#000;
@@ -71,6 +86,9 @@ input{
 .autocomplete div{padding:10px;cursor:pointer;}
 .autocomplete div:hover{background:#e0e0e0;}
 
+/* =========================
+   LINHAS DE INFORMAÇÃO
+========================= */
 .linha-info{margin-top:6px;font-size:14px;}
 .linha-status{margin-top:6px;font-size:13px;font-weight:bold;padding:6px;border-radius:8px;}
 
@@ -78,6 +96,9 @@ input{
 .chuva{background:#f9a825;color:#000;}
 .tempestade{background:#c62828;}
 
+/* =========================
+   QUALIDADE DO AR
+========================= */
 .aq-bom{color:#0A3D0A;font-weight:bold;}
 .aq-mod{color:#ffeb3b;font-weight:bold;}
 .aq-ruim{color:#ff9800;font-weight:bold;}
@@ -85,12 +106,18 @@ input{
 .aq-severo{color:#f44336;font-weight:bold;}
 .aq-extremo{color:#b71c1c;font-weight:bold;}
 
+/* =========================
+   CHUVA
+========================= */
 .chuva-bom{color:#0A3D0A;font-weight:bold;}
 .chuva-mod{color:#ffeb3b;font-weight:bold;}
 .chuva-ruim{color:#ff9800;font-weight:bold;}
 .chuva-muito{color:#f44336;font-weight:bold;}
 .chuva-extremo{color:#6a1b9a;}
 
+/* =========================
+   SOL
+========================= */
 #linha-sol{display:flex;gap:8px;margin-top:12px;}
 .sol-dia{
  flex:1;
@@ -107,12 +134,15 @@ input{
 }
 body.dark .sol-dia{background:#0b3c5d;}
 
+/* =========================
+   PREVISÃO
+========================= */
 #previsao-5dias{
  display:flex;
  gap:6px;
  margin-top:4px;
  overflow-x:auto;
- margin-bottom: 4px;
+ margin-bottom:4px;
 }
 .previsao-dia{
  background:rgba(255,255,255,.18);
@@ -123,6 +153,10 @@ body.dark .sol-dia{background:#0b3c5d;}
  font-size:10px;
  font-weight:bold;
 }
+
+/* =========================
+   GRÁFICOS
+========================= */
 canvas{
  background:var(--grafico);
  border-radius:10px;
@@ -131,7 +165,6 @@ canvas{
 }
 </style>
 </head>
-
 <body>
 
 <header>
@@ -143,15 +176,18 @@ canvas{
  <input id="cidade" placeholder="Digite a cidade">
  <div id="lista" class="autocomplete"></div>
 
+ <!-- ===== DADOS ATUAIS ===== -->
  <div id="info"></div>
  <div id="linha-pressao" class="linha-info"></div>
-  <div id="linha-visibilidade" class="linha-info"></div>
-  <div id="linha-vento" class="linha-info"></div>
+ <div id="linha-visibilidade" class="linha-info"></div>
+ <div id="linha-vento" class="linha-info"></div>
  <div id="linha-umidade" class="linha-info"></div>
+ <div id="linha-nevoeiro" class="linha-info"></div>
  <div id="linha-lua" class="linha-info"></div>
  <div id="linha-status" class="linha-status"></div>
  <div id="linha-aviso" class="linha-info"></div>
 
+ <!-- ===== SOL E PREVISÃO ===== -->
  <div id="linha-sol"></div>
  <div id="previsao-5dias"></div>
 </div>
@@ -165,25 +201,35 @@ canvas{
 </div>
 
 <script>
-let lat=null,lon=null,chart=null,histSalvo=null;
-let chartPrevisao=null;
+/* =========================
+   VARIÁVEIS GLOBAIS
+========================= */
+let lat=null, lon=null;
+let chart=null, chartPrevisao=null;
+let histSalvo=null;
 
+/* =========================
+   ELEMENTOS DOM
+========================= */
 const cidade=document.getElementById("cidade"),
 lista=document.getElementById("lista"),
 nomeCidade=document.getElementById("nome-cidade"),
 info=document.getElementById("info"),
 linhaPressao=document.getElementById("linha-pressao"),
 linhaVisibilidade=document.getElementById("linha-visibilidade"),
+linhaVento=document.getElementById("linha-vento"),
 linhaUmidade=document.getElementById("linha-umidade"),
+linhaNevoeiro=document.getElementById("linha-nevoeiro"),
 linhaLua=document.getElementById("linha-lua"),
 linhaStatus=document.getElementById("linha-status"),
 linhaAviso=document.getElementById("linha-aviso"),
 linhaSol=document.getElementById("linha-sol"),
 previsao5=document.getElementById("previsao-5dias"),
 btnModo=document.getElementById("toggleModo");
-linhaVento = document.getElementById("linha-vento");
 
-/* ===== MODO ===== */
+/* =========================
+   MODO DIA / NOITE
+========================= */
 function aplicarModo(m){
  document.body.classList.toggle("dark", m==="dark");
 
@@ -195,200 +241,261 @@ function aplicarModo(m){
  if(histSalvo) montarGrafico(histSalvo);
  if(chartPrevisao) chartPrevisao.update();
 }
+
 function modoAuto(){
  const h=new Date().getHours();
  const sys=matchMedia("(prefers-color-scheme: dark)").matches;
- return (h>=18||h<=6||sys)?"dark":"light";
+ return (h>=18 || h<=6 || sys) ? "dark" : "light";
 }
-aplicarModo(localStorage.getItem("modo")||modoAuto());
-btnModo.onclick=()=>aplicarModo(document.body.classList.contains("dark")?"light":"dark");
 
-/* ===== LIMPAR ===== */
+aplicarModo(localStorage.getItem("modo") || modoAuto());
+
+btnModo.onclick = () =>
+ aplicarModo(document.body.classList.contains("dark") ? "light" : "dark");
+
+/* =========================
+   LIMPAR INPUT
+========================= */
 cidade.addEventListener("focus",()=>{
  cidade.value="";
  lista.innerHTML="";
 });
-
-/* ===== AUTOCOMPLETE ===== */
+/* =========================
+   AUTOCOMPLETE DE CIDADES
+========================= */
 cidade.addEventListener("input",async()=>{
  lista.innerHTML="";
- if(cidade.value.length<2) return;
- const r=await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(cidade.value)}&count=10&language=pt`);
- const d=await r.json();
+ if(cidade.value.length < 2) return;
+
+ const r = await fetch(
+  `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(cidade.value)}&count=10&language=pt`
+ );
+ const d = await r.json();
  if(!d.results) return;
 
  d.results.forEach(c=>{
-  const local=c.country_code==="BR"&&c.admin1?`${c.name} - ${c.admin1}`:`${c.name} - ${c.country}`;
-  const div=document.createElement("div");
-  div.innerText=local;
-  div.onclick=()=>{
-   cidade.value=local;
-   nomeCidade.innerText=local;
-   lat=c.latitude; lon=c.longitude;
-   lista.innerHTML="";
+  const local = c.country_code==="BR" && c.admin1
+   ? `${c.name} - ${c.admin1}`
+   : `${c.name} - ${c.country}`;
+
+  const div = document.createElement("div");
+  div.innerText = local;
+  div.onclick = ()=>{
+   cidade.value = local;
+   nomeCidade.innerText = local;
+   lat = c.latitude;
+   lon = c.longitude;
+   lista.innerHTML = "";
    buscar();
   };
   lista.appendChild(div);
  });
 });
 
-/* ===== ENTER SELECIONA PRIMEIRA OPÇÃO ===== */
+/* =========================
+   ENTER SELECIONA PRIMEIRO
+========================= */
 cidade.addEventListener("keydown",e=>{
  if(e.key==="Enter"){
-  const item=lista.querySelector("div");
+  const item = lista.querySelector("div");
   if(item) item.click();
  }
 });
 
-/* ===== BUSCA ===== */
-async function buscar() {
+/* =========================
+   BUSCA PRINCIPAL
+========================= */
+async function buscar(){
  if(lat===null || lon===null){
   info.innerHTML="📍 Selecione a cidade na lista";
   return;
  }
 
- // API com visibility incluído
+ /* ===== API ATUAL ===== */
  const rAtual = await fetch(
   `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&hourly=apparent_temperature,relativehumidity_2m,pressure_msl,precipitation,precipitation_probability,visibility,cloudcover&daily=sunrise,sunset,temperature_2m_min,temperature_2m_max,precipitation_sum,precipitation_probability_max,uv_index_max&timezone=auto`
  );
  const atual = await rAtual.json();
 
+ /* ===== API QUALIDADE DO AR ===== */
  const rAQ = await fetch(
   `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lon}&hourly=pm2_5,pm10,european_aqi&timezone=auto`
  );
  const aq = await rAQ.json();
 
+ /* =========================
+    ÍNDICE HORÁRIO ATUAL
+ ========================= */
  const agora = Date.now();
+ let idx = 0, min = Infinity;
 
- let idx=0, min=Infinity;
  atual.hourly.time.forEach((t,i)=>{
-  const d=Math.abs(new Date(t).getTime()-agora);
-  if(d<min){min=d;idx=i;}
+  const d = Math.abs(new Date(t).getTime() - agora);
+  if(d < min){ min = d; idx = i; }
  });
 
- let idxAQ=0, minAQ=Infinity;
+ let idxAQ = 0, minAQ = Infinity;
  aq.hourly.time.forEach((t,i)=>{
-  const d=Math.abs(new Date(t).getTime()-agora);
-  if(d<minAQ){minAQ=d;idxAQ=i;}
+  const d = Math.abs(new Date(t).getTime() - agora);
+  if(d < minAQ){ minAQ = d; idxAQ = i; }
  });
 
-/* ===== PRÓXIMA CHUVA (NOVA LÓGICA) ===== */
-let proximaChuva = "—";
-let probChuva = 0;
+ /* =========================
+    PRÓXIMA CHUVA
+ ========================= */
+ let proximaChuva = "—";
+ let probChuva = 0;
 
-for (let i = idx; i < atual.hourly.time.length; i++) {
+ for(let i = idx; i < atual.hourly.time.length; i++){
   const mm = atual.hourly.precipitation?.[i] ?? 0;
   const prob = atual.hourly.precipitation_probability?.[i] ?? 0;
 
-  if (mm > 0 || prob >= 20) {
-    const timeStr = atual.hourly.time[i];
-    proximaChuva = timeStr.slice(11,16);
-    probChuva = prob;
-    break;
+  if(mm > 0 || prob >= 20){
+   proximaChuva = atual.hourly.time[i].slice(11,16);
+   probChuva = prob;
+   break;
   }
-}
+ }
 
+ /* =========================
+    UV
+ ========================= */
  const uvIndex = atual.daily.uv_index_max?.[0] ?? 0;
  const {classe, descricao} = formatarUV(uvIndex);
 
  info.innerHTML = `
-<span style="font-size:13px">
- 🌡️ <b>${atual.current_weather.temperature}°C</b> • 
- Sensação: ${atual.hourly.apparent_temperature[idx]}°C • 
- ☀️ UV: <b class="${classe}">${uvIndex}</b> (${descricao})
-</span>`;
+  <span style="font-size:13px">
+   🌡️ <b>${atual.current_weather.temperature}°C</b> • 
+   Sensação: ${atual.hourly.apparent_temperature[idx]}°C • 
+   ☀️ UV: <b class="${classe}">${uvIndex}</b> (${descricao})
+  </span>`;
+  /* =========================
+    QUALIDADE DO AR / PRESSÃO
+ ========================= */
  const pm25 = aq.hourly.pm2_5[idxAQ] ?? 0;
  const usAQI = pm25ToUSAQI(pm25);
 
- // LINHA PRESSÃO
- linhaPressao.innerHTML = `🌬️ Pressão: <b>${atual.hourly.pressure_msl[idx]} hPa</b> • 🌫️ Qual. Ar: ${formatarAQ(usAQI)}`;
+ linhaPressao.innerHTML =
+  `🌬️ Pressão: <b>${atual.hourly.pressure_msl[idx]} hPa</b> • ` +
+  `🌫️ Qual. Ar: ${formatarAQ(usAQI)}`;
 
- // ===== VISIBILIDADE (pega próximo valor válido) =====
+ /* =========================
+    VISIBILIDADE (VALOR VÁLIDO)
+ ========================= */
  let vis = null;
- for (let i = idx; i < atual.hourly.visibility.length; i++) {
-    const v = atual.hourly.visibility[i];
-    if (v != null && v <= 20000) {
-        vis = v;
-        break;
-    }
+
+ for(let i = idx; i < atual.hourly.visibility.length; i++){
+  const v = atual.hourly.visibility[i];
+  if(v != null && v <= 20000){ vis = v; break; }
  }
  if(vis === null){
-    for(let i = idx-1; i >= 0; i--){
-        const v = atual.hourly.visibility[i];
-        if (v != null && v <= 20000) {
-            vis = v;
-            break;
-        }
-    }
+  for(let i = idx-1; i >= 0; i--){
+   const v = atual.hourly.visibility[i];
+   if(v != null && v <= 20000){ vis = v; break; }
+  }
  }
- let visibilidade = vis != null ? (vis / 1000).toFixed(1) : "—";
 
+ const visibilidade = vis != null ? (vis/1000).toFixed(1) : "—";
+
+ /* =========================
+    DIREÇÃO DO VENTO
+ ========================= */
  const deg = atual.current_weather.winddirection ?? null;
+
  function degParaDirecao(d){
   if(d==null) return "—";
   const dirs = [
-    "Norte","Norte-Nordeste","Nordeste","Leste-Nordeste",
-    "Leste","Leste-Sudeste","Sudeste","Sul-Sudeste",
-    "Sul","Sul-Sudoeste","Sudoeste","Oeste-Sudoeste",
-    "Oeste","Oeste-Noroeste","Noroeste","Norte-Noroeste"
+   "Norte","Norte-Nordeste","Nordeste","Leste-Nordeste",
+   "Leste","Leste-Sudeste","Sudeste","Sul-Sudeste",
+   "Sul","Sul-Sudoeste","Sudoeste","Oeste-Sudoeste",
+   "Oeste","Oeste-Noroeste","Noroeste","Norte-Noroeste"
   ];
-  const ix = Math.round(d / 22.5) % 16;
-  return dirs[ix];
+  return dirs[Math.round(d/22.5) % 16];
  }
+
  const direcaoVento = degParaDirecao(deg);
 
- linhaVisibilidade.innerHTML = `👁️Visib.:<b>${visibilidade} km</b> • 💨Vento:<b>${atual.current_weather.windspeed} km/h</b>(<b>${direcaoVento})</b>`;
+ linhaVisibilidade.innerHTML =
+  `👁️ Visib.: <b>${visibilidade} km</b> • ` +
+  `💨 Vento: <b>${atual.current_weather.windspeed} km/h</b> ` +
+  `(<b>${direcaoVento}</b>)`;
 
- // ===== UMIDADE, CHUVA E NEBULOSIDADE =====
+ /* =========================
+    NEVOEIRO
+ ========================= */
+ let nevoeiro = "Ausente 🌤️";
+ if(visibilidade !== "—" && parseFloat(visibilidade) < 1){
+  nevoeiro = "Presente 🌫️";
+ }
+ linhaNevoeiro.innerHTML = `🌫️ Nevoeiro: <b>${nevoeiro}</b>`;
+
+ /* =========================
+    UMIDADE / CHUVA / NEBULOSIDADE
+ ========================= */
  const chuvaHora = atual.hourly.precipitation_probability?.[idx] ?? 0;
- 
- // ===== NEBULOSIDADE (valor válido mais próximo) =====
-let neb = null;
 
-for (let i = idx; i < atual.hourly.cloudcover.length; i++) {
+ let neb = null;
+ for(let i = idx; i < atual.hourly.cloudcover.length; i++){
   const v = atual.hourly.cloudcover[i];
-  if (v != null && v >= 0 && v <= 100) {
-    neb = v;
-    break;
+  if(v != null && v >= 0 && v <= 100){ neb = v; break; }
+ }
+ if(neb === null){
+  for(let i = idx-1; i >= 0; i--){
+   const v = atual.hourly.cloudcover[i];
+   if(v != null && v >= 0 && v <= 100){ neb = v; break; }
   }
-}
-
-if (neb === null) {
-  for (let i = idx - 1; i >= 0; i--) {
-    const v = atual.hourly.cloudcover[i];
-    if (v != null && v >= 0 && v <= 100) {
-      neb = v;
-      break;
-    }
-  }
-}
-
-const nebulosidade = neb !== null ? neb : "—";
-
- linhaUmidade.innerHTML = `💧 Umidade: <b>${atual.hourly.relativehumidity_2m[idx]}%</b> • 🌧️ Chuva: <b class="${formatarChuvaClasse(chuvaHora)}">${chuvaHora}%</b> •☁️Nebulosidade: <b>${nebulosidade}%</b>`;
-
- const lua = calcularLua(new Date());
- linhaLua.innerHTML = `🌙 Lua: <b>${lua.fase}</b> • Iluminação: <b>${lua.iluminacao}%</b>`;
-
- definirStatus(atual.hourly.pressure_msl[idx],atual.hourly.precipitation[idx]);
-
- let horaAtualCidade = atual.current_weather?.time?.slice(11,16) ?? "—";
-
- if (proximaChuva !== "—") {
-  linhaStatus.innerHTML += ` • 🌧️Chuva as: <b>${proximaChuva} (${probChuva}%)</b> • Hora Coleta: ${horaAtualCidade}`;
-  linhaStatus.style.fontSize = "12px";
  }
 
+ const nebulosidade = neb !== null ? neb : "—";
+
+ linhaUmidade.innerHTML =
+  `💧 Umidade: <b>${atual.hourly.relativehumidity_2m[idx]}%</b> • ` +
+  `🌧️ Chuva: <b class="${formatarChuvaClasse(chuvaHora)}">${chuvaHora}%</b> • ` +
+  `☁️ Nebulosidade: <b>${nebulosidade}%</b>`;
+
+ /* =========================
+    LUA
+ ========================= */
+ const lua = calcularLua(new Date());
+ linhaLua.innerHTML =
+  `🌙 Lua: <b>${lua.fase}</b> • Iluminação: <b>${lua.iluminacao}%</b>`;
+
+ /* =========================
+    STATUS CLIMÁTICO
+ ========================= */
+ definirStatus(
+  atual.hourly.pressure_msl[idx],
+  atual.hourly.precipitation[idx]
+ );
+
+ const horaAtualCidade =
+  atual.current_weather?.time?.slice(11,16) ?? "—";
+
+ if(proximaChuva !== "—"){
+  linhaStatus.innerHTML +=
+   ` • 🌧️ Chuva às: <b>${proximaChuva} (${probChuva}%)</b> • ` +
+   `Hora coleta: ${horaAtualCidade}`;
+  linhaStatus.style.fontSize = "12px";
+ }
+ /* =========================
+    LINHA DO SOL
+ ========================= */
  montarLinhaSol(atual.daily);
  montarPrevisao5Dias(atual.daily);
  montarGraficoPrevisao(atual.daily);
 
+ /* =========================
+    HISTÓRICO (30 DIAS)
+ ========================= */
  const hoje = new Date();
  const ontem = new Date(hoje); ontem.setDate(hoje.getDate()-1);
  const ini = new Date(ontem); ini.setDate(ontem.getDate()-30);
 
  const rHist = await fetch(
-  `https://archive-api.open-meteo.com/v1/archive?latitude=${lat}&longitude=${lon}&start_date=${ini.toISOString().split("T")[0]}&end_date=${ontem.toISOString().split("T")[0]}&hourly=pressure_msl,precipitation&timezone=UTC`
+  `https://archive-api.open-meteo.com/v1/archive?latitude=${lat}&longitude=${lon}` +
+  `&start_date=${ini.toISOString().split("T")[0]}` +
+  `&end_date=${ontem.toISOString().split("T")[0]}` +
+  `&hourly=pressure_msl,precipitation&timezone=UTC`
  );
  const hist = await rHist.json();
  histSalvo = hist.hourly;
@@ -397,184 +504,241 @@ const nebulosidade = neb !== null ? neb : "—";
  montarGrafico(hist.hourly);
 }
 
-/* ===== CONVERSÃO PM2.5 -> US AQI ===== */
+/* =========================
+   PM2.5 → US AQI
+========================= */
 function pm25ToUSAQI(pm25){
-  if(pm25<=12) return Math.round((50/12)*pm25);
-  else if(pm25<=35.4) return Math.round(((100-51)/(35.4-12.1))*(pm25-12.1)+51);
-  else if(pm25<=55.4) return Math.round(((150-101)/(55.4-35.5))*(pm25-35.5)+101);
-  else if(pm25<=150.4) return Math.round(((200-151)/(150.4-55.5))*(pm25-55.5)+151);
-  else if(pm25<=250.4) return Math.round(((300-201)/(250.4-150.5))*(pm25-150.5)+201);
-  else if(pm25<=350.4) return Math.round(((400-301)/(350.4-250.5))*(pm25-250.5)+301);
-  else if(pm25<=500.4) return Math.round(((500-401)/(500.4-350.5))*(pm25-350.5)+401);
-  else return 500;
+ if(pm25<=12) return Math.round((50/12)*pm25);
+ if(pm25<=35.4) return Math.round(((100-51)/(35.4-12.1))*(pm25-12.1)+51);
+ if(pm25<=55.4) return Math.round(((150-101)/(55.4-35.5))*(pm25-35.5)+101);
+ if(pm25<=150.4) return Math.round(((200-151)/(150.4-55.5))*(pm25-55.5)+151);
+ if(pm25<=250.4) return Math.round(((300-201)/(250.4-150.5))*(pm25-150.5)+201);
+ if(pm25<=350.4) return Math.round(((400-301)/(350.4-250.5))*(pm25-250.5)+301);
+ if(pm25<=500.4) return Math.round(((500-401)/(500.4-350.5))*(pm25-350.5)+401);
+ return 500;
 }
 
-/* ===== FUNÇÕES AUXILIARES ===== */
+/* =========================
+   FORMATADORES
+========================= */
 function formatarAQ(v){
-  if(v<=50) return `<span class="aq-bom">Boa (${v})</span>`;
-  if(v<=100) return `<span class="aq-mod">Moderada (${v})</span>`;
-  if(v<=150) return `<span class="aq-ruim">Insalubre (${v})</span>`;
-  if(v<=200) return `<span class="aq-muito">Muito Insalub. (${v})</span>`;
-  if(v<=300) return `<span class="aq-severo">Severo (${v})</span>`;
-  return `<span class="aq-extremo">Extrema (${v})</span>`;
+ if(v<=50) return `<span class="aq-bom">Boa (${v})</span>`;
+ if(v<=100) return `<span class="aq-mod">Moderada (${v})</span>`;
+ if(v<=150) return `<span class="aq-ruim">Insalubre (${v})</span>`;
+ if(v<=200) return `<span class="aq-muito">Muito Insalub. (${v})</span>`;
+ if(v<=300) return `<span class="aq-severo">Severo (${v})</span>`;
+ return `<span class="aq-extremo">Extrema (${v})</span>`;
 }
 
 function formatarUV(v){
-  let classe="",descricao="";
-  if(v<=2){classe="aq-bom";descricao="Baixo";}
-  else if(v<=5){classe="aq-mod";descricao="Médio";}
-  else if(v<=7){classe="aq-ruim";descricao="Alto";}
-  else if(v<=10){classe="aq-muito";descricao="Muito alto";}
-  else{classe="aq-extremo";descricao="Extremo";}
-  return {classe,descricao};
+ let classe="",descricao="";
+ if(v<=2){classe="aq-bom";descricao="Baixo";}
+ else if(v<=5){classe="aq-mod";descricao="Médio";}
+ else if(v<=7){classe="aq-ruim";descricao="Alto";}
+ else if(v<=10){classe="aq-muito";descricao="Muito Alto";}
+ else{classe="aq-extremo";descricao="Extremo";}
+ return {classe,descricao};
 }
 
+/* =========================
+   LUA
+========================= */
 function calcularLua(data){
-  const ref=new Date(Date.UTC(2000,0,6,18,14,0));
-  const ciclo=29.53058867;
-  const dias=(data-ref)/86400000;
-  const idade=((dias%ciclo)+ciclo)%ciclo;
-  const fracao=idade/ciclo;
-  const iluminacao=Math.round((1-Math.cos(2*Math.PI*fracao))/2*100);
-  let fase="";
-  if(idade<1.84566) fase="Lua Nova 🌑";
-  else if(idade<14.765) fase="Lua Crescente 🌒";
-  else if(idade<16.61096) fase="Lua Cheia 🌕";
-  else if(idade<29.53) fase="Lua Minguante 🌖";
-  return {fase,iluminacao};
+ const ref=new Date(Date.UTC(2000,0,6,18,14,0));
+ const ciclo=29.53058867;
+ const dias=(data-ref)/86400000;
+ const idade=((dias%ciclo)+ciclo)%ciclo;
+ const frac=idade/ciclo;
+ const iluminacao=Math.round((1-Math.cos(2*Math.PI*frac))/2*100);
+ let fase="";
+ if(idade<1.85) fase="Lua Nova 🌑";
+ else if(idade<14.77) fase="Lua Crescente 🌒";
+ else if(idade<16.61) fase="Lua Cheia 🌕";
+ else fase="Lua Minguante 🌖";
+ return {fase,iluminacao};
 }
+
 function formatarChuvaClasse(v){
-  if(v<=20) return "chuva-bom";
-  if(v<=40) return "chuva-mod";
-  if(v<=60) return "chuva-ruim";
-  if(v<=80) return "chuva-muito";
-  return "chuva-extremo";
+ if(v<=20) return "chuva-bom";
+ if(v<=40) return "chuva-mod";
+ if(v<=60) return "chuva-ruim";
+ if(v<=80) return "chuva-muito";
+ return "chuva-extremo";
 }
 
+/* =========================
+   STATUS
+========================= */
 function definirStatus(p,c){
-  linhaStatus.className="linha-status";
-  if(c>8||p<1005){linhaStatus.classList.add("tempestade");linhaStatus.innerText="⛈️ Risco de temp.";}
-  else if(c>1||p<1012){linhaStatus.classList.add("chuva");linhaStatus.innerText="🌧️ Possib. chuva";}
-  else{linhaStatus.classList.add("bom");linhaStatus.innerText="☀️ Tempo bom";}
+ linhaStatus.className="linha-status";
+ if(c>8||p<1005){
+  linhaStatus.classList.add("tempestade");
+  linhaStatus.innerText="⛈️ Risco de tempestade";
+ }
+ else if(c>1||p<1012){
+  linhaStatus.classList.add("chuva");
+  linhaStatus.innerText="🌧️ Possibil. chuva";
+ }
+ else{
+  linhaStatus.classList.add("bom");
+  linhaStatus.innerText="☀️ Tempo bom";
+ }
 }
 
+/* =========================
+   SOL
+========================= */
 function montarLinhaSol(d){
-  if(!d?.time) return;
-  const diasSemana = ["Dom.","Seg.","Ter.","Qua.","Qui.","Sex.","Sáb."];
-  linhaSol.innerHTML="";
-  for(let i=0;i<4;i++){
-    const partes = d.time[i].split("-");
-    const data = new Date(partes[0], partes[1]-1, partes[2]);
-    const dia = diasSemana[data.getDay()];
-    linhaSol.innerHTML+=`<div class="sol-dia">
-      ${partes[2]}/${partes[1]}/${partes[0]}<br>
-      <span style="font-size:smaller">${dia}</span><br>
-      🌅 ${d.sunrise[i].slice(11,16)}<br>
-      🌇 ${d.sunset[i].slice(11,16)}
-    </div>`;
-  }
+ if(!d?.time) return;
+ const diasSemana=["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"];
+ linhaSol.innerHTML="";
+ for(let i=0;i<4;i++){
+  const p=d.time[i].split("-");
+  const data=new Date(p[0],p[1]-1,p[2]);
+  linhaSol.innerHTML+=`
+   <div class="sol-dia">
+    ${p[2]}/${p[1]}<br>
+    ${diasSemana[data.getDay()]}<br>
+    🌅 ${d.sunrise[i].slice(11,16)}<br>
+    🌇 ${d.sunset[i].slice(11,16)}
+   </div>`;
+ }
 }
 
+/* =========================
+   PREVISÃO 5 DIAS
+========================= */
 function montarPrevisao5Dias(d){
-  if(!d?.time) return;
-  const diasSemana = ["Dom.","Seg.","Ter.","Qua.","Qui.","Sex.","Sáb."];
-  previsao5.innerHTML="";
-  for(let i=0;i<5;i++){
-    const partes = d.time[i].split("-");
-    const data = new Date(partes[0], partes[1]-1, partes[2]);
-    const dia = diasSemana[data.getDay()];
-    previsao5.innerHTML+=`<div class="previsao-dia">
-      ${partes[2]}/${partes[1]}/${partes[0]}<br>
-      <span style="font-size:smaller">${dia}</span><br>
-      🌧️ ${d.precipitation_sum[i]} mm • ${d.precipitation_probability_max[i]}%<br>
-      ${d.temperature_2m_min[i]}° / ${d.temperature_2m_max[i]}°
-    </div>`;
-  }
+ if(!d?.time) return;
+ const diasSemana=["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"];
+ previsao5.innerHTML="";
+ for(let i=0;i<5;i++){
+  const p=d.time[i].split("-");
+  const data=new Date(p[0],p[1]-1,p[2]);
+  previsao5.innerHTML+=`
+   <div class="previsao-dia">
+    ${p[2]}/${p[1]}<br>
+    ${diasSemana[data.getDay()]}<br>
+    🌧️ ${d.precipitation_sum[i]}mm (${d.precipitation_probability_max[i]}%)<br>
+    ${d.temperature_2m_min[i]}° / ${d.temperature_2m_max[i]}°
+   </div>`;
+ }
 }
 
+/* =========================
+   PRESSÃO × CHUVA
+========================= */
 function calcularPressaoChuva(h){
-  if(!h?.time) return;
-  const dias={};
-  h.time.forEach((t,i)=>{
-    const d=t.split("T")[0];
-    if(!dias[d]) dias[d]={p:[],mm:0};
-    dias[d].p.push(h.pressure_msl[i]);
-    dias[d].mm+=h.precipitation[i];
-  });
-  const press=[];
-  Object.values(dias).forEach(d=>{
-    if(d.mm>=1) press.push(d.p.reduce((a,b)=>a+b)/d.p.length);
-  });
-  if(press.length<3){linhaAviso.innerHTML="🌧️ Dados insuficientes para padrão confiável."; return;}
-  const m=press.reduce((a,b)=>a+b)/press.length;
-  linhaAviso.innerHTML=`🌧️ Chove geralmente com pressão média de <b>${m.toFixed(1)} hPa</b>`;
+ if(!h?.time) return;
+ const dias={};
+ h.time.forEach((t,i)=>{
+  const d=t.split("T")[0];
+  dias[d]??={p:[],mm:0};
+  dias[d].p.push(h.pressure_msl[i]);
+  dias[d].mm+=h.precipitation[i];
+ });
+ const press=[];
+ Object.values(dias).forEach(d=>{
+  if(d.mm>=1) press.push(d.p.reduce((a,b)=>a+b)/d.p.length);
+ });
+ if(press.length<3){
+  linhaAviso.innerHTML="🌧️ Dados insuficientes para padrão confiável.";
+  return;
+ }
+ const m=press.reduce((a,b)=>a+b)/press.length;
+ linhaAviso.innerHTML=`🌧️ Chove geralmente com pressão média de <b>${m.toFixed(1)} hPa</b>`;
 }
 
-/* ===== GRÁFICOS ===== */
+/* =========================
+   GRÁFICOS
+========================= */
 function montarGraficoPrevisao(d){
-  if(!d || !d.time || d.time.length===0) return;
-  const labels=[],chuva=[],prob=[],tempMin=[],tempMax=[];
-  for(let i=0;i<d.time.length;i++){
-    const partes=d.time[i].split("-");
-    labels.push(`${partes[2]}/${partes[1]}/${partes[0].slice(2)}`);
-    chuva.push(d.precipitation_sum?.[i]??0);
-    prob.push(d.precipitation_probability_max?.[i]??0);
-    tempMin.push(d.temperature_2m_min?.[i]??0);
-    tempMax.push(d.temperature_2m_max?.[i]??0);
-  }
-  chartPrevisao?.destroy();
-  chartPrevisao=new Chart(document.getElementById("graficoPrevisao"),{
-    data:{labels,datasets:[
-      {type:"bar",label:"Chuva (mm)",data:chuva,yAxisID:"y1",backgroundColor:"#c62828"},
-      {type:"bar",label:"Prob. Chuva (%)",data:prob,yAxisID:"y1",backgroundColor:"#90caf9"},
-      {type:"line",label:"Temp Min (°C)",data:tempMin,yAxisID:"y",borderColor:"#ff7043",borderWidth:1,tension:0.3},
-      {type:"line",label:"Temp Max (°C)",data:tempMax,yAxisID:"y",borderColor:"#ffca28",borderWidth:1,tension:0.3}
-    ]},
-    options:{
-      plugins:{title:{display:true,text:"Previsão Chuva/Temperatura - 7 Dias",color:document.body.classList.contains("dark")?"#e6edf3":"#000",font:{size:12,weight:"bold"}}},
-      scales:{
-        y:{position:"left",title:{display:true,text:"Temp (°C)"}},
-        y1:{position:"right",beginAtZero:true,grid:{drawOnChartArea:false},title:{display:true,text:"Chuva / Probabilidade"}}
-      }
+ chartPrevisao?.destroy();
+ chartPrevisao=new Chart(
+  document.getElementById("graficoPrevisao"),{
+   data:{
+    labels:d.time.map(t=>t.slice(8,10)+"/"+t.slice(5,7)),
+    datasets:[
+     {type:"bar",label:"Chuva (mm)",data:d.precipitation_sum},
+     {type:"bar",label:"Prob. chuva (%)",data:d.precipitation_probability_max},
+     {type:"line",label:"Temp Min (°C)",data:d.temperature_2m_min},
+     {type:"line",label:"Temp Max (°C)",data:d.temperature_2m_max}
+    ]
+   },
+   options:{
+    plugins:{
+     title:{
+      display:true,
+      text:"Previsão de Chuva e Temperatura — 7 dias",
+      font:{size:12,weight:"bold"},
+      color:document.body.classList.contains("dark")?"#e6edf3":"#000"
+     }
     }
-  });
+   }
+  }
+ );
 }
 
 function montarGrafico(h){
-  if(!h?.time) return;
-  const dias={},chuva={};
-  h.time.forEach((t,i)=>{
-    const d=t.split("T")[0];
-    dias[d]??=[];
-    dias[d].push(h.pressure_msl[i]);
-    chuva[d]=(chuva[d]||0)+h.precipitation[i];
-  });
-  const datas=Object.keys(dias).sort();
-  const labels=[],press=[],mm=[];
-  datas.slice(-5).forEach(d=>{
-    const partes=d.split("-");
-    labels.push(`${partes[2]}/${partes[1]}/${partes[0].slice(2)}`);
-    press.push((dias[d].reduce((a,b)=>a+b)/dias[d].length).toFixed(1));
-    mm.push(chuva[d].toFixed(1));
-  });
-  chart?.destroy();
-  chart=new Chart(document.getElementById("grafico"),{
-    data:{labels,datasets:[
-      {type:"bar",label:"Chuva (mm)",data:mm,yAxisID:"y1"},
-      {type:"line",label:"Pressão (hPa)",data:press,yAxisID:"y",borderWidth:3,tension:.4}
-    ]},
-    options:{
-      plugins:{title:{display:true,text:"Pressão ATM/Chuva - Últimos 5 Dias",color:document.body.classList.contains("dark")?"#e6edf3":"#000",font:{size:12,weight:"bold"}}},
-      scales:{y:{title:{display:true,text:"Pressão (hPa)"}},y1:{position:"right",beginAtZero:true,grid:{drawOnChartArea:false},title:{display:true,text:"Chuva (mm)"}}}
+ if(!h?.time) return;
+
+ const dias={}, chuva={};
+
+ h.time.forEach((t,i)=>{
+  const d=t.split("T")[0];
+  dias[d] ??= [];
+  dias[d].push(h.pressure_msl[i]);
+  chuva[d]=(chuva[d]||0)+h.precipitation[i];
+ });
+
+ const labels=[], press=[], mm=[];
+ Object.keys(dias).slice(-5).forEach(d=>{
+  const p=d.split("-");
+  labels.push(`${p[2]}/${p[1]}`);
+  press.push((dias[d].reduce((a,b)=>a+b)/dias[d].length).toFixed(1));
+  mm.push(chuva[d].toFixed(1));
+ });
+
+ chart?.destroy();
+ chart=new Chart(
+  document.getElementById("grafico"),{
+   data:{
+    labels,
+    datasets:[
+     {type:"line",label:"Pressão Média (hPa)",data:press,borderWidth:2,tension:.3},
+     {type:"bar",label:"Chuva Acumulada (mm)",data:mm,yAxisID:"y1"}
+    ]
+   },
+   options:{
+    plugins:{
+     title:{
+      display:true,
+      text:"Pressão Atmosférica × Chuva — Últimos 5 dias",
+      font:{size:12,weight:"bold"},
+      color:document.body.classList.contains("dark")?"#e6edf3":"#000"
+     }
+    },
+    scales:{
+     y:{title:{display:true,text:"Pressão (hPa)"}},
+     y1:{
+      position:"right",
+      beginAtZero:true,
+      grid:{drawOnChartArea:false},
+      title:{display:true,text:"Chuva (mm)"}
+     }
     }
-  });
+   }
+  }
+ );
 }
 
-/* ===== GEOLOCALIZAÇÃO INICIAL ===== */
+/* =========================
+   GEOLOCALIZAÇÃO INICIAL
+========================= */
 navigator.geolocation?.getCurrentPosition(p=>{
  lat=p.coords.latitude;
  lon=p.coords.longitude;
- nomeCidade.innerText="Sua Localização";
+ nomeCidade.innerText="Sua localização";
  buscar();
 });
 </script>
