@@ -135,7 +135,7 @@ canvas{
 <body>
 
 <header>
- <h2>🌡️ Clima emxx: <span id="nome-cidade"></span></h2>
+ <h2>🌡️ Clima em: <span id="nome-cidade"></span></h2>
  <button class="toggle" id="toggleModo">🌙</button>
 </header>
 
@@ -557,34 +557,11 @@ function montarGrafico(h){
 }
 
 /* ===== GEOLOCALIZAÇÃO INICIAL ===== */
-navigator.geolocation?.getCurrentPosition(async p => {
-  const lat = p.coords.latitude;
-  const lon = p.coords.longitude;
-
-  try {
-    // Geocodificação reversa Open-Meteo
-    const res = await fetch(`https://geocoding-api.open-meteo.com/v1/reverse?latitude=${lat}&longitude=${lon}&language=pt`);
-    const data = await res.json();
-
-    if (data && data.results && data.results.length > 0) {
-      const result = data.results[0];
-      const cidade = result.name ?? "";
-      const estado = result.admin1 ?? "";
-      
-      // Mostra "Cidade, Estado" se disponível
-      nomeCidade.innerText = cidade ? `${cidade}${estado ? ", " + estado : ""}` : "Sua Localizaçãxxo";
-    } else {
-      // Fallback caso não venha nada da API
-      nomeCidade.innerText = "Sua Localização";
-    }
-
-  } catch (e) {
-    console.error("Erro ao obter cidade:", e);
-    nomeCidade.innerText = "Sua Localização";
-  }
-
-  // Chama função de buscar clima usando lat/lon
-  buscar();
+navigator.geolocation?.getCurrentPosition(p=>{
+ lat=p.coords.latitude;
+ lon=p.coords.longitude;
+ nomeCidade.innerText="Sua Localização";
+ buscar();
 });
 </script>
 </body>
