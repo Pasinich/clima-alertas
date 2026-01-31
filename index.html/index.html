@@ -389,12 +389,12 @@ for(let i = idx; i < atual.hourly.time.length; i++){
 
  for(let i = idx; i < atual.hourly.visibility.length; i++){
   const v = atual.hourly.visibility[i];
-  if(v != null && v <= 20000){ vis = v; break; }
+  if(v != null && v <= 30000){ vis = v; break; }
  }
  if(vis === null){
   for(let i = idx-1; i >= 0; i--){
    const v = atual.hourly.visibility[i];
-   if(v != null && v <= 20000){ vis = v; break; }
+   if(v != null && v <= 30000){ vis = v; break; }
   }
  }
 
