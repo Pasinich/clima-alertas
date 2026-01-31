@@ -311,9 +311,13 @@ async function buscar(){
   return;
  }
 
- /* ===== API ATUAL ===== */
+  /* ===== API ATUAL ===== */
  const rAtual = await fetch(
-  `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&hourly=apparent_temperature,relativehumidity_2m,pressure_msl,precipitation,precipitation_probability,visibility,cloudcover&daily=sunrise,sunset,temperature_2m_min,temperature_2m_max,precipitation_sum,precipitation_probability_max,uv_index_max&timezone=auto`
+  `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}` +
+  `&current_weather=true` +
+  `&hourly=apparent_temperature,relativehumidity_2m,pressure_msl,precipitation,precipitation_probability,visibility,cloudcover,windspeed_10m` +
+  `&daily=sunrise,sunset,temperature_2m_min,temperature_2m_max,precipitation_sum,precipitation_probability_max,uv_index_max` +
+  `&timezone=auto`
  );
  const atual = await rAtual.json();
 
@@ -423,14 +427,24 @@ for(let i = idx; i < atual.hourly.time.length; i++){
   `💨 Vento: <b>${atual.current_weather.windspeed} km/h</b> ` +
   `(<b>${direcaoVento}</b>)`;
 
+/* =========================
+    RAJADAS DE VENTO (ADICIONADO)
+ ========================= */
+ let rajadas = "—";
+ if(atual.hourly.windspeed_10m?.[idx] != null){
+  rajadas = (atual.hourly.windspeed_10m[idx] * 1.6).toFixed(1);
+ }
+
  /* =========================
-    NEVOEIRO
+    NEVOEIRO + RAJADAS
  ========================= */
  let nevoeiro = "Ausente 🌤️";
  if(visibilidade !== "—" && parseFloat(visibilidade) < 1){
   nevoeiro = "Presente 🌫️";
  }
- linhaNevoeiro.innerHTML = `🌫️ Nevoeiro: <b>${nevoeiro}</b>`;
+
+ linhaNevoeiro.innerHTML =
+  `🌫️ Nevoeiro: <b>${nevoeiro}</b> • 🌬️ Rajadas: <b>${rajadas} km/h</b>`;
 
  /* =========================
     UMIDADE / CHUVA / NEBULOSIDADE
