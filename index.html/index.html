@@ -305,9 +305,9 @@ cidade.addEventListener("keydown",e=>{
 /* =========================
    BUSCA PRINCIPAL
 ========================= */
-async function buscar() {
- if (lat === null || lon === null) {
-  info.innerHTML = "📍 Selecione a cidade na lista";
+async function buscar(){
+ if(lat===null || lon===null){
+  info.innerHTML="📍 Selecione a cidade na lista";
   return;
  }
 
@@ -329,39 +329,42 @@ async function buscar() {
  const agora = Date.now();
  let idx = 0, min = Infinity;
 
- atual.hourly.time.forEach((t, i) => {
+ atual.hourly.time.forEach((t,i)=>{
   const d = Math.abs(new Date(t).getTime() - agora);
-  if (d < min) { min = d; idx = i; }
+  if(d < min){ min = d; idx = i; }
  });
 
  let idxAQ = 0, minAQ = Infinity;
- aq.hourly.time.forEach((t, i) => {
+ aq.hourly.time.forEach((t,i)=>{
   const d = Math.abs(new Date(t).getTime() - agora);
-  if (d < minAQ) { minAQ = d; idxAQ = i; }
+  if(d < minAQ){ minAQ = d; idxAQ = i; }
  });
 
- /* =========================
-    PRÓXIMA CHUVA
- ========================= */
- let proximaChuva = "—";
- let probChuva = 0;
+/* =========================
+   PRÓXIMA CHUVA
+========================= */
+let proximaChuva = "—";
+let probChuva = 0;
+let idxChuva = -1; // índice da próxima chuva
 
- for (let i = idx; i < atual.hourly.time.length; i++) {
+for(let i = idx; i < atual.hourly.time.length; i++){
   const mm = atual.hourly.precipitation?.[i] ?? 0;
   const prob = atual.hourly.precipitation_probability?.[i] ?? 0;
 
-  if (mm > 0 || prob >= 20) {
-   proximaChuva = atual.hourly.time[i].slice(11, 16);
-   probChuva = prob;
-   break;
+  if(mm > 0 || prob >= 20){
+    proximaChuva = atual.hourly.time[i].slice(11,16); // ainda mantemos hora para compatibilidade
+    probChuva = prob;
+    idxChuva = i; // guarda o índice
+    break;
   }
- }
+}
+
 
  /* =========================
     UV
  ========================= */
  const uvIndex = atual.daily.uv_index_max?.[0] ?? 0;
- const { classe, descricao } = formatarUV(uvIndex);
+ const {classe, descricao} = formatarUV(uvIndex);
 
  info.innerHTML = `
   <span style="font-size:13px">
@@ -369,79 +372,50 @@ async function buscar() {
    Sensação: ${atual.hourly.apparent_temperature[idx]}°C • 
    ☀️ UV: <b class="${classe}">${uvIndex}</b> (${descricao})
   </span>`;
-
- /* =========================
+  /* =========================
     QUALIDADE DO AR / PRESSÃO
  ========================= */
  const pm25 = aq.hourly.pm2_5[idxAQ] ?? 0;
  const usAQI = pm25ToUSAQI(pm25);
 
-// ===== CORREÇÃO: pegar pressão exata do current_weather =====
-// Pegar hora atual local em milissegundos
-const agoraATM = Date.now();
+ linhaPressao.innerHTML =
+  `🌬️ Pressão: <b>${atual.hourly.pressure_msl[idx]} hPa</b> • ` +
+  `🌫️ Qual. Ar: ${formatarAQ(usAQI)}`;
 
-// Encontrar índice da hora anterior e próxima
-let idxAntes = 0;
-for (let i = 0; i < atual.hourly.time.length; i++) {
-  const tHora = new Date(atual.hourly.time[i]).getTime();
-  if (tHora <= agora) idxAntes = i;
-  else break;
-}
-
-const idxDepois = Math.min(idxAntes + 1, atual.hourly.time.length - 1);
-
-// Pressão das horas anterior e posterior
-const pAntes = atual.hourly.pressure_msl[idxAntes];
-const pDepois = atual.hourly.pressure_msl[idxDepois];
-
-// Hora em ms das horas anterior e posterior
-const tAntes = new Date(atual.hourly.time[idxAntes]).getTime();
-const tDepois = new Date(atual.hourly.time[idxDepois]).getTime();
-
-// Interpolação linear
-let pressaoAtual;
-if (pAntes != null && pDepois != null && tDepois > tAntes) {
-  const frac = (agoraATM - tAntes) / (tDepois - tAntes);
-  pressaoAtual = pAntes + frac * (pDepois - pAntes);
-} else {
-  pressaoAtual = pAntes ?? "—";
-}
-
-// Arredondar para 1 casa decimal
-if (typeof pressaoAtual === "number") pressaoAtual = pressaoAtual.toFixed(1);
-
-// Atualizar a linha de pressão
-linhaPressao.innerHTML =
- `🌬️ Pressão: <b>${pressaoAtual} hPa</b> • ` +
- `🌫️ Qual. Ar: ${formatarAQ(usAQI)}`;
  /* =========================
-    VISIBILIDADE E VENTO
+    VISIBILIDADE (VALOR VÁLIDO)
  ========================= */
  let vis = null;
- for (let i = idx; i < atual.hourly.visibility.length; i++) {
+
+ for(let i = idx; i < atual.hourly.visibility.length; i++){
   const v = atual.hourly.visibility[i];
-  if (v != null && v <= 20000) { vis = v; break; }
+  if(v != null && v <= 20000){ vis = v; break; }
  }
- if (vis === null) {
-  for (let i = idx - 1; i >= 0; i--) {
+ if(vis === null){
+  for(let i = idx-1; i >= 0; i--){
    const v = atual.hourly.visibility[i];
-   if (v != null && v <= 20000) { vis = v; break; }
+   if(v != null && v <= 20000){ vis = v; break; }
   }
  }
 
- const visibilidade = vis != null ? (vis / 1000).toFixed(1) : "—";
+ const visibilidade = vis != null ? (vis/1000).toFixed(1) : "—";
 
+ /* =========================
+    DIREÇÃO DO VENTO
+ ========================= */
  const deg = atual.current_weather.winddirection ?? null;
- function degParaDirecao(d) {
-  if (d == null) return "—";
+
+ function degParaDirecao(d){
+  if(d==null) return "—";
   const dirs = [
-   "Norte", "Norte-Nordeste", "Nordeste", "Leste-Nordeste",
-   "Leste", "Leste-Sudeste", "Sudeste", "Sul-Sudeste",
-   "Sul", "Sul-Sudoeste", "Sudoeste", "Oeste-Sudoeste",
-   "Oeste", "Oeste-Noroeste", "Noroeste", "Norte-Noroeste"
+   "Norte","Norte-Nordeste","Nordeste","Leste-Nordeste",
+   "Leste","Leste-Sudeste","Sudeste","Sul-Sudeste",
+   "Sul","Sul-Sudoeste","Sudoeste","Oeste-Sudoeste",
+   "Oeste","Oeste-Noroeste","Noroeste","Norte-Noroeste"
   ];
-  return dirs[Math.round(d / 22.5) % 16];
+  return dirs[Math.round(d/22.5) % 16];
  }
+
  const direcaoVento = degParaDirecao(deg);
 
  linhaVisibilidade.innerHTML =
@@ -450,23 +424,28 @@ linhaPressao.innerHTML =
   `(<b>${direcaoVento}</b>)`;
 
  /* =========================
-    NEVOEIRO, UMIDADE, CHUVA, NEBULOSIDADE, LUA, STATUS
+    NEVOEIRO
  ========================= */
  let nevoeiro = "Ausente 🌤️";
- if (visibilidade !== "—" && parseFloat(visibilidade) < 1) nevoeiro = "Presente 🌫️";
+ if(visibilidade !== "—" && parseFloat(visibilidade) < 1){
+  nevoeiro = "Presente 🌫️";
+ }
  linhaNevoeiro.innerHTML = `🌫️ Nevoeiro: <b>${nevoeiro}</b>`;
 
+ /* =========================
+    UMIDADE / CHUVA / NEBULOSIDADE
+ ========================= */
  const chuvaHora = atual.hourly.precipitation_probability?.[idx] ?? 0;
 
  let neb = null;
- for (let i = idx; i < atual.hourly.cloudcover.length; i++) {
+ for(let i = idx; i < atual.hourly.cloudcover.length; i++){
   const v = atual.hourly.cloudcover[i];
-  if (v != null && v >= 0 && v <= 100) { neb = v; break; }
+  if(v != null && v >= 0 && v <= 100){ neb = v; break; }
  }
- if (neb === null) {
-  for (let i = idx - 1; i >= 0; i--) {
+ if(neb === null){
+  for(let i = idx-1; i >= 0; i--){
    const v = atual.hourly.cloudcover[i];
-   if (v != null && v >= 0 && v <= 100) { neb = v; break; }
+   if(v != null && v >= 0 && v <= 100){ neb = v; break; }
   }
  }
 
@@ -477,23 +456,43 @@ linhaPressao.innerHTML =
   `🌧️ Chuva: <b class="${formatarChuvaClasse(chuvaHora)}">${chuvaHora}%</b> • ` +
   `☁️Nebulosidade: <b>${nebulosidade}%</b>`;
 
+ /* =========================
+    LUA
+ ========================= */
  const lua = calcularLua(new Date());
  linhaLua.innerHTML =
-  `🌙 Lua: <b>${lua.fase}</b> • Claridade Lunar: <b>${lua.iluminacao}%</b>`;
+  `🌙 Lua: <b>${lua.fase}</b> •Claridade Lunar: <b>${lua.iluminacao}%</b>`;
 
+ /* =========================
+    STATUS CLIMÁTICO
+ ========================= */
  definirStatus(
   atual.hourly.pressure_msl[idx],
   atual.hourly.precipitation[idx]
  );
 
- const horaAtualCidade = atual.current_weather?.time?.slice(11, 16) ?? "—";
+ const horaAtualCidade =
+  atual.current_weather?.time?.slice(11,16) ?? "—";
 
- if (proximaChuva !== "—") {
+ if(proximaChuva !== "—"){
+  // converte o timestamp completo em objeto Date
+  const tempoChuva = new Date(atual.hourly.time[idxChuva]); // idxChuva = índice do próximo evento de chuva
+
+  const dia = String(tempoChuva.getDate()).padStart(2,"0");
+  const mes = String(tempoChuva.getMonth()+1).padStart(2,"0");
+  const hora = String(tempoChuva.getHours()).padStart(2,"0");
+  const min = String(tempoChuva.getMinutes()).padStart(2,"0");
+
+  const dataHora = `${dia}/${mes}-${hora}:${min} hs`;
+
   linhaStatus.innerHTML +=
-   ` • 🌧️Chuva às: <b>${proximaChuva} (${probChuva}%)</b> • ` + `Hora coleta:${horaAtualCidade}`;
+    ` • 🌧️Chuva prevista:<b>${dataHora} (${probChuva}%)</b> • ` +
+    `Hora coleta: ${horaAtualCidade}`;
   linhaStatus.style.fontSize = "12px";
- }
-
+}
+ /* =========================
+    LINHA DO SOL
+ ========================= */
  montarLinhaSol(atual.daily);
  montarPrevisao5Dias(atual.daily);
  montarGraficoPrevisao(atual.daily);
@@ -502,8 +501,8 @@ linhaPressao.innerHTML =
     HISTÓRICO (30 DIAS)
  ========================= */
  const hoje = new Date();
- const ontem = new Date(hoje); ontem.setDate(hoje.getDate() - 1);
- const ini = new Date(ontem); ini.setDate(ontem.getDate() - 30);
+ const ontem = new Date(hoje); ontem.setDate(hoje.getDate()-1);
+ const ini = new Date(ontem); ini.setDate(ontem.getDate()-30);
 
  const rHist = await fetch(
   `https://archive-api.open-meteo.com/v1/archive?latitude=${lat}&longitude=${lon}` +
@@ -666,84 +665,32 @@ function calcularPressaoChuva(h){
 /* =========================
    GRÁFICOS
 ========================= */
-const dark = document.body.classList.contains("dark");
-
-const corTexto = dark ? "#e6edf3" : "#111";
-const corGrid  = dark ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.1)";
-
-
 function montarGraficoPrevisao(d){
  chartPrevisao?.destroy();
-
- chartPrevisao = new Chart(
-  document.getElementById("graficoPrevisao"),
-  {
+ chartPrevisao=new Chart(
+  document.getElementById("graficoPrevisao"),{
    data:{
     labels:d.time.map(t=>t.slice(8,10)+"/"+t.slice(5,7)),
     datasets:[
-     {
-      type:"bar",
-      label:"Chuva (mm)",
-      data:d.precipitation_sum,
-      backgroundColor:"rgba(220,38,38,0.7)",
-      borderColor:"rgb(220,38,38)",
-      borderWidth:1
-     },
-     {
-      type:"bar",
-      label:"Prob. chuva (%)",
-      data:d.precipitation_probability_max,
-      backgroundColor:"rgba(255,159,64,0.6)", // laranja
-      borderColor:"rgb(255,159,64)",
-      borderWidth:1
-     },
-     {
-      type:"line",
-      label:"Temp Min (°C)",
-      data:d.temperature_2m_min,
-      borderColor:"rgba(255,205,86,1)", // amarelo
-      backgroundColor:"rgba(255,205,86,0.2)",
-      tension:0.3
-     },
-     {
-      type:"line",
-      label:"Temp Max (°C)",
-      data:d.temperature_2m_max,
-      borderColor:"rgba(255,99,132,1)", // vermelho fraco
-      backgroundColor:"rgba(255,99,132,0.2)",
-      tension:0.3
-     }
+     {type:"bar",label:"Chuva (mm)",data:d.precipitation_sum},
+     {type:"bar",label:"Prob. chuva (%)",data:d.precipitation_probability_max},
+     {type:"line",label:"Temp Min (°C)",data:d.temperature_2m_min},
+     {type:"line",label:"Temp Max (°C)",data:d.temperature_2m_max}
     ]
    },
-
    options:{
-    responsive:true,
     plugins:{
-     legend:{
-      labels:{ color:corTexto }
-     },
      title:{
       display:true,
       text:"Previsão de Chuva e Temperatura — 7 dias",
       font:{size:12,weight:"bold"},
-      color:corTexto
-     }
-    },
-    scales:{
-     x:{
-      ticks:{color:corTexto},
-      grid:{color:corGrid}
-     },
-     y:{
-      ticks:{color:corTexto},
-      grid:{color:corGrid}
+      color:document.body.classList.contains("dark")?"#e6edf3":"#000"
      }
     }
    }
   }
  );
 }
-
 
 function montarGrafico(h){
  if(!h?.time) return;
@@ -788,6 +735,7 @@ function montarGrafico(h){
      y:{title:{display:true,text:"Pressão (hPa)"}},
      y1:{
       position:"right",
+      beginAtZero:true,
       grid:{drawOnChartArea:false},
       title:{display:true,text:"Chuva (mm)"}
      }
