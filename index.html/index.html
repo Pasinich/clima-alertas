@@ -444,7 +444,7 @@ for(let i = idx; i < atual.hourly.time.length; i++){
  }
 
  linhaNevoeiro.innerHTML =
-  `🌫️ Nevoeiro: <b>${nevoeiro}</b> • 🌬️ Rajadas: <b>${rajadas} km/h</b>`;
+  `🌫️ Nevoeiro: <b>${nevoeiro}</b> • 🌬️Veloc. Rajadas: <b>${rajadas} km/h</b>`;
 
  /* =========================
     UMIDADE / CHUVA / NEBULOSIDADE
@@ -475,7 +475,7 @@ for(let i = idx; i < atual.hourly.time.length; i++){
  ========================= */
  const lua = calcularLua(new Date());
  linhaLua.innerHTML =
-  `🌙 Lua: <b>${lua.fase}</b> •Claridade Lunar: <b>${lua.iluminacao}%</b>`;
+  `🌙 Lua: <b>${lua.fase}</b> • Claridade Lunar: <b>${lua.iluminacao}%</b>`;
 
  /* =========================
     STATUS CLIMÁTICO
