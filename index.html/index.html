@@ -400,7 +400,7 @@ if (typeof atual?.current_weather?.pressure_msl === "number") {
 else if (typeof atual?.hourly?.pressure_msl?.[idx] === "number") {
   pressaoExibir = atual.hourly.pressure_msl[idx];
 }
-let pressaoExibir_masc = atual.hourly.pressure_msl[idx] + 3.3;
+let pressaoExibir_masc = atual.hourly.pressure_msl[idx] + 2.9;
 linhaPressao.innerHTML =
   `🌬️ Pressão: <b>${pressaoExibir_masc.toFixed(1)} hPa</b> • ` +
   `🌫️ Qual. Ar: ${formatarAQ(usAQI)}`;
@@ -495,7 +495,13 @@ linhaPressao.innerHTML =
  ========================= */
  const lua = calcularLua(new Date());
  linhaLua.innerHTML =
-  `🌙 Lua: <b>${lua.fase}</b> • Claridade Lunar: <b>${lua.iluminacao}%</b>`;
+  `/*🌙 Lua: <b>${lua.fase}</b> • Claridade Lunar: <b>${lua.iluminacao}%</b>`;
+ 
+
+ linhaLua.innerHTML =
+ `🌙 Lua: <b>${lua.fase}</b> • ` +
+ `Luar: <b>${lua.iluminacao}%</b> • ` +
+ `Idade: <b>${lua.idade} dias</b>`;
 
  /* =========================
     STATUS CLIMÁTICO
@@ -591,18 +597,37 @@ function formatarUV(v){
    LUA
 ========================= */
 function calcularLua(data){
- const ref=new Date(Date.UTC(2000,0,6,18,14,0));
- const ciclo=29.53058867;
- const dias=(data-ref)/86400000;
- const idade=((dias%ciclo)+ciclo)%ciclo;
- const frac=idade/ciclo;
- const iluminacao=Math.round((1-Math.cos(2*Math.PI*frac))/2*100);
- let fase="";
- if(idade<1.85) fase="Lua Nova 🌑";
- else if(idade<14.77) fase="Lua Crescente 🌒";
- else if(idade<16.61) fase="Lua Cheia 🌕";
- else fase="Lua Minguante 🌖";
- return {fase,iluminacao};
+  // referência astronômica confiável (Lua Nova)
+  const ref = new Date(Date.UTC(2000, 0, 6, 18, 14, 0));
+  const ciclo = 29.530588853;
+
+  // diferença em dias
+  const dias = (data.getTime() - ref.getTime()) / 86400000;
+
+  // idade da lua no ciclo
+  const idade = ((dias % ciclo) + ciclo) % ciclo;
+
+  // fração do ciclo
+  const frac = idade / ciclo;
+
+  // iluminação real (%)
+  const iluminacao = Math.round((1 - Math.cos(2 * Math.PI * frac)) / 2 * 100);
+
+  let fase = "";
+
+  // fases com tolerância correta
+  if (idade < 1.5) {
+    fase = "Lua Nova 🌑";
+  } else if (idade < 13.8) {
+    fase = "Lua Crescente 🌒";
+  } else if (idade <= 15.3) {
+    fase = "Lua Cheia 🌕";
+  } else {
+    fase = "Lua Minguante 🌖";
+  }
+
+  return { fase, iluminacao,
+                idade: idade.toFixed(1) };
 }
 
 function formatarChuvaClasse(v){
