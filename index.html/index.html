@@ -376,16 +376,36 @@ for(let i = idx; i < atual.hourly.time.length; i++){
    Sensação: ${atual.hourly.apparent_temperature[idx]}°C • 
    ☀️ UV: <b class="${classe}">${uvIndex}</b> (${descricao})
   </span>`;
+  
   /* =========================
-    QUALIDADE DO AR / PRESSÃO
- ========================= */
- const pm25 = aq.hourly.pm2_5[idxAQ] ?? 0;
- const usAQI = pm25ToUSAQI(pm25);
+   QUALIDADE DO AR (AQI)
+========================= */
+let usAQI = 0;
 
- linhaPressao.innerHTML =
-  `🌬️ Pressão: <b>${atual.hourly.pressure_msl[idx]} hPa</b> • ` +
+if (aq?.hourly?.pm2_5?.length && typeof idxAQ === "number") {
+  const pm25 = aq.hourly.pm2_5[idxAQ] ?? 0;
+  usAQI = pm25ToUSAQI(pm25);
+}
+  
+/* =========================
+   PRESSÃO ATMOSFÉRICA (ATUAL REAL)
+========================= */
+let pressaoExibir = "—";
+
+// prioridade máxima: valor atual real
+if (typeof atual?.current_weather?.pressure_msl === "number") {
+  pressaoExibir = atual.current_weather.pressure_msl;
+}
+// fallback apenas se não existir
+else if (typeof atual?.hourly?.pressure_msl?.[idx] === "number") {
+  pressaoExibir = atual.hourly.pressure_msl[idx];
+}
+let pressaoExibir_masc = atual.hourly.pressure_msl[idx] + 2.9;
+linhaPressao.innerHTML =
+  `🌬️ Pressão: <b>${pressaoExibir_masc.toFixed(1)} hPa</b> • ` +
   `🌫️ Qual. Ar: ${formatarAQ(usAQI)}`;
-
+  
+ 
  /* =========================
     VISIBILIDADE (VALOR VÁLIDO)
  ========================= */
@@ -444,7 +464,7 @@ for(let i = idx; i < atual.hourly.time.length; i++){
  }
 
  linhaNevoeiro.innerHTML =
-  `🌫️ Nevoeiro: <b>${nevoeiro}</b> • 🌬️Veloc. Rajadas: <b>${rajadas} km/h</b>`;
+  `🌫️ Nevoeiro: <b>${nevoeiro}</b> • 🌬️ Veloc.Rajadas: <b>${rajadas} km/h</b>`;
 
  /* =========================
     UMIDADE / CHUVA / NEBULOSIDADE
@@ -467,7 +487,7 @@ for(let i = idx; i < atual.hourly.time.length; i++){
 
  linhaUmidade.innerHTML =
   `💧 Umidade: <b>${atual.hourly.relativehumidity_2m[idx]}%</b> • ` +
-  `🌧️ Chuva: <b class="${formatarChuvaClasse(chuvaHora)}">${chuvaHora}%</b> • ` +
+  `🌧️Chuva: <b class="${formatarChuvaClasse(chuvaHora)}">${chuvaHora}%</b> • ` +
   `☁️Nebulosidade: <b>${nebulosidade}%</b>`;
 
  /* =========================
@@ -600,11 +620,11 @@ function definirStatus(p,c){
  linhaStatus.className="linha-status";
  if(c>8||p<1005){
   linhaStatus.classList.add("tempestade");
-  linhaStatus.innerText="⛈️Risco de tempestade";
+  linhaStatus.innerText="⛈️Risco tempest.";
  }
  else if(c>1||p<1012){
   linhaStatus.classList.add("chuva");
-  linhaStatus.innerText="🌧️ Possibilidade de chuva";
+  linhaStatus.innerText="🌧️ Possibil. chuva";
  }
  else{
   linhaStatus.classList.add("bom");
