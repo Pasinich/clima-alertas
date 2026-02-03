@@ -493,12 +493,9 @@ linhaPressao.innerHTML =
  /* =========================
     LUA
  ========================= */
- const lua = calcularLua(new Date());
- linhaLua.innerHTML =
-  `/*🌙 Lua: <b>${lua.fase}</b> • Claridade Lunar: <b>${lua.iluminacao}%</b>`;
- 
+const lua = calcularLua(new Date());
 
- linhaLua.innerHTML =
+linhaLua.innerHTML =
  `🌙 Lua: <b>${lua.fase}</b> • ` +
  `Luar: <b>${lua.iluminacao}%</b> • ` +
  `Idade: <b>${lua.idade} dias</b>`;
@@ -597,37 +594,34 @@ function formatarUV(v){
    LUA
 ========================= */
 function calcularLua(data){
-  // referência astronômica confiável (Lua Nova)
   const ref = new Date(Date.UTC(2000, 0, 6, 18, 14, 0));
   const ciclo = 29.530588853;
 
-  // diferença em dias
   const dias = (data.getTime() - ref.getTime()) / 86400000;
-
-  // idade da lua no ciclo
   const idade = ((dias % ciclo) + ciclo) % ciclo;
-
-  // fração do ciclo
   const frac = idade / ciclo;
 
-  // iluminação real (%)
-  const iluminacao = Math.round((1 - Math.cos(2 * Math.PI * frac)) / 2 * 100);
+  const iluminacao = Math.round(
+    (1 - Math.cos(2 * Math.PI * frac)) / 2 * 100
+  );
 
   let fase = "";
 
-  // fases com tolerância correta
-  if (idade < 1.5) {
-    fase = "Lua Nova 🌑";
-  } else if (idade < 13.8) {
-    fase = "Lua Crescente 🌒";
-  } else if (idade <= 15.3) {
-    fase = "Lua Cheia 🌕";
-  } else {
-    fase = "Lua Minguante 🌖";
-  }
+  if (idade < 1.84566) fase = "Lua Nova 🌑";
+  else if (idade < 5.53699) fase = "Lua Crescente 🌒";
+  else if (idade < 9.22831) fase = "Quarto Crescente 🌓";
+  else if (idade < 12.91963) fase = "Crescente Gibosa 🌔";
+  else if (idade < 16.61096) fase = "Lua Cheia 🌕";
+  else if (idade < 20.30228) fase = "Minguante Gibosa 🌖";
+  else if (idade < 23.99361) fase = "Quarto Minguante 🌗";
+  else if (idade < 27.68493) fase = "Lua Minguante 🌘";
+  else fase = "Lua Nova 🌑";
 
-  return { fase, iluminacao,
-                idade: idade.toFixed(1) };
+  return {
+    fase,
+    iluminacao,
+    idade: idade.toFixed(1)
+  };
 }
 
 function formatarChuvaClasse(v){
@@ -637,6 +631,7 @@ function formatarChuvaClasse(v){
  if(v<=80) return "chuva-muito";
  return "chuva-extremo";
 }
+
 
 /* =========================
    STATUS
