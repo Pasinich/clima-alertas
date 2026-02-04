@@ -400,7 +400,7 @@ if (typeof atual?.current_weather?.pressure_msl === "number") {
 else if (typeof atual?.hourly?.pressure_msl?.[idx] === "number") {
   pressaoExibir = atual.hourly.pressure_msl[idx];
 }
-let pressaoExibir_masc = atual.hourly.pressure_msl[idx] + 2.2;
+let pressaoExibir_masc = atual.hourly.pressure_msl[idx] + 3.1;
 linhaPressao.innerHTML =
   `🌬️ Pressão: <b>${pressaoExibir_masc.toFixed(1)} hPa</b> • ` +
   `🌫️ Qual. Ar: ${formatarAQ(usAQI)}`;
@@ -422,7 +422,7 @@ linhaPressao.innerHTML =
   }
  }
 
- const visibilidade = vis != null ? (vis/1600).toFixed(1) : "—";
+ const visibilidade = vis != null ? (vis/1600).toFixed(2) : "—";
 
  /* =========================
     DIREÇÃO DO VENTO
@@ -455,16 +455,31 @@ linhaPressao.innerHTML =
   rajadas = (atual.hourly.windspeed_10m[idx] * 1.6).toFixed(1);
  }
 
- /* =========================
-    NEVOEIRO + RAJADAS
+/* =========================
+    NEVOEIRO + RAJADAS (CORRIGIDO)
  ========================= */
- let nevoeiro = "Ausente 🌤️";
- if(visibilidade !== "—" && parseFloat(visibilidade) < 1){
-  nevoeiro = "Presente 🌫️";
- }
+let nevoeiro = "Ausente 🌤️";
 
- linhaNevoeiro.innerHTML =
-  `🌫️ Nevoeiro: <b>${nevoeiro}</b> • 🌬️ Veloc.Rajadas: <b>${rajadas} km/h</b>`;
+// nevoeiro pela visibilidade (em METROS)
+if(vis !== null){
+  if(vis <= 1000){
+    nevoeiro = "Nevoeiro Denso ";
+  }
+  else if(vis <= 2000){
+    nevoeiro = "Nevoeiro Fraco ";
+  }
+}
+
+// confirmação por umidade + vento (Chapecó-style 😄)
+const umid = atual.hourly.relativehumidity_2m[idx];
+const vento = atual.current_weather.windspeed;
+
+if(vis !== null && umid >= 83 && vento <= 4){
+  nevoeiro = "Nevoeiro confirmado ";
+}
+
+linhaNevoeiro.innerHTML =
+ `🌫️ Nevoeiro: <b>${nevoeiro}</b> • 🌬️Rajadas: <b>${rajadas} km/h</b>`;
 
  /* =========================
     UMIDADE / CHUVA / NEBULOSIDADE
