@@ -470,12 +470,12 @@ if(vis !== null){
   }
 }
 
-// confirmação por umidade + vento (Chapecó-style 😄)
+// confirmação por umidade + vento 
 const umid = atual.hourly.relativehumidity_2m[idx];
 const vento = atual.current_weather.windspeed;
 
 if(vis !== null && umid >= 84 && vento <= 4){
-  nevoeiro = "Nevoeiro confirmado ";
+  nevoeiro = "Nevoeiro Esparsos";
 }
 
 linhaNevoeiro.innerHTML =
