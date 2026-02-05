@@ -475,7 +475,7 @@ if(vis !== null){
   }
 }
 
-// confirmação por umidade + vento (Chapecó-style 😄)
+// confirmação por umidade + vento
 const umid = atual.hourly.relativehumidity_2m[idx];
 const vento = atual.current_weather.windspeed;
 
@@ -517,8 +517,8 @@ const lua = calcularLua(new Date());
 
 linhaLua.innerHTML =
  `🌙 Lua: <b>${lua.fase}</b> • ` +
- `Luar: <b>${lua.iluminacao}%</b> • ` +
- `Idade: <b>${lua.idade} dias</b>`;
+ `Luar: <b>${lua.iluminacao}%</b> - ` +
+ `Idade:<b>${lua.idade} dias</b>`;
 
  /* =========================
     STATUS CLIMÁTICO
