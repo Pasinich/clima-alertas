@@ -200,6 +200,10 @@ canvas{
  <canvas id="grafico"></canvas>
 </div>
 
+<div class="card">
+  <canvas id="graficoMensal"></canvas>
+</div>
+
 <script>
 /* =========================
    VARIÁVEIS GLOBAIS
@@ -207,6 +211,7 @@ canvas{
 let lat=null, lon=null;
 let chart=null, chartPrevisao=null;
 let histSalvo=null;
+let chartMensal = null;
 
 /* =========================
    ELEMENTOS DOM
@@ -400,7 +405,7 @@ if (typeof atual?.current_weather?.pressure_msl === "number") {
 else if (typeof atual?.hourly?.pressure_msl?.[idx] === "number") {
   pressaoExibir = atual.hourly.pressure_msl[idx];
 }
-let pressaoExibir_masc = atual.hourly.pressure_msl[idx] + 3.5;
+let pressaoExibir_masc = atual.hourly.pressure_msl[idx] + 3.1;
 linhaPressao.innerHTML =
   `🌬️ Pressão: <b>${pressaoExibir_masc.toFixed(1)} hPa</b> • ` +
   `🌫️ Qual. Ar: ${formatarAQ(usAQI)}`;
@@ -470,12 +475,12 @@ if(vis !== null){
   }
 }
 
-// confirmação por umidade + vento 
+// confirmação por umidade + vento (Chapecó-style 😄)
 const umid = atual.hourly.relativehumidity_2m[idx];
 const vento = atual.current_weather.windspeed;
 
 if(vis !== null && umid >= 84 && vento <= 4){
-  nevoeiro = "Nevoeiros Esparsos";
+  nevoeiro = "Nevoeiros Esparsos ";
 }
 
 linhaNevoeiro.innerHTML =
@@ -511,9 +516,9 @@ linhaNevoeiro.innerHTML =
 const lua = calcularLua(new Date());
 
 linhaLua.innerHTML =
- `🌙 Lua:<b>${lua.fase}</b> • ` +
- `Luar: <b>${lua.iluminacao}%</b> - ` +
- `Idade:<b>${lua.idade} dias</b>`;
+ `🌙 Lua: <b>${lua.fase}</b> • ` +
+ `Luar: <b>${lua.iluminacao}%</b> • ` +
+ `Idade: <b>${lua.idade} dias</b>`;
 
  /* =========================
     STATUS CLIMÁTICO
@@ -567,6 +572,7 @@ linhaLua.innerHTML =
 
  calcularPressaoChuva(hist.hourly);
  montarGrafico(hist.hourly);
+ buscarTemperaturasMensais();
 }
 
 /* =========================
@@ -582,6 +588,111 @@ function pm25ToUSAQI(pm25){
  if(pm25<=500.4) return Math.round(((500-401)/(500.4-350.5))*(pm25-350.5)+401);
  return 500;
 }
+
+/* =========================
+   HISTÓRICO MENSAL (12 MESES)
+========================= */
+
+async function buscarTemperaturasMensais(){
+  const hoje = new Date();
+  const inicio = new Date(hoje.getFullYear()-1, hoje.getMonth(), 1);
+
+  const r = await fetch(
+    `https://archive-api.open-meteo.com/v1/archive?latitude=${lat}&longitude=${lon}` +
+    `&start_date=${inicio.toISOString().split("T")[0]}` +
+    `&end_date=${hoje.toISOString().split("T")[0]}` +
+    `&daily=temperature_2m_min,temperature_2m_max,temperature_2m_mean` +
+    `&timezone=auto`
+  );
+
+  const d = await r.json();
+  if(!d?.daily?.time) return;
+
+  const meses = {};
+
+  d.daily.time.forEach((t,i)=>{
+    const m = t.slice(0,7); // YYYY-MM
+    meses[m] ??= {min:[], max:[], med:[]};
+
+    meses[m].min.push(d.daily.temperature_2m_min[i]);
+    meses[m].max.push(d.daily.temperature_2m_max[i]);
+    meses[m].med.push(d.daily.temperature_2m_mean[i]);
+  });
+
+  const labels = [];
+  const min = [];
+  const max = [];
+  const med = [];
+
+  const nomesMes = [
+  "Jan","Fev","Mar","Abr","Mai","Jun",
+  "Jul","Ago","Set","Out","Nov","Dez"
+];
+
+Object.keys(meses).slice(-12).forEach(m=>{
+  const [ano,mes] = m.split("-");
+
+  labels.push(`${nomesMes[Number(mes)-1]}/${ano.slice(2)}`);
+
+  min.push(media(meses[m].min).toFixed(1));
+  max.push(media(meses[m].max).toFixed(1));
+  med.push(media(meses[m].med).toFixed(1));
+});
+
+  montarGraficoMensal(labels, min, med, max);
+}
+
+function media(arr){
+  return arr.reduce((a,b)=>a+b,0) / arr.length;
+}
+
+function montarGraficoMensal(labels, min, med, max){
+  chartMensal?.destroy();
+
+  chartMensal = new Chart(
+    document.getElementById("graficoMensal"),
+    {
+      type:"line",
+      data:{
+        labels,
+        datasets:[
+                {
+            label:"Mínima(°C)",
+            data:min,
+            tension:.35,
+            borderWidth:2,
+            pointRadius:4
+          },
+          {
+            label:"Média(°C)",
+            data:med,
+            tension:.35,
+            borderWidth:3,
+            pointRadius:4
+          },
+          {
+            label:"Máxima(°C)",
+            data:max,
+            tension:.35,
+            borderWidth:2,
+            pointRadius:4
+          }
+        ]
+      },
+      options:{
+        plugins:{
+          title:{
+            display:true,
+            text:"Temperatura Mensal-últimos 12 Meses— Mín., Média e Máx.",
+            font:{size:13, weight:"bold"},
+            color:document.body.classList.contains("dark")?"#e6edf3":"#000"
+          }
+        }
+      }
+    }
+  );
+}
+
 
 /* =========================
    FORMATADORES
