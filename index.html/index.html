@@ -541,12 +541,18 @@ linhaLua.innerHTML =
   const min = String(tempoChuva.getMinutes()).padStart(2,"0");
 
   const dataHora = `${dia}/${mes}-${hora}:${min} hs`;
+/* =========================
+   FENÔMENO CLIMÁTICO (ENSO)
+========================= */
+// valores possíveis: "El Niño", "La Niña", "Neutro"
+let fenomenoClimatico = "La Niña";
 
   linhaStatus.innerHTML +=
-    ` • 🌧️Chuva prevista:<b>${dataHora} (${probChuva}%)</b> • ` +
-    `Hora Local Coleta: ${horaAtualCidade}`;
-  linhaStatus.style.fontSize = "12px";
-}
+  ` • 🌧️Chuva prevista:<b>${dataHora} (${probChuva}%)</b> • ` +
+  `Hora Local Coleta: ${horaAtualCidade} • ` +
+  `🌊 Fenômeno: <b>${fenomenoClimatico}</b>`;
+  }
+
  /* =========================
     LINHA DO SOL
  ========================= */
