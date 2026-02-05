@@ -448,8 +448,8 @@ linhaPressao.innerHTML =
  const direcaoVento = degParaDirecao(deg);
 
  linhaVisibilidade.innerHTML =
-  `👁️ Visib.: <b>${visibilidade} km</b> • ` +
-  `💨 Vento: <b>${atual.current_weather.windspeed} km/h</b> ` +
+  `👁️ Visib.:<b>${visibilidade} km</b> • ` +
+  `💨 Vento:<b>${atual.current_weather.windspeed} km/h</b> ` +
   `(<b>${direcaoVento}</b>)`;
 
 /* =========================
@@ -475,7 +475,7 @@ if(vis !== null){
   }
 }
 
-// confirmação por umidade + vento (Chapecó-style 😄)
+// confirmação por umidade + vento
 const umid = atual.hourly.relativehumidity_2m[idx];
 const vento = atual.current_weather.windspeed;
 
@@ -518,7 +518,7 @@ const lua = calcularLua(new Date());
 linhaLua.innerHTML =
  `🌙 Lua: <b>${lua.fase}</b> • ` +
  `Luar: <b>${lua.iluminacao}%</b> - ` +
- `Idade: <b>${lua.idade} dias</b>`;
+ `Idade:<b>${lua.idade} dias</b>`;
 
  /* =========================
     STATUS CLIMÁTICO
@@ -541,77 +541,18 @@ linhaLua.innerHTML =
   const min = String(tempoChuva.getMinutes()).padStart(2,"0");
 
   const dataHora = `${dia}/${mes}-${hora}:${min} hs`;
-  
-
-
 /* =========================
-    STATUS CLIMÁTICO + ENSO
+   FENÔMENO CLIMÁTICO (ENSO)
 ========================= */
-
-// STATUS BÁSICO
-definirStatus(
-  atual.hourly.pressure_msl[idx],
-  atual.hourly.precipitation[idx]
-);
-
-const horaAtualCidade =
-  atual.current_weather?.time?.slice(11,16) ?? "—";
-
-// =========================
-// ENSO AUTOMÁTICO (NOAA)
-// =========================
-let fenomenoENSO = { nome:"—", valor:null };
-
-try{
-  const r = await fetch(
-    "https://api.allorigins.win/raw?url=https://www.cpc.ncep.noaa.gov/data/indices/oni.ascii.txt"
-  );
-  const txt = await r.text();
-
-  const linhas = txt.trim().split("\n");
-  const ultima = linhas
-    .filter(l => /\d/.test(l))
-    .pop()
-    .trim()
-    .split(/\s+/);
-
-  const oni = parseFloat(ultima[ultima.length - 1]);
-
-  if(!isNaN(oni)){
-    if(oni >= 0.5) fenomenoENSO = { nome:"El Niño", valor:oni };
-    else if(oni <= -0.5) fenomenoENSO = { nome:"La Niña", valor:oni };
-    else fenomenoENSO = { nome:"Neutro", valor:oni };
-  }
-}catch(e){
-  fenomenoENSO = { nome:"Indefinido", valor:null };
-}
-
-// =========================
-// PRÓXIMA CHUVA + EXIBIÇÃO
-// =========================
-if(proximaChuva !== "—"){
-
-  const tempoChuva = new Date(atual.hourly.time[idxChuva]);
-
-  const dia  = String(tempoChuva.getDate()).padStart(2,"0");
-  const mes  = String(tempoChuva.getMonth()+1).padStart(2,"0");
-  const hora = String(tempoChuva.getHours()).padStart(2,"0");
-  const min  = String(tempoChuva.getMinutes()).padStart(2,"0");
-
-  const dataHora = `${dia}/${mes}-${hora}:${min} hs`;
+// valores possíveis: "El Niño", "La Niña", "Neutro"
+let fenomenoClimatico = "La Niña";
 
   linhaStatus.innerHTML +=
-    ` • 🌧️Chuva prevista:<b>${dataHora} (${probChuva}%)</b> • ` +
-    `Hora Local Coleta: ${horaAtualCidade} • ` +
-    `🌊 Fenômeno: <b>${fenomenoENSO.nome}</b>` +
-    (fenomenoENSO.valor !== null ? ` (${fenomenoENSO.valor})` : "");
+  ` • 🌧️Chuva prevista:<b>${dataHora} (${probChuva}%)</b> • ` +
+  `Hora Local Coleta: ${horaAtualCidade} • ` +
+  `🌊 Fenômeno: <b>${fenomenoClimatico}</b>`;
+  }
 
-  linhaStatus.style.fontSize = "12px";
-}
-}
-
-
-  
  /* =========================
     LINHA DO SOL
  ========================= */
@@ -721,7 +662,7 @@ function montarGraficoMensal(labels, min, med, max){
       data:{
         labels,
         datasets:[
-          {
+                {
             label:"Mínima(°C)",
             data:min,
             tension:.35,
@@ -748,25 +689,9 @@ function montarGraficoMensal(labels, min, med, max){
         plugins:{
           title:{
             display:true,
-            text:"Temperatura Mensal - últimos 12 Meses — Mín., Média e Máx.",
+            text:"Temperatura Mensal-últimos 12 Meses— Mín., Média e Máx.",
             font:{size:13, weight:"bold"},
-            color:document.body.classList.contains("dark") ? "#e6edf3" : "#000"
-          }
-        },
-        scales: {
-          x: {
-            ticks: {
-              color: "#006400", // verde escuro
-              font: {
-                size: 12,
-                weight: "bold"
-              }
-            }
-          },
-          y: {
-            ticks: {
-              color: "#006400" // opcional: se quiser o eixo Y também verde escuro
-            }
+            color:document.body.classList.contains("dark")?"#e6edf3":"#000"
           }
         }
       }
