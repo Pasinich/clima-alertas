@@ -237,10 +237,9 @@ let chart=null, chartPrevisao=null;
 let histSalvo=null;
 let chartMensal = null;
 let paisSelecionado = "";
+let oni = -0.6;
+let estadoSelecionado = null;
 
-/* =========================
-   GEOLOCALIZAÇÃO REVERSA (ESTADO)
-========================= */
 async function obterEstadoPorLatLon(lat, lon){
   try{
     const r = await fetch(
@@ -331,7 +330,8 @@ cidade.addEventListener("input",async()=>{
   nomeCidade.innerText = local;
   lat = c.latitude;
   lon = c.longitude;
-  paisSelecionado = c.country_code; 
+  paisSelecionado = c.country_code;
+  estadoSelecionado = c.admin1 ?? null; 
   lista.innerHTML = "";
 
   limparTela();
@@ -492,8 +492,8 @@ linhaPressao.innerHTML =
  const direcaoVento = degParaDirecao(deg);
 
  linhaVisibilidade.innerHTML =
-  `👁️ Visib.: <b>${visibilidade} km</b> • ` +
-  `💨 Vento: <b>${atual.current_weather.windspeed} km/h</b> ` +
+  `👁️ Visib.:<b>${visibilidade} km</b> • ` +
+  `💨 Vento:<b>${atual.current_weather.windspeed} km/h</b> ` +
   `(<b>${direcaoVento}</b>)`;
 
 /* =========================
@@ -554,13 +554,18 @@ linhaNevoeiro.innerHTML =
   `🌧️Chuva: <b class="${formatarChuvaClasse(chuvaHora)}">${chuvaHora}%</b> • ` +
   `☁️Nebulosidade: <b>${nebulosidade}%</b>`;
  
+
 montarPainelClimatico({
   atual,
   idx,
   idxChuva,
   probChuva,
   pais: paisSelecionado,   
-  estado: cidade.value.split("-")[1]?.trim()
+  estado: estadoSelecionado ||
+        (cidade.value.includes("-")
+          ? cidade.value.split("-")[1].trim()
+          : null)
+          
 });
 
 async function montarPainelClimatico({ atual, idx, idxChuva, probChuva, pais, estado }) {
@@ -577,8 +582,6 @@ async function montarPainelClimatico({ atual, idx, idxChuva, probChuva, pais, es
     atual.hourly.pressure_msl[idx],
     atual.hourly.precipitation[idx]
   );
-
-  let statusBase = linhaStatus.innerText;
 
   /* ===== HORA LOCAL ===== */
   const horaAtualCidade = atual.current_weather?.time?.slice(11, 16) ?? "—";
@@ -597,7 +600,7 @@ async function montarPainelClimatico({ atual, idx, idxChuva, probChuva, pais, es
     chuvaTexto = ` 🌧️ Chuva prevista: <b>${dataHora} (${probChuva}%)</b>`;
   }
 
-const oni = -0.6;   // ← CONTROLE TOTAL AQUI
+// const oni = -0.6;   // ← CONTROLE TOTAL AQUI
 
 let fenomeno = "Neutro";
 let valor = oni;
@@ -629,9 +632,9 @@ if (
   };
 
   let est = (estado || "")
-  .toUpperCase()
   .normalize("NFD")
-  .replace(/[\u0300-\u036f]/g, "");
+  .replace(/[\u0300-\u036f]/g, "")
+  .toUpperCase();
   est = mapaEstados[est] ?? est;
 
   const regiaoPorEstado = {
@@ -1090,15 +1093,18 @@ navigator.geolocation?.getCurrentPosition(async p=>{
 
   const estadoGeo = await obterEstadoPorLatLon(lat, lon);
 
-  paisSelecionado = "BR"; // geolocalização Brasil
-  cidade.value = estadoGeo ? `Localização - ${estadoGeo}` : "";
+  paisSelecionado = "BR";
+  estadoSelecionado = estadoGeo; 
 
-  nomeCidade.innerText = estadoGeo
-    ? `Sua localização - ${estadoGeo}`
-    : "Sua localização";
+  cidade.value = estadoGeo
+    ? `Localização - ${estadoGeo}`
+    : "Localização";
+
+  nomeCidade.innerText = cidade.value;
 
   buscar();
 });
+
 </script>
 </body>
 </html>
