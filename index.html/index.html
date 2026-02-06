@@ -572,10 +572,11 @@ async function montarPainelClimatico({ atual, idx, idxChuva, probChuva, pais, es
   if (Number.isInteger(idxChuva) && idxChuva >= 0) {
     const t = new Date(atual.hourly.time[idxChuva]);
     const dataHora =
-      `${String(t.getDate()).padStart(2,"0")}/` +
-      `${String(t.getMonth()+1).padStart(2,"0")}-` +
-      `${String(t.getHours()).padStart(2,"0")}:` +
-      `${String(t.getMinutes()).padStart(2,"0")} hs`;
+  `${String(t.getDate()).padStart(2,"0")}/` +
+  `${String(t.getMonth()+1).padStart(2,"0")}/` +
+  `${t.getFullYear()} - ` +
+  `${String(t.getHours()).padStart(2,"0")}:` +
+  `${String(t.getMinutes()).padStart(2,"0")} hs`;
 
     chuvaTexto = ` 🌧️ Chuva prevista: <b>${dataHora} (${probChuva}%)</b>`;
   }
