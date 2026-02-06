@@ -423,7 +423,7 @@ for(let i = idx; i < atual.hourly.time.length; i++){
   <span style="font-size:13px">
    🌡️ <b>${atual.current_weather.temperature}°C</b> • 
    Sensação: ${atual.hourly.apparent_temperature[idx]}°C • 
-   ☀️ UV: <b class="${classe}">${uvIndex}</b> (${descricao})
+   ☀️ UvvvV: <b class="${classe}">${uvIndex}</b> (${descricao})
   </span>`;
   
   /* =========================
@@ -561,11 +561,7 @@ montarPainelClimatico({
   idxChuva,
   probChuva,
   pais: paisSelecionado,   
-  estado: estadoSelecionado ||
-        (cidade.value.includes("-")
-          ? cidade.value.split("-")[1].trim()
-          : null)
-          
+  estado: estadoSelecionado      
 });
 
 async function montarPainelClimatico({ atual, idx, idxChuva, probChuva, pais, estado }) {
@@ -1117,7 +1113,7 @@ navigator.geolocation?.getCurrentPosition(async p=>{
 
   nomeCidade.innerText = nomeExibir;
 
-  buscar();
+  await buscar();
 });
 
 </script>
