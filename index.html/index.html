@@ -239,6 +239,22 @@ let chartMensal = null;
 let paisSelecionado = "";
 
 /* =========================
+   GEOLOCALIZAÇÃO REVERSA (ESTADO)
+========================= */
+async function obterEstadoPorLatLon(lat, lon){
+  try{
+    const r = await fetch(
+      `https://geocoding-api.open-meteo.com/v1/reverse` +
+      `?latitude=${lat}&longitude=${lon}&language=pt`
+    );
+    const d = await r.json();
+    return d?.results?.[0]?.admin1 ?? null;
+  }catch{
+    return null;
+  }
+}
+
+/* =========================
    ELEMENTOS DOM
 ========================= */
 const cidade=document.getElementById("cidade"),
@@ -577,7 +593,7 @@ async function montarPainelClimatico({ atual, idx, idxChuva, probChuva, pais, es
   `${t.getFullYear()} - ` +
   `${String(t.getHours()).padStart(2,"0")}:` +
   `${String(t.getMinutes()).padStart(2,"0")} hs`;
-
+  
     chuvaTexto = ` 🌧️ Chuva prevista: <b>${dataHora} (${probChuva}%)</b>`;
   }
 
@@ -666,6 +682,8 @@ linhaStatus.innerHTML = `
   ${impactoTexto ? `<div>${impactoTexto}</div>` : ""}
 `;
 }
+
+
  /* =========================
     LINHA DO SOL
  ========================= */
@@ -1063,11 +1081,20 @@ function montarGrafico(h){
 /* =========================
    GEOLOCALIZAÇÃO INICIAL
 ========================= */
-navigator.geolocation?.getCurrentPosition(p=>{
- lat=p.coords.latitude;
- lon=p.coords.longitude;
- nomeCidade.innerText="Sua localização";
- buscar();
+navigator.geolocation?.getCurrentPosition(async p=>{
+  lat = p.coords.latitude;
+  lon = p.coords.longitude;
+
+  const estadoGeo = await obterEstadoPorLatLon(lat, lon);
+
+  paisSelecionado = "BR"; // geolocalização Brasil
+  cidade.value = estadoGeo ? `Localização - ${estadoGeo}` : "";
+
+  nomeCidade.innerText = estadoGeo
+    ? `Sua localização - ${estadoGeo}`
+    : "Sua localização";
+
+  buscar();
 });
 </script>
 </body>
