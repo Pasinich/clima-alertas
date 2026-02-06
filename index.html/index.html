@@ -628,7 +628,10 @@ if (
     "AMAPÁ":"AP","TOCANTINS":"TO"
   };
 
-  let est = estado?.toUpperCase() ?? "";
+  let est = (estado || "")
+  .toUpperCase()
+  .normalize("NFD")
+  .replace(/[\u0300-\u036f]/g, "");
   est = mapaEstados[est] ?? est;
 
   const regiaoPorEstado = {
