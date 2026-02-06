@@ -423,7 +423,7 @@ for(let i = idx; i < atual.hourly.time.length; i++){
   <span style="font-size:13px">
    🌡️ <b>${atual.current_weather.temperature}°C</b> • 
    Sensação: ${atual.hourly.apparent_temperature[idx]}°C • 
-   ☀️ UV: <b class="${classe}">${uvIndex}</b> (${descricao})
+   ☀️ U44V: <b class="${classe}">${uvIndex}</b> (${descricao})
   </span>`;
   
   /* =========================
@@ -930,15 +930,12 @@ function definirStatus(p,c){
  linhaStatus.className="linha-status";
  if(c>8||p<1005){
   linhaStatus.classList.add("tempestade");
-  linhaStatus.innerText="⛈️Tempo:Risco de Tempestade";
  }
  else if(c>1||p<1012){
   linhaStatus.classList.add("chuva");
-  linhaStatus.innerText="🌧️ Tempo:Possibilidade de chuva";
  }
  else{
   linhaStatus.classList.add("bom");
-  linhaStatus.innerText="☀️Tempo: Tempo bom";
  }
 }
 
