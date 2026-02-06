@@ -634,7 +634,12 @@ if (
   let est = (estado || "")
   .normalize("NFD")
   .replace(/[\u0300-\u036f]/g, "")
-  .toUpperCase();
+  .toUpperCase()
+  .replace("ESTADO DE ", "")
+  .replace(" STATE", "")
+  .replace(" REGION", "")
+  .trim();
+  
   est = mapaEstados[est] ?? est;
 
   const regiaoPorEstado = {
