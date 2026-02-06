@@ -550,7 +550,7 @@ linhaNevoeiro.innerHTML =
  const nebulosidade = neb !== null ? neb : "—";
 
  linhaUmidade.innerHTML =
-  `💧Umidade: <b>${atual.hourly.relativehumidity_2m[idx]}%</b> • ` +
+  `💧Umxxxidade: <b>${atual.hourly.relativehumidity_2m[idx]}%</b> • ` +
   `🌧️Chuva: <b class="${formatarChuvaClasse(chuvaHora)}">${chuvaHora}%</b> • ` +
   `☁️Nebulosidade: <b>${nebulosidade}%</b>`;
  
@@ -569,13 +569,11 @@ montarPainelClimatico({
 });
 
 async function montarPainelClimatico({ atual, idx, idxChuva, probChuva, pais, estado }) {
-  
+
   /* ===== LUA ===== */
   const lua = calcularLua(new Date());
   linhaLua.innerHTML =
-    `🌙 Lua:<b>${lua.fase}</b> • ` +
-    `Luar:<b>${lua.iluminacao}%</b> • ` +
-    `Idade:<b>${lua.idade} dias</b>`;
+    `🌙 Lua:<b>${lua.fase}</b> • Luar:<b>${lua.iluminacao}%</b> • Idade:<b>${lua.idade} dias</b>`;
 
   /* ===== STATUS BASE ===== */
   definirStatus(
@@ -591,109 +589,101 @@ async function montarPainelClimatico({ atual, idx, idxChuva, probChuva, pais, es
   if (Number.isInteger(idxChuva) && idxChuva >= 0) {
     const t = new Date(atual.hourly.time[idxChuva]);
     const dataHora =
-  `${String(t.getDate()).padStart(2,"0")}/` +
-  `${String(t.getMonth()+1).padStart(2,"0")}/` +
-  `${t.getFullYear()} - ` +
-  `${String(t.getHours()).padStart(2,"0")}:` +
-  `${String(t.getMinutes()).padStart(2,"0")} hs`;
-  
+      `${String(t.getDate()).padStart(2,"0")}/` +
+      `${String(t.getMonth()+1).padStart(2,"0")}/` +
+      `${t.getFullYear()} - ` +
+      `${String(t.getHours()).padStart(2,"0")}:` +
+      `${String(t.getMinutes()).padStart(2,"0")} hs`;
+
     chuvaTexto = ` 🌧️ Chuva prevista: <b>${dataHora} (${probChuva}%)</b>`;
   }
 
-// const oni = -0.6;   // ← CONTROLE TOTAL AQUI
+  /* ===== FENÔMENO ONI ===== */
+  let fenomeno = "Neutro";
+  let valor = oni;
+  if (oni >= 0.5) fenomeno = "El Niño";
+  else if (oni <= -0.5) fenomeno = "La Niña";
 
-let fenomeno = "Neutro";
-let valor = oni;
+  /* ===== IMPACTO SOMENTE BRASIL ===== */
+  let impactoTexto = "";
+  const paisNorm = (pais || "").toUpperCase().trim();
 
-if (oni >= 0.5) fenomeno = "El Niño";
-else if (oni <= -0.5) fenomeno = "La Niña";
+  if (paisNorm === "BR" || paisNorm === "BRA" || paisNorm.includes("BRASIL") || paisNorm.includes("BRAZIL")) {
 
+    const mapaEstados = {
+      "RIO GRANDE DO SUL":"RS","SANTA CATARINA":"SC","PARANA":"PR",
+      "SAO PAULO":"SP","RIO DE JANEIRO":"RJ","MINAS GERAIS":"MG","ESPIRITO SANTO":"ES",
+      "MATO GROSSO":"MT","MATO GROSSO DO SUL":"MS","GOIAS":"GO","DISTRITO FEDERAL":"DF",
+      "BAHIA":"BA","SERGIPE":"SE","ALAGOAS":"AL","PERNAMBUCO":"PE","PARAIBA":"PB",
+      "RIO GRANDE DO NORTE":"RN","CEARA":"CE","PIAUI":"PI","MARANHAO":"MA",
+      "AMAZONAS":"AM","PARA":"PA","ACRE":"AC","RONDONIA":"RO","RORAIMA":"RR",
+      "AMAPA":"AP","TOCANTINS":"TO"
+    };
 
-/* ===== IMPACTO SOMENTE BRASIL ===== */
-let impactoTexto = "";
+    // Normaliza estado
+    let est = (estado || "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toUpperCase()
+      .replace("ESTADO DE ", "")
+      .replace(" STATE", "")
+      .replace(" REGION", "")
+      .trim();
 
-const paisNorm = (pais || "").toUpperCase().trim();
+    // Converte nome completo para sigla, se existir
+    est = mapaEstados[est] ?? est;
 
-if (
-  paisNorm === "BR" ||
-  paisNorm === "BRA" ||
-  paisNorm.includes("BRASIL") ||
-  paisNorm.includes("BRAZIL")
-) {
+    const regiaoPorEstado = {
+      RS:"Sul",SC:"Sul",PR:"Sul",
+      SP:"Sudeste",RJ:"Sudeste",MG:"Sudeste",ES:"Sudeste",
+      MT:"Centro-Oeste",MS:"Centro-Oeste",GO:"Centro-Oeste",DF:"Centro-Oeste",
+      BA:"Nordeste",SE:"Nordeste",AL:"Nordeste",PE:"Nordeste",PB:"Nordeste",
+      RN:"Nordeste",CE:"Nordeste",PI:"Nordeste",MA:"Nordeste",
+      AM:"Norte",PA:"Norte",AC:"Norte",RO:"Norte",RR:"Norte",AP:"Norte",TO:"Norte"
+    };
 
-  const mapaEstados = {
-    "RIO GRANDE DO SUL":"RS","SANTA CATARINA":"SC","PARANA":"PR",
-    "SAO PAULO":"SP","RIO DE JANEIRO":"RJ","MINAS GERAIS":"MG","ESPIRITO SANTO":"ES",
-    "MATO GROSSO":"MT","MATO GROSSO DO SUL":"MS","GOIAS":"GO","DISTRITO FEDERAL":"DF",
-    "BAHIA":"BA","SERGIPE":"SE","ALAGOAS":"AL","PERNAMBUCO":"PE","PARAIBA":"PB",
-    "RIO GRANDE DO NORTE":"RN","CEARA":"CE","PIAUI":"PI","MARANHAO":"MA",
-    "AMAZONAS":"AM","PARA":"PA","ACRE":"AC","RONDONIA":"RO","RORAIMA":"RR",
-    "AMAPA":"AP","TOCANTINS":"TO"
-  };
+    const impacto = {
+      Sul:{
+        "El Niño":"Chuvas acima da média e temporais",
+        "La Niña":"Frio intenso e tempo mais seco",
+        "Neutro":"Clima próximo do normal"
+      },
+      Sudeste:{
+        "El Niño":"Calor forte e chuva irregular",
+        "La Niña":"Verões mais chuvosos",
+        "Neutro":"Padrão típico"
+      },
+      "Centro-Oeste":{
+        "El Niño":"Calor e chuva mal distribuída",
+        "La Niña":"Chuvas mais constantes",
+        "Neutro":"Condições normais"
+      },
+      Nordeste:{
+        "El Niño":"Tendência a seca",
+        "La Niña":"Mais episódios de chuva",
+        "Neutro":"Variável"
+      },
+      Norte:{
+        "El Niño":"Menos chuva na Amazônia",
+        "La Niña":"Chuvas acima da média",
+        "Neutro":"Regime normal"
+      }
+    };
 
-  let est = (estado || "")
-  .normalize("NFD")
-  .replace(/[\u0300-\u036f]/g, "")
-  .toUpperCase()
-  .replace("ESTADO DE ", "")
-  .replace(" STATE", "")
-  .replace(" REGION", "")
-  .trim();
-  
-  est = mapaEstados[est] ?? est;
-
-  const regiaoPorEstado = {
-    RS:"Sul",SC:"Sul",PR:"Sul",
-    SP:"Sudeste",RJ:"Sudeste",MG:"Sudeste",ES:"Sudeste",
-    MT:"Centro-Oeste",MS:"Centro-Oeste",GO:"Centro-Oeste",DF:"Centro-Oeste",
-    BA:"Nordeste",SE:"Nordeste",AL:"Nordeste",PE:"Nordeste",PB:"Nordeste",
-    RN:"Nordeste",CE:"Nordeste",PI:"Nordeste",MA:"Nordeste",
-    AM:"Norte",PA:"Norte",AC:"Norte",RO:"Norte",RR:"Norte",AP:"Norte",TO:"Norte"
-  };
-
-  const impacto = {
-    Sul:{
-      "El Niño":"Chuvas acima da média e temporais",
-      "La Niña":"Frio intenso e tempo mais seco",
-      "Neutro":"Clima próximo do normal"
-    },
-    Sudeste:{
-      "El Niño":"Calor forte e chuva irregular",
-      "La Niña":"Verões mais chuvosos",
-      "Neutro":"Padrão típico"
-    },
-    "Centro-Oeste":{
-      "El Niño":"Calor e chuva mal distribuída",
-      "La Niña":"Chuvas mais constantes",
-      "Neutro":"Condições normais"
-    },
-    Nordeste:{
-      "El Niño":"Tendência a seca",
-      "La Niña":"Mais episódios de chuva",
-      "Neutro":"Variável"
-    },
-    Norte:{
-      "El Niño":"Menos chuva na Amazônia",
-      "La Niña":"Chuvas acima da média",
-      "Neutro":"Regime normal"
+    const regiao = regiaoPorEstado[est];
+    if (regiao && impacto[regiao]?.[fenomeno]) {
+      impactoTexto = ` 📍 Impacto no ${regiao}: ${impacto[regiao][fenomeno]}`;
     }
-  };
-
-  const regiao = regiaoPorEstado[est];
-  if (regiao && impacto[regiao]?.[fenomeno]) {
-    impactoTexto = ` 📍 Impacto no ${regiao}: ${impacto[regiao][fenomeno]}`;
   }
-}
 
   /* ===== ATUALIZA LINHA STATUS FINAL ===== */
-linhaStatus.innerHTML = `
-  <div>🕒 Hora Local Coleta: ${horaAtualCidade}</div>
-  ${chuvaTexto ? `<div>${chuvaTexto}</div>` : ""}
-  <div>🌊 Fenômeno: <b>${fenomeno}</b></div>
-  ${impactoTexto ? `<div>${impactoTexto}</div>` : ""}
-`;
+  linhaStatus.innerHTML = `
+    <div>🕒 Hora Local Coleta: ${horaAtualCidade}</div>
+    ${chuvaTexto ? `<div>${chuvaTexto}</div>` : ""}
+    <div>🌊 Fenômeno: <b>${fenomeno}</b></div>
+    ${impactoTexto ? `<div>${impactoTexto}</div>` : ""}
+  `;
 }
-
 
  /* =========================
     LINHA DO SOL
@@ -930,12 +920,15 @@ function definirStatus(p,c){
  linhaStatus.className="linha-status";
  if(c>8||p<1005){
   linhaStatus.classList.add("tempestade");
+  linhaStatus.innerText="⛈️Tempo:Risco de Tempestade";
  }
  else if(c>1||p<1012){
   linhaStatus.classList.add("chuva");
+  linhaStatus.innerText="🌧️ Tempo:Possibilidade de chuva";
  }
  else{
   linhaStatus.classList.add("bom");
+  linhaStatus.innerText="☀️Tempo: Tempo bom";
  }
 }
 
