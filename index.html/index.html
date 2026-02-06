@@ -1095,7 +1095,27 @@ navigator.geolocation?.getCurrentPosition(async p=>{
     ? `Localização - ${estadoGeo}`
     : "Localização";
 
-  nomeCidade.innerText = cidade.value;
+  // Substitua esta linha:
+  // nomeCidade.innerText = cidade.value;
+
+  // Pelo novo bloco:
+  let nomeExibir = "Localização";
+  if (paisSelecionado === "BR" && estadoGeo) {
+      const mapaEstados = {
+        "RIO GRANDE DO SUL":"RS","SANTA CATARINA":"SC","PARANA":"PR",
+        "SAO PAULO":"SP","RIO DE JANEIRO":"RJ","MINAS GERAIS":"MG","ESPIRITO SANTO":"ES",
+        "MATO GROSSO":"MT","MATO GROSSO DO SUL":"MS","GOIAS":"GO","DISTRITO FEDERAL":"DF",
+        "BAHIA":"BA","SERGIPE":"SE","ALAGOAS":"AL","PERNAMBUCO":"PE","PARAIBA":"PB",
+        "RIO GRANDE DO NORTE":"RN","CEARA":"CE","PIAUI":"PI","MARANHAO":"MA",
+        "AMAZONAS":"AM","PARA":"PA","ACRE":"AC","RONDONIA":"RO","RORAIMA":"RR",
+        "AMAPA":"AP","TOCANTINS":"TO"
+      };
+
+      const sigla = mapaEstados[estadoGeo] ?? "";
+      nomeExibir = estadoGeo.charAt(0) + estadoGeo.slice(1).toLowerCase() + (sigla ? ` (${sigla})` : "");
+  }
+
+  nomeCidade.innerText = nomeExibir;
 
   buscar();
 });
