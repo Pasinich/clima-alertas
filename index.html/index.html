@@ -577,7 +577,7 @@ async function montarPainelClimatico({ atual, idx, idxChuva, probChuva, pais, es
       `${String(t.getHours()).padStart(2,"0")}:` +
       `${String(t.getMinutes()).padStart(2,"0")} hs`;
 
-    chuvaTexto = ` • 🌧️ Chuva prevista: <b>${dataHora} (${probChuva}%)</b>`;
+    chuvaTexto = ` 🌧️ Chuva prevista: <b>${dataHora} (${probChuva}%)</b>`;
   }
 
 const oni = -0.6;   // ← CONTROLE TOTAL AQUI
@@ -653,7 +653,7 @@ if (
 
   const regiao = regiaoPorEstado[est];
   if (regiao && impacto[regiao]?.[fenomeno]) {
-    impactoTexto = ` • 📍 Impacto no ${regiao}: ${impacto[regiao][fenomeno]}`;
+    impactoTexto = ` 📍 Impacto no ${regiao}: ${impacto[regiao][fenomeno]}`;
   }
 }
 
@@ -661,7 +661,7 @@ if (
 linhaStatus.innerHTML = `
   <div>🕒 Hora Local Coleta: ${horaAtualCidade}</div>
   ${chuvaTexto ? `<div>${chuvaTexto}</div>` : ""}
-  <div>🌊 Fenômeno: <b>${fenomeno}</b>${valor !== null ? ` (${valor.toFixed(1)})` : ""}</div>
+  <div>🌊 Fenômeno: <b>${fenomeno}</b></div>
   ${impactoTexto ? `<div>${impactoTexto}</div>` : ""}
 `;
 }
