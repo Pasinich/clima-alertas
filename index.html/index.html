@@ -591,12 +591,18 @@ async function montarPainelClimatico({ atual, idx, idxChuva, probChuva, pais, es
       `${String(t.getHours()).padStart(2,"0")}:` +
       `${String(t.getMinutes()).padStart(2,"0")} hs`;
 
-    chuvaTexto = ` 🌧️ Chuva prevista: <b>${dataHora} (${probChuva}%)</b>`;
+    chuvaTexto = `🌧️ Chuva prevista: <b>${dataHora} (${probChuva}%)</b>`;
+  }
+
+  /* ===== PRESSÃO MÉDIA PARA CHUVA ===== */
+  let pressaoMediaTexto = "";
+  if(atual.hourly.pressure_msl?.length){
+    const m = atual.hourly.pressure_msl.reduce((a,b)=>a+b,0)/atual.hourly.pressure_msl.length;
+    pressaoMediaTexto = `🌧️ Chove geralmente com pressão média de <b>${m.toFixed(1)} hPa</b>`;
   }
 
   /* ===== FENÔMENO ONI ===== */
   let fenomeno = "Neutro";
-  let valor = oni;
   if (oni >= 0.5) fenomeno = "El Niño";
   else if (oni <= -0.5) fenomeno = "La Niña";
 
@@ -605,7 +611,6 @@ async function montarPainelClimatico({ atual, idx, idxChuva, probChuva, pais, es
   const paisNorm = (pais || "").toUpperCase().trim();
 
   if (paisNorm === "BR" || paisNorm === "BRA" || paisNorm.includes("BRASIL") || paisNorm.includes("BRAZIL")) {
-
     const mapaEstados = {
       "RIO GRANDE DO SUL":"RS","SANTA CATARINA":"SC","PARANA":"PR",
       "SAO PAULO":"SP","RIO DE JANEIRO":"RJ","MINAS GERAIS":"MG","ESPIRITO SANTO":"ES",
@@ -626,7 +631,6 @@ async function montarPainelClimatico({ atual, idx, idxChuva, probChuva, pais, es
       .replace(" REGION", "")
       .trim();
 
-    // Converte nome completo para sigla, se existir
     est = mapaEstados[est] ?? est;
 
     const regiaoPorEstado = {
@@ -668,7 +672,7 @@ async function montarPainelClimatico({ atual, idx, idxChuva, probChuva, pais, es
 
     const regiao = regiaoPorEstado[est];
     if (regiao && impacto[regiao]?.[fenomeno]) {
-      impactoTexto = ` 📍 Impacto no ${regiao}: ${impacto[regiao][fenomeno]}`;
+      impactoTexto = `📍 Impacto no ${regiao}: ${impacto[regiao][fenomeno]}`;
     }
   }
 
@@ -676,6 +680,7 @@ async function montarPainelClimatico({ atual, idx, idxChuva, probChuva, pais, es
   linhaStatus.innerHTML = `
     <div>🕒 Hora Local Coleta: ${horaAtualCidade}</div>
     ${chuvaTexto ? `<div>${chuvaTexto}</div>` : ""}
+    ${pressaoMediaTexto ? `<div>${pressaoMediaTexto}</div>` : ""}
     <div>🌊 Fenômeno: <b>${fenomeno}</b></div>
     ${impactoTexto ? `<div>${impactoTexto}</div>` : ""}
   `;
@@ -988,8 +993,6 @@ function calcularPressaoChuva(h){
   linhaAviso.innerHTML="🌧️ Dados insuficientes para padrão confiável.";
   return;
  }
- const m=press.reduce((a,b)=>a+b)/press.length;
- linhaAviso.innerHTML=`🌧️ Chove geralmente com pressão média de <b>${m.toFixed(1)} hPa</b>`;
 }
 
 /* =========================
@@ -1091,10 +1094,6 @@ navigator.geolocation?.getCurrentPosition(async p=>{
     ? `Localização - ${estadoGeo}`
     : "Sua Localização";
 
-  // Substitua esta linha:
-  // nomeCidade.innerText = cidade.value;
-
-  // Pelo novo bloco:
   let nomeExibir = "Localização";
   if (paisSelecionado === "BR" && estadoGeo) {
       const mapaEstados = {
