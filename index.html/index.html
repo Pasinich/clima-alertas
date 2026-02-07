@@ -519,7 +519,7 @@ if(vis !== null){
   }
 }
 
-// confirmação por umidade + vento (Chapecó-style 😄)
+// confirmação por umidade + vento
 const umid = atual.hourly.relativehumidity_2m[idx];
 const vento = atual.current_weather.windspeed;
 
@@ -569,13 +569,22 @@ async function montarPainelClimatico({ atual, idx, idxChuva, probChuva, pais, es
   /* ===== LUA ===== */
   const lua = calcularLua(new Date());
   linhaLua.innerHTML =
-    `🌙 Lua:<b>${lua.fase}</b> • Luar:<b>${lua.iluminacao}%</b> • Idade:<b>${lua.idade} dias</b>`;
+    `🌙 Lua: <b>${lua.fase}</b> • Luar: <b>${lua.iluminacao}%</b> • Idade: <b>${lua.idade} dias</b>`;
 
-  /* ===== STATUS BASE ===== */
-  definirStatus(
-    atual.hourly.pressure_msl[idx],
-    atual.hourly.precipitation[idx]
-  );
+  /* ===== STATUS BASE (COLORIDO) ===== */
+  let statusTexto = "";
+  if(atual.hourly.precipitation[idx] > 8 || atual.hourly.pressure_msl[idx] < 1005){
+    linhaStatus.className = "linha-status tempestade";
+    statusTexto = "⛈️ Risco de Tempestade";
+  }
+  else if(atual.hourly.precipitation[idx] > 1 || atual.hourly.pressure_msl[idx] < 1012){
+    linhaStatus.className = "linha-status chuva";
+    statusTexto = "🌧️ Possibilidade de Chuva";
+  }
+  else{
+    linhaStatus.className = "linha-status bom";
+    statusTexto = "☀️ Tempo bom";
+  }
 
   /* ===== HORA LOCAL ===== */
   const horaAtualCidade = atual.current_weather?.time?.slice(11, 16) ?? "—";
@@ -594,11 +603,28 @@ async function montarPainelClimatico({ atual, idx, idxChuva, probChuva, pais, es
     chuvaTexto = `🌧️ Chuva prevista: <b>${dataHora} (${probChuva}%)</b>`;
   }
 
-  /* ===== PRESSÃO MÉDIA PARA CHUVA ===== */
-  let pressaoMediaTexto = "";
-  if(atual.hourly.pressure_msl?.length){
-    const m = atual.hourly.pressure_msl.reduce((a,b)=>a+b,0)/atual.hourly.pressure_msl.length;
-    pressaoMediaTexto = `🌧️ Chove geralmente com pressão média de <b>${m.toFixed(1)} hPa</b>`;
+  /* ===== PRESSÃO MÉDIA / CHUVEIRO COMUM ===== */
+  let pressaoTexto = "";
+  if(histSalvo && histSalvo.time?.length){
+    const dias={};
+    histSalvo.time.forEach((t,i)=>{
+      const d=t.split("T")[0];
+      dias[d] ??= {p:[], mm:0};
+      dias[d].p.push(histSalvo.pressure_msl[i]);
+      dias[d].mm += histSalvo.precipitation[i];
+    });
+    const press=[];
+    Object.values(dias).forEach(d=>{
+      if(d.mm>=1) press.push(d.p.reduce((a,b)=>a+b)/d.p.length);
+    });
+    if(press.length > 0){
+      const m = press.reduce((a,b)=>a+b)/press.length;
+      pressaoTexto = `🌧️ Chove geralmente com pressão média de <b>${m.toFixed(1)} hPa</b>`;
+    } else {
+      pressaoTexto = `🌧️ Dados insuficientes para calcular pressão média de chuva`;
+    }
+  } else {
+    pressaoTexto = `🌧️ Dados históricos não disponíveis`;
   }
 
   /* ===== FENÔMENO ONI ===== */
@@ -611,6 +637,7 @@ async function montarPainelClimatico({ atual, idx, idxChuva, probChuva, pais, es
   const paisNorm = (pais || "").toUpperCase().trim();
 
   if (paisNorm === "BR" || paisNorm === "BRA" || paisNorm.includes("BRASIL") || paisNorm.includes("BRAZIL")) {
+
     const mapaEstados = {
       "RIO GRANDE DO SUL":"RS","SANTA CATARINA":"SC","PARANA":"PR",
       "SAO PAULO":"SP","RIO DE JANEIRO":"RJ","MINAS GERAIS":"MG","ESPIRITO SANTO":"ES",
@@ -621,7 +648,6 @@ async function montarPainelClimatico({ atual, idx, idxChuva, probChuva, pais, es
       "AMAPA":"AP","TOCANTINS":"TO"
     };
 
-    // Normaliza estado
     let est = (estado || "")
       .normalize("NFD")
       .replace(/[\u0300-\u036f]/g, "")
@@ -676,13 +702,14 @@ async function montarPainelClimatico({ atual, idx, idxChuva, probChuva, pais, es
     }
   }
 
-  /* ===== ATUALIZA LINHA STATUS FINAL ===== */
+  /* ===== MONTA LINHA STATUS FINAL ===== */
   linhaStatus.innerHTML = `
-    <div>🕒 Hora Local Coleta: ${horaAtualCidade}</div>
+    ${statusTexto ? `<div>${statusTexto}</div>` : ""}
     ${chuvaTexto ? `<div>${chuvaTexto}</div>` : ""}
-    ${pressaoMediaTexto ? `<div>${pressaoMediaTexto}</div>` : ""}
+    ${pressaoTexto ? `<div>${pressaoTexto}</div>` : ""}
     <div>🌊 Fenômeno: <b>${fenomeno}</b></div>
     ${impactoTexto ? `<div>${impactoTexto}</div>` : ""}
+    <div>🕒 Hora Local Coleta: ${horaAtualCidade}</div>
   `;
 }
 
@@ -990,7 +1017,7 @@ function calcularPressaoChuva(h){
   if(d.mm>=1) press.push(d.p.reduce((a,b)=>a+b)/d.p.length);
  });
  if(press.length<3){
-  linhaAviso.innerHTML="🌧️ Dados insuficientes para padrão confiável.";
+  linhaAviso.innerHTML="🌧️ *Dados insuficientes para padrão confiável.";
   return;
  }
 }
