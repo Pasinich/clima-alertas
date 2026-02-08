@@ -449,7 +449,7 @@ if (typeof atual?.current_weather?.pressure_msl === "number") {
 else if (typeof atual?.hourly?.pressure_msl?.[idx] === "number") {
   pressaoExibir = atual.hourly.pressure_msl[idx];
 }
-let pressaoExibir_masc = atual.hourly.pressure_msl[idx] + 0.5;
+let pressaoExibir_masc = atual.hourly.pressure_msl[idx] + 3.1;
 linhaPressao.innerHTML =
   `🌬️ Pressão: <b>${pressaoExibir_masc.toFixed(1)} hPa</b> • ` +
   `🌫️ Qual. Ar: ${formatarAQ(usAQI)}`;
@@ -554,6 +554,38 @@ linhaNevoeiro.innerHTML =
   `🌧️Chuva: <b class="${formatarChuvaClasse(chuvaHora)}">${chuvaHora}%</b> • ` +
   `☁️Nebulosidade: <b>${nebulosidade}%</b>`;
  
+ 
+ function estacaoDoAno(data = new Date(), lat = -30) {
+  const d = data.getDate();
+  const m = data.getMonth() + 1;
+  const norte = lat >= 0;
+
+  if (norte) {
+    // Hemisfério Norte
+    if ((m === 12 && d >= 21) || (m <= 3 && (m < 3 || d <= 20))) {
+      return "Inverno ❄️";
+    }
+    if ((m === 3 && d >= 21) || (m <= 6 && (m < 6 || d <= 20))) {
+      return "Primavera 🌸";
+    }
+    if ((m === 6 && d >= 21) || (m <= 9 && (m < 9 || d <= 22))) {
+      return "Verão ☀️";
+    }
+    return "Outono 🍂";
+  }
+
+  // Hemisfério Sul
+  if ((m === 12 && d >= 21) || (m <= 3 && (m < 3 || d <= 20))) {
+    return "Verão ☀️";
+  }
+  if ((m === 3 && d >= 21) || (m <= 6 && (m < 6 || d <= 20))) {
+    return "Outono 🍂";
+  }
+  if ((m === 6 && d >= 21) || (m <= 9 && (m < 9 || d <= 22))) {
+    return "Inverno ❄️";
+  }
+  return "Primavera 🌸";
+}
 
 montarPainelClimatico({
   atual,
@@ -561,15 +593,17 @@ montarPainelClimatico({
   idxChuva,
   probChuva,
   pais: paisSelecionado,   
-  estado: estadoSelecionado      
+  estado: estadoSelecionado ,
 });
 
 async function montarPainelClimatico({ atual, idx, idxChuva, probChuva, pais, estado }) {
+const lat = atual.latitude ?? latitudeSelecionada ?? -30;
+const estacao = estacaoDoAno(new Date(), lat);
 
   /* ===== LUA ===== */
   const lua = calcularLua(new Date());
   linhaLua.innerHTML =
-    `🌙 Lua:<b>${lua.fase}</b> • Luar:<b>${lua.iluminacao}%</b> • Idade:<b>${lua.idade} dias</b>`;
+    `🌙 Lua: <b>${lua.fase}</b> • Luar: <b>${lua.iluminacao}%</b> • Idade: <b>${lua.idade} dias</b>`;
 
   /* ===== STATUS BASE (COLORIDO) ===== */
   let statusTexto = "";
@@ -707,7 +741,10 @@ async function montarPainelClimatico({ atual, idx, idxChuva, probChuva, pais, es
     ${statusTexto ? `<div>${statusTexto}</div>` : ""}
     ${chuvaTexto ? `<div>${chuvaTexto}</div>` : ""}
     ${pressaoTexto ? `<div>${pressaoTexto}</div>` : ""}
-    <div>🌊 Fenômeno: <b>${fenomeno}</b></div>
+    <div>
+  🌊 Fenômeno: <b>${fenomeno}</b>
+  • 🗓️ Estação: <b>${estacao}</b>
+</div>
     ${impactoTexto ? `<div>${impactoTexto}</div>` : ""}
     <div>🕒 Hora Local Coleta: ${horaAtualCidade}</div>
   `;
