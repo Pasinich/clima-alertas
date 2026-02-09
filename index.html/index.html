@@ -812,6 +812,8 @@ if (atual.current_weather?.time) {
   let chuvaTexto = "";
   if (Number.isInteger(idxChuva) && idxChuva >= 0) {
     const t = new Date(atual.hourly.time[idxChuva]);
+     // soma 2vhora
+     t.setHours(t.getHours() + 2); /* soma 2 horas para ajustar o tempo de chuva*/
     const dataHora =
       `${String(t.getDate()).padStart(2,"0")}/` +
       `${String(t.getMonth()+1).padStart(2,"0")}/` +
