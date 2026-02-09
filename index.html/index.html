@@ -621,7 +621,21 @@ const estacao = estacaoDoAno(new Date(), lat);
   }
 
   /* ===== HORA LOCAL ===== */
-  const horaAtualCidade = atual.current_weather?.time?.slice(11, 16) ?? "—";
+  /*const horaAtualCidade = atual.current_weather?.time?.slice(11, 16) ?? "—";*/
+  let dataHoraLocal = "—";
+
+if (atual.current_weather?.time) {
+  const dt = new Date(atual.current_weather.time);
+
+  dataHoraLocal =
+    `${String(dt.getDate()).padStart(2, "0")}/` +
+    `${String(dt.getMonth() + 1).padStart(2, "0")}/` +
+    `${dt.getFullYear()} - ` +
+    `${String(dt.getHours()).padStart(2, "0")}:` +
+    `${String(dt.getMinutes()).padStart(2, "0")}:` +
+    `${String(dt.getSeconds()).padStart(2, "0")}`;
+}
+
 
   /* ===== CHUVA PREVISTA ===== */
   let chuvaTexto = "";
@@ -665,6 +679,27 @@ const estacao = estacaoDoAno(new Date(), lat);
   let fenomeno = "Neutro";
   if (oni >= 0.5) fenomeno = "El Niño";
   else if (oni <= -0.5) fenomeno = "La Niña";
+
+/* ===== AVALIAÇÕES ===== */
+const pesca = avaliarPesca(
+  atual.hourly.pressure_msl[idx],
+  atual.current_weather.windspeed,
+  atual.hourly.precipitation[idx]
+);
+
+const corrida = avaliarCorrida(
+  atual.current_weather.temperature,
+  atual.hourly.precipitation_probability[idx],
+  atual.current_weather.windspeed,
+  atual.daily.uv_index_max?.[0] ?? 0
+);
+
+// 🚴 Ciclismo — ESTA LINHA FALTAVA
+const ciclismo = avaliaCiclismo(
+  atual.hourly.precipitation_probability[idx],
+  atual.current_weather.windspeed,
+  atual.hourly.pressure_msl[idx]
+);
 
   /* ===== IMPACTO SOMENTE BRASIL ===== */
   let impactoTexto = "";
@@ -736,18 +771,21 @@ const estacao = estacaoDoAno(new Date(), lat);
     }
   }
 
-  /* ===== MONTA LINHA STATUS FINAL ===== */
-  linhaStatus.innerHTML = `
-    ${statusTexto ? `<div>${statusTexto}</div>` : ""}
-    ${chuvaTexto ? `<div>${chuvaTexto}</div>` : ""}
-    ${pressaoTexto ? `<div>${pressaoTexto}</div>` : ""}
-    <div>
-  🌊 Fenômeno: <b>${fenomeno}</b>
-  • 🗓️ Estação: <b>${estacao}</b>
-</div>
-    ${impactoTexto ? `<div>${impactoTexto}</div>` : ""}
-    <div>🕒 Hora Local Coleta: ${horaAtualCidade}</div>
-  `;
+/* ===== MONTA LINHA STATUS FINAL ===== */
+linhaStatus.innerHTML = `
+<div>🕒 Data e Hora Local da Coleta: <b>${dataHoraLocal}</b></div>
+ ${statusTexto ? `<div>${statusTexto}</div>` : ""}
+  ${chuvaTexto ? `<div>${chuvaTexto}</div>` : ""}
+  ${pressaoTexto ? `<div>${pressaoTexto}</div>` : ""}
+<div>
+    ${pesca} • ${corrida}  • ${ciclismo}
+  </div>
+  <div>
+    🌊 Fenômeno: <b>${fenomeno}</b>
+    • 🗓️ Estação: <b>${estacao}</b>
+  </div>
+  ${impactoTexto ? `<div>${impactoTexto}</div>` : ""}
+`;
 }
 
  /* =========================
@@ -912,6 +950,37 @@ function montarGraficoMensal(labels, min, med, max){
   );
 }
 
+function avaliarPesca(pressao, vento, chuva){
+  if(pressao >= 1015 && vento <= 8 && chuva === 0)
+    return "🎣 Pesca: Boa";
+  if(pressao >= 1008 && vento <= 12)
+    return "🎣 Pesca: Regular";
+  return "🎣 Pesca: Ruim";
+}
+
+function avaliarPesca(pressao, vento, chuva){
+  if (pressao >= 1015 && vento <= 8 && chuva === 0)
+    return "🎣 Boa";
+  if (pressao >= 1008 && vento <= 12 && chuva < 40)
+    return "🎣 Regular";
+  return "🎣 Ruim";
+}
+
+function avaliarCorrida(temp, chuva, vento, uv){
+  if (temp >= 15 && temp <= 28 && chuva < 20 && vento <= 12 && uv <= 7)
+    return "🏃 Boa";
+  if (temp >= 10 && temp <= 32 && chuva < 40)
+    return "🏃 Regular";
+  return "🏃 Não indicada";
+}
+
+function avaliaCiclismo(probChuva, vento, pressao) {
+  if (probChuva > 50 || vento > 25 || pressao < 1008)
+    return "🚴 Não recomendado";
+  if (vento <= 10 && probChuva < 20)
+    return "🚴 Boa";
+  return "🚴 Regular";
+}
 
 /* =========================
    FORMATADORES
