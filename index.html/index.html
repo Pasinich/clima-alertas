@@ -594,11 +594,18 @@ montarPainelClimatico({
   probChuva,
   pais: paisSelecionado,   
   estado: estadoSelecionado ,
+  cidade: nomeCidade.innerText
 });
 
-async function montarPainelClimatico({ atual, idx, idxChuva, probChuva, pais, estado }) {
+async function montarPainelClimatico(
+{ atual, idx, idxChuva, probChuva, pais, estado,cidade }) {
 const lat = atual.latitude ?? latitudeSelecionada ?? -30;
 const estacao = estacaoDoAno(new Date(), lat);
+
+  // 🔹 normalizações
+  const siglaEstado = normalizarEstadoParaSigla(estado);
+
+
 
   /* ===== LUA ===== */
   const lua = calcularLua(new Date());
@@ -701,6 +708,26 @@ const ciclismo = avaliaCiclismo(
   atual.hourly.pressure_msl[idx]
 );
 
+const aviao = avaliarAviao(
+  atual.current_weather.windspeed,
+  vis,
+  atual.hourly.precipitation[idx],
+  statusTexto.includes("Tempestade")
+);
+
+const carro = avaliarCarro(
+  atual.hourly.precipitation_probability[idx],
+  vis,
+  atual.current_weather.windspeed
+);
+
+
+const piscina = avaliarPiscina(
+  atual.current_weather.temperature,
+  atual.hourly.precipitation_probability[idx],
+  atual.current_weather.windspeed
+);
+
   /* ===== IMPACTO SOMENTE BRASIL ===== */
   let impactoTexto = "";
   const paisNorm = (pais || "").toUpperCase().trim();
@@ -778,7 +805,7 @@ linhaStatus.innerHTML = `
   ${chuvaTexto ? `<div>${chuvaTexto}</div>` : ""}
   ${pressaoTexto ? `<div>${pressaoTexto}</div>` : ""}
 <div>
-    ${pesca} • ${corrida}  • ${ciclismo}
+    ${pesca} ${corrida}  ${ciclismo} ${piscina} ${aviao} ${carro}
   </div>
   <div>
     🌊 Fenômeno: <b>${fenomeno}</b>
@@ -951,36 +978,75 @@ function montarGraficoMensal(labels, min, med, max){
 }
 
 function avaliarPesca(pressao, vento, chuva){
-  if(pressao >= 1015 && vento <= 8 && chuva === 0)
-    return "🎣 Pesca: Boa";
-  if(pressao >= 1008 && vento <= 12)
-    return "🎣 Pesca: Regular";
-  return "🎣 Pesca: Ruim";
-}
-
-function avaliarPesca(pressao, vento, chuva){
   if (pressao >= 1015 && vento <= 8 && chuva === 0)
-    return "🎣 Boa";
+    return "🎣Boa";
   if (pressao >= 1008 && vento <= 12 && chuva < 40)
-    return "🎣 Regular";
-  return "🎣 Ruim";
+    return "🎣Regular";
+  return "🎣Ruim";
 }
 
 function avaliarCorrida(temp, chuva, vento, uv){
   if (temp >= 15 && temp <= 28 && chuva < 20 && vento <= 12 && uv <= 7)
-    return "🏃 Boa";
+    return "🏃Boa";
   if (temp >= 10 && temp <= 32 && chuva < 40)
-    return "🏃 Regular";
-  return "🏃 Não indicada";
+    return "🏃Regular";
+  return "🏃Não indicada";
 }
 
 function avaliaCiclismo(probChuva, vento, pressao) {
   if (probChuva > 50 || vento > 25 || pressao < 1008)
-    return "🚴 Não recomendado";
+    return "🚴Não recomendado";
   if (vento <= 10 && probChuva < 20)
-    return "🚴 Boa";
-  return "🚴 Regular";
+    return "🚴Bom p/pedalar";
+  return "🚴Regular";
 }
+
+function avaliarAviao(vento, vis, chuva, tempestade){
+  if (tempestade || vento > 35 || vis < 2000)
+    return "✈️Risco elevado";
+  if (vento > 20 || chuva > 2)
+    return "✈️Atenção!";
+  return "✈️ Vôo tranquilo";
+}
+
+function avaliarCarro(chuvaProb, vis, vento){
+  if (chuvaProb > 70 || vis < 1500)
+    return "🚗Cuidado na estrada!";
+  if (chuvaProb > 40 || vento > 30)
+    return "🚗Atenção na estrada!";
+  return "🚗Boa dirigibilidade";
+}
+
+/* =========================
+   FUNÇÕES UTILITÁRIAS
+========================= */
+
+function normalizarEstadoParaSigla(estado){
+  if (!estado) return "";
+
+  const mapaEstados = {
+    "RIO GRANDE DO SUL":"RS","SANTA CATARINA":"SC","PARANA":"PR",
+    "SAO PAULO":"SP","RIO DE JANEIRO":"RJ","ESPIRITO SANTO":"ES",
+    "BAHIA":"BA","SERGIPE":"SE","ALAGOAS":"AL","PERNAMBUCO":"PE",
+    "PARAIBA":"PB","RIO GRANDE DO NORTE":"RN","CEARA":"CE","PIAUI":"PI",
+    "MARANHAO":"MA","PARA":"PA","AMAPA":"AP"
+  };
+
+  const chave = estado
+    .normalize("NFD").replace(/[\u0300-\u036f]/g,"")
+    .toUpperCase()
+    .replace("ESTADO DE ","")
+    .trim();
+}
+
+function avaliarPiscina(temp, chuvaProb, vento){
+  if (chuvaProb > 60)
+    return "🏊 Não recomendado";
+  if (temp >= 22 && chuvaProb < 30 && vento <= 20)
+    return "🏊Boa";
+  return "🏊Regular";
+}
+
 
 /* =========================
    FORMATADORES
