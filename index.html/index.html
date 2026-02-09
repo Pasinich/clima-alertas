@@ -295,25 +295,117 @@ function distanciaKm(lat1, lon1, lat2, lon2){
    Pontos GPS litorânea 
 ========================= */
 const pontosLitoralBrasil = [
-  [-33.7, -53.4], // RS
-  [-31.3, -51.0],
-  [-29.5, -49.7],
-  [-27.8, -48.6], // SC
-  [-26.5, -48.4],
-  [-25.5, -48.3], // PR
-  [-24.5, -47.6],
-  [-23.5, -46.5], // SP
-  [-22.8, -43.2], // RJ
-  [-20.3, -40.3], // ES
-  [-17.9, -39.0], // BA
-  [-13.0, -38.5],
-  [-9.0, -35.7],  // AL
-  [-8.0, -34.9],  // PE
-  [-5.8, -35.2],  // RN
-  [-3.7, -38.5],  // CE
-  [-2.5, -44.3],  // MA
-  [-0.7, -48.5]   // PA
+  // RS
+  [-33.3, -53.4], // Torres
+  [-31.4, -51.2], // Tramandaí
+  [-30.0, -50.2], // Capão da Canoa
+  [-29.2, -49.7], // Imbé
+  [-29.0, -49.7], // Xangri-lá
+  [-29.0, -50.0], // Osório
+  [-30.3, -50.2], // Palmares do Sul
+
+  // SC
+  [-26.7, -48.6], // Barra Velha
+  [-26.8, -48.6], // Balneário Piçarras
+  [-27.0, -48.6], // Itajaí
+  [-27.1, -48.6], // Navegantes
+  [-27.1, -48.6], // Porto Belo
+  [-27.1, -48.6], // Bombinhas
+  [-27.6, -48.6], // Balneário Camboriú
+  [-27.6, -48.6], // Itapema
+  [-27.7, -48.5], // Tijucas
+  [-27.5, -48.5], // Florianópolis
+  [-27.6, -48.5], // São José
+  [-28.0, -48.7], // Palhoça
+  [-28.1, -48.7], // Imbituba
+  [-28.5, -49.0], // Garopaba
+  [-28.5, -49.0], // Laguna
+  [-28.7, -49.0], // Pescaria Brava
+  [-28.8, -48.7], // Bombinhas (parte sul)
+  [-27.3, -48.5], // Brusque (próximo ao litoral)
+  
+  // PR
+  [-25.5, -48.5], // Matinhos
+  [-25.6, -48.5], // Caiobá
+  [-25.7, -48.5], // Guaratuba
+  [-25.9, -48.6], // Pontal do Paraná
+  [-26.0, -48.5], // Paranaguá
+  [-25.5, -48.7], // Ilha do Mel
+
+  // SP
+  [-23.5, -45.4], // Santos
+  [-23.9, -45.4], // Guarujá
+  [-24.0, -45.5], // Bertioga
+  [-23.8, -45.5], // Ilhabela
+  [-24.6, -46.7], // Ubatuba
+  [-23.6, -45.4], // São Sebastião
+  [-24.3, -46.6], // Caraguatatuba
+  [-24.1, -46.6], // Praia das Toninhas
+
+  // RJ
+  [-22.8, -43.2], // Rio de Janeiro
+  [-23.0, -43.1], // Niterói
+  [-22.6, -41.8], // Arraial do Cabo
+  [-22.9, -42.0], // Búzios
+  [-22.7, -42.0], // Cabo Frio
+  [-22.5, -41.7], // São Pedro da Aldeia
+  [-22.5, -42.0], // Araruama
+  [-22.4, -42.0], // Iguaba Grande
+  [-22.3, -42.0], // Saquarema
+
+  // ES
+  [-20.3, -40.3], // Vitória
+  [-20.4, -40.3], // Vila Velha
+  [-19.0, -40.3], // Guarapari
+  [-18.9, -39.9], // Anchieta
+  [-19.2, -40.1], // Piúma
+  [-18.8, -39.8], // Itapemirim
+  [-18.7, -39.7], // Marataízes
+
+  // BA
+  [-17.9, -39.0], // Porto Seguro
+  [-16.5, -39.1], // Ilhéus
+  [-14.8, -39.0], // Itacaré
+  [-13.0, -38.5], // Salvador
+  [-12.9, -38.5], // Lauro de Freitas
+  [-12.6, -38.0], // Praia do Forte
+  [-12.5, -38.0], // Imbassaí
+  [-11.5, -37.5], // Santo André
+  [-11.3, -37.5], // Cumuruxatiba
+
+  // AL
+  [-9.0, -35.7], // Maceió
+  [-9.4, -35.7], // Maragogi
+  [-9.3, -35.8], // Japaratinga
+
+  // PE
+  [-8.0, -34.9], // Recife
+  [-8.1, -34.9], // Olinda
+  [-8.4, -35.0], // Porto de Galinhas
+  [-7.9, -35.1], // Ipojuca
+
+  // RN
+  [-5.8, -35.2], // Natal
+  [-5.9, -35.1], // Pipa
+  [-5.8, -35.0], // Tibau do Sul
+
+  // CE
+  [-3.7, -38.5], // Fortaleza
+  [-3.8, -38.5], // Aquiraz
+  [-3.5, -38.6], // Canoa Quebrada
+  [-3.6, -38.7], // Aracati
+
+  // MA
+  [-2.5, -44.3], // São Luís
+  [-2.7, -44.3], // Alcântara
+  [-2.8, -44.2], // Raposa
+
+  // PA
+  [-0.7, -48.5], // Belém
+  [-0.8, -48.5], // Barcarena
+  [-0.9, -48.6], // Maracanã
 ];
+
 
 /* =======================
 Cidade possui praia 
