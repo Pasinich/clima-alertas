@@ -876,7 +876,15 @@ const corrida = avaliarCorrida(
   atual.daily.uv_index_max?.[0] ?? 0
 );
 
-// 🚴 Ciclismo — ESTA LINHA FALTAVA
+const caminhada = avaliarCaminhada(
+  atual.current_weather.temperature,
+  atual.hourly.precipitation_probability[idx],
+  atual.current_weather.windspeed,
+  atual.daily.uv_index_max?.[0] ?? 0,
+  vis
+);
+
+// 🚴 Ciclismo 
 const ciclismo = avaliaCiclismo(
   atual.hourly.precipitation_probability[idx],
   atual.current_weather.windspeed,
@@ -907,6 +915,12 @@ const alergiasTexto = avaliarAlergias(
   atual.hourly.relativehumidity_2m?.[idx] ?? 50,
   atual.hourly.windspeed_10m?.[idx] ?? 0,
   estacao
+);
+
+const mosquitosTexto = avaliarMosquitos(
+  atual.hourly.relativehumidity_2m?.[idx] ?? 50,
+  atual.hourly.precipitation_probability?.[idx] ?? 0,
+  atual.current_weather.temperature
 );
 
   /* ===== IMPACTO SOMENTE BRASIL ===== */
@@ -998,17 +1012,40 @@ const praia = possuiPraia
 /* ===== MONTA LINHA STATUS FINAL ===== */
 linhaStatus.innerHTML = `
 <div>🕒Data e Hora Local da Coleta:<b>${dataHoraLocal}</b></div>
- ${statusTexto ? `<div>${statusTexto}</div>` : ""}
-  ${chuvaTexto ? `<div>${chuvaTexto}</div>` : ""}
-  ${pressaoTexto ? `<div>${pressaoTexto}</div>` : ""}
+${statusTexto ? `<div>${statusTexto}</div>` : ""}
+${chuvaTexto ? `<div>${chuvaTexto}</div>` : ""}
+${pressaoTexto ? `<div>${pressaoTexto}</div>` : ""}
+
+<div style="margin-top:6px">
+  <b style="color:#1565c0;text-shadow:0 0 1px rgba(0,0,0,0.2)">Atividades ao ar livre</b><br>
+  ${corrida} ${caminhada} ${ciclismo} ${estrelas} ${pesca}
+</div>
+
+<div style="margin-top:4px">
+  <b style="color:#1565c0;text-shadow:0 0 1px rgba(0,0,0,0.2)">Praia/Piscina</b><br>
+  ${praia} ${piscina}
+</div>
+
+<div style="margin-top:4px">
+  <b style="color:#1565c0;text-shadow:0 0 1px rgba(0,0,0,0.2)">Trânsito/Viagens</b><br>
+  ${aviao} ${carro}
+</div>
+  <div style="margin-top:4px">
+  <b style="color:#1565c0;text-shadow:0 0 1px rgba(0,0,0,0.2)">Alergias</b><br>
+  ${alergiasTexto ? `${alergiasTexto}` : ""}</b><br>
+</div>
+<div style="margin-top:4px">
+  <b style="color:#1565c0;text-shadow:0 0 1px rgba(0,0,0,0.2)">Pragas</b><br>
+  ${mosquitosTexto}<br>
+</div>
 <div>
-    ${corrida}  ${ciclismo} ${pesca} ${estrelas} ${piscina} ${praia} ${aviao} ${carro}
-  </div>
-  <div>
-    🗓️Estação:<b>${estacao}</b> 
-      ${alergiasTexto ? `${alergiasTexto}` : ""}
-     <div>
-      🌊Fenômeno:<b>${fenomeno}${impactoTexto ? `(${impactoTexto})</div>` : ""}`;
+<br>
+<b>🗓️Estação:<b>${estacao}</b><br>
+</div>
+<div>
+  🌊Fenômeno:<b>${fenomeno}${impactoTexto ? ` (${impactoTexto})` : ""}</b>
+</div>
+`;
 }
 
  /* =========================
@@ -1189,6 +1226,29 @@ function avaliarCorrida(temp, chuva, vento, uv){
   return "🏃Não indicada ";
 }
 
+function avaliarCaminhada(temp, chuvaProb, vento, uv, vis) {
+
+  // ❌ condições ruins
+  if (chuvaProb > 60 || vento > 30 || vis < 1500)
+    return "🚶Caminhada:Ruim ";
+
+  // ⚠️ condições razoáveis
+  if (
+    (temp >= 10 && temp < 15) ||
+    (temp > 30 && temp <= 35) ||
+    chuvaProb >= 30 ||
+    vento > 20 ||
+    uv > 8
+  )
+    return "🥾Razoável ";
+
+  // ✅ condições boas
+  if (temp >= 15 && temp <= 30 && chuvaProb < 30 && vento <= 20 && uv <= 7)
+    return "🥾Boa ";
+
+  return "🥾Razoável ";
+}
+
 function avaliaCiclismo(probChuva, vento, pressao) {
   if (probChuva > 50 || vento > 25 || pressao < 1008)
     return "🚴Não recomendado ";
@@ -1210,21 +1270,38 @@ function avaliarCarro(chuvaProb, vis, vento){
     return "🚗Cuidado na estrada! ";
   if (chuvaProb > 40 || vento > 30)
     return "🚗Atenção na estrada! ";
-  return "🚗Boa dirigibilidade ";
+  return "🚗Boa ";
 }
 
 function avaliarAlergias(umidade, vento, estacao) {
   // condições boas
   if (umidade >= 50 && vento <= 15)
-    return "🤧Alergias:Baixa";
+    return "🤧Baixa";
 
   // condições intermediárias
   if (umidade >= 35 && vento <= 25)
-    return "🤧Alergias:Moderada";
+    return "🤧Moderada";
 
   // tempo seco ou muito vento
-  return "🤧Alergias:Alta";
+  return "🤧Alta";
 }
+
+function avaliarMosquitos(umidade, chuvaProb, temp) {
+  if (umidade == null || chuvaProb == null || temp == null)
+    return "";
+
+  // risco alto
+  if (umidade >= 75 && (chuvaProb >= 40 || temp >= 28))
+    return "🦟 Mosquitos: Elevado";
+
+  // risco médio
+  if (umidade >= 60 || chuvaProb >= 20)
+    return "🦟 Mosquitos: Médio";
+
+  // risco baixo
+  return "🦟 Mosquitos: Baixo";
+}
+
 /* =========================
    FUNÇÕES UTILITÁRIAS
 ========================= */
