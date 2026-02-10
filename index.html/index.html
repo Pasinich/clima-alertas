@@ -406,7 +406,6 @@ const pontosLitoralBrasil = [
   [-0.9, -48.6], // Maracanã
 ];
 
-
 /* =======================
 Cidade possui praia 
 ========================= */
@@ -425,15 +424,13 @@ Avaliação da praia
 
 function avaliarPraia(temp, probChuva, vento, uv){
   if (temp >= 25 && probChuva < 20 && vento <= 15 && uv <= 8)
-    return "🏖️ Boa";
+    return "🏖️Boa";
 
   if (temp >= 20 && probChuva < 40)
-    return "🏖️ Regular";
+    return "🏖️Regular";
 
-  return "🏖️ Não indicada";
+  return "🏖️Não indicada";
 }
-
-
 
 
 /* =========================
@@ -443,8 +440,8 @@ function aplicarModo(m){
  document.body.classList.toggle("dark", m==="dark");
 
  btnModo.innerHTML = m==="dark"
-  ? "☀️ <span style='font-size:10px'>Modo Dia</span>"
-  : "🌙 <span style='font-size:10px'>Modo Noite</span>";
+  ? "☀️<span style='font-size:10px'>Modo Dia</span>"
+  : "🌙<span style='font-size:10px'>Modo Noite</span>";
 
  localStorage.setItem("modo", m);
  if(histSalvo) montarGrafico(histSalvo);
@@ -521,7 +518,7 @@ cidade.addEventListener("keydown",e=>{
 ========================= */
 async function buscar(){
  if(lat===null || lon===null){
-  info.innerHTML="📍 Selecione a cidade na lista";
+  info.innerHTML="📍Selecione a cidade na lista";
   return;
  }
 
@@ -585,9 +582,9 @@ for(let i = idx; i < atual.hourly.time.length; i++){
 
  info.innerHTML = `
   <span style="font-size:13px">
-   🌡️ <b>${atual.current_weather.temperature}°C</b> • 
+   🌡️<b>${atual.current_weather.temperature}°C</b> • 
    Sensação: ${atual.hourly.apparent_temperature[idx]}°C • 
-   ☀️ UV: <b class="${classe}">${uvIndex}</b> (${descricao})
+   ☀️UV: <b class="${classe}">${uvIndex}</b> (${descricao})
   </span>`;
   
   /* =========================
@@ -615,8 +612,8 @@ else if (typeof atual?.hourly?.pressure_msl?.[idx] === "number") {
 }
 let pressaoExibir_masc = atual.hourly.pressure_msl[idx] + 3.1;
 linhaPressao.innerHTML =
-  `🌬️ Pressão: <b>${pressaoExibir_masc.toFixed(1)} hPa</b> • ` +
-  `🌫️ Qual. Ar: ${formatarAQ(usAQI)}`;
+  `🌬️Pressão: <b>${pressaoExibir_masc.toFixed(1)} hPa</b> • ` +
+  `🌫️Qual. Ar: ${formatarAQ(usAQI)}`;
   
 
  /* =========================
@@ -656,8 +653,8 @@ linhaPressao.innerHTML =
  const direcaoVento = degParaDirecao(deg);
 
  linhaVisibilidade.innerHTML =
-  `👁️ Visib.:<b>${visibilidade} km</b> • ` +
-  `💨 Vento:<b>${atual.current_weather.windspeed} km/h</b> ` +
+  `👁️Visibil.:<b>${visibilidade} km</b> • ` +
+  `💨Vento:<b>${atual.current_weather.windspeed} km/h</b> ` +
   `(<b>${direcaoVento}</b>)`;
 
 /* =========================
@@ -671,7 +668,7 @@ linhaPressao.innerHTML =
 /* =========================
     NEVOEIRO + RAJADAS (CORRIGIDO)
  ========================= */
-let nevoeiro = "Ausente 🌤️";
+let nevoeiro = "Ausente🌤️";
 
 // nevoeiro pela visibilidade (em METROS)
 if(vis !== null){
@@ -692,7 +689,7 @@ if(vis !== null && umid >= 84 && vento <= 4){
 }
 
 linhaNevoeiro.innerHTML =
- `🌫️ Nevoeiro: <b>${nevoeiro}</b> • 🌬️Rajadas: <b>${rajadas} km/h</b>`;
+ `🌫️ Nevoeiro: <b>${nevoeiro}</b> •, 🌬️Rajadas: <b>${rajadas} km/h</b>`;
 
  /* =========================
     UMIDADE / CHUVA / NEBULOSIDADE
@@ -714,9 +711,9 @@ linhaNevoeiro.innerHTML =
  const nebulosidade = neb !== null ? neb : "—";
 
  linhaUmidade.innerHTML =
-  `💧Umidade: <b>${atual.hourly.relativehumidity_2m[idx]}%</b> • ` +
-  `🌧️Chuva: <b class="${formatarChuvaClasse(chuvaHora)}">${chuvaHora}%</b> • ` +
-  `☁️Nebulosidade: <b>${nebulosidade}%</b>`;
+  `💧Umidade:<b>${atual.hourly.relativehumidity_2m[idx]}%</b> • ` +
+  `🌧️Chuva:<b class="${formatarChuvaClasse(chuvaHora)}">${chuvaHora}%</b> • ` +
+  `☁️Nebulosidade:<b>${nebulosidade}%</b>`;
  
  
  function estacaoDoAno(data = new Date(), lat = -30) {
@@ -727,29 +724,32 @@ linhaNevoeiro.innerHTML =
   if (norte) {
     // Hemisfério Norte
     if ((m === 12 && d >= 21) || (m <= 3 && (m < 3 || d <= 20))) {
-      return "Inverno ❄️";
+      return "Inverno";
     }
     if ((m === 3 && d >= 21) || (m <= 6 && (m < 6 || d <= 20))) {
-      return "Primavera 🌸";
+      return "Primavera";
     }
     if ((m === 6 && d >= 21) || (m <= 9 && (m < 9 || d <= 22))) {
-      return "Verão ☀️";
+      return "Verão";
     }
-    return "Outono 🍂";
+    return "Outono";
   }
 
   // Hemisfério Sul
   if ((m === 12 && d >= 21) || (m <= 3 && (m < 3 || d <= 20))) {
-    return "Verão ☀️";
+    return "Verão";
   }
   if ((m === 3 && d >= 21) || (m <= 6 && (m < 6 || d <= 20))) {
-    return "Outono 🍂";
+    return "Outono";
   }
   if ((m === 6 && d >= 21) || (m <= 9 && (m < 9 || d <= 22))) {
-    return "Inverno ❄️";
+    return "Inverno";
   }
-  return "Primavera 🌸";
+  return "Primavera";
 }
+
+
+/* Montar painel climático */
 
 montarPainelClimatico({
   atual,
@@ -758,37 +758,45 @@ montarPainelClimatico({
   probChuva,
   pais: paisSelecionado,   
   estado: estadoSelecionado ,
-  cidade: nomeCidade.innerText
+  cidade: nomeCidade.innerText,
+  nebulosidade 
 });
 
 async function montarPainelClimatico(
-{ atual, idx, idxChuva, probChuva, pais, estado,cidade }) {
+{ atual, idx, idxChuva, probChuva, pais, estado,cidade, nebulosidade }) {
 const lat = atual.latitude ?? latitudeSelecionada ?? -30;
 const estacao = estacaoDoAno(new Date(), lat);
+const lua = calcularLua(new Date());
+const iluminacaoLua = Number(lua.iluminacao);
+
+const estrelas = avaliarEstrelas(
+  nebulosidade,
+  atual.hourly.precipitation_probability[idx],
+  iluminacaoLua
+);
 
   // 🔹 normalizações
   const siglaEstado = normalizarEstadoParaSigla(estado);
 
 
-
   /* ===== LUA ===== */
-  const lua = calcularLua(new Date());
+  
   linhaLua.innerHTML =
-    `🌙 Lua: <b>${lua.fase}</b> • Luar: <b>${lua.iluminacao}%</b> • Idade: <b>${lua.idade} dias</b>`;
+    `🌙Lua: <b>${lua.fase}</b> • Luar: <b>${lua.iluminacao}%</b> • Idade: <b>${lua.idade} dias</b>`;
 
   /* ===== STATUS BASE (COLORIDO) ===== */
   let statusTexto = "";
   if(atual.hourly.precipitation[idx] > 8 || atual.hourly.pressure_msl[idx] < 1005){
     linhaStatus.className = "linha-status tempestade";
-    statusTexto = "⛈️ Risco de Tempestade";
+    statusTexto = "⛈️Risco de Tempestade";
   }
   else if(atual.hourly.precipitation[idx] > 1 || atual.hourly.pressure_msl[idx] < 1012){
     linhaStatus.className = "linha-status chuva";
-    statusTexto = "🌧️ Possibilidade de Chuva";
+    statusTexto = "🌧️Possibilidade de Chuva";
   }
   else{
     linhaStatus.className = "linha-status bom";
-    statusTexto = "☀️ Tempo bom";
+    statusTexto = "☀️Tempo bom";
   }
 
   /* ===== HORA LOCAL ===== */
@@ -812,16 +820,17 @@ if (atual.current_weather?.time) {
   let chuvaTexto = "";
   if (Number.isInteger(idxChuva) && idxChuva >= 0) {
     const t = new Date(atual.hourly.time[idxChuva]);
-     // soma 2vhora
-     t.setHours(t.getHours() + 2); /* soma 2 horas para ajustar o tempo de chuva*/
+    
+  // soma 3 hora
+     t.setHours(t.getHours() + 3); /* soma 3 horas para ajustar o tempo de chuva*/
     const dataHora =
       `${String(t.getDate()).padStart(2,"0")}/` +
       `${String(t.getMonth()+1).padStart(2,"0")}/` +
       `${t.getFullYear()} - ` +
       `${String(t.getHours()).padStart(2,"0")}:` +
       `${String(t.getMinutes()).padStart(2,"0")} hs`;
-
-    chuvaTexto = `🌧️ Chuva prevista: <b>${dataHora} (${probChuva}%)</b>`;
+      
+    chuvaTexto = `🌧️Chuva prevista:<b>${dataHora} (${probChuva}%)</b>`;
   }
 
   /* ===== PRESSÃO MÉDIA / CHUVEIRO COMUM ===== */
@@ -840,12 +849,12 @@ if (atual.current_weather?.time) {
     });
     if(press.length > 0){
       const m = press.reduce((a,b)=>a+b)/press.length;
-      pressaoTexto = `🌧️ Chove geralmente com pressão média de <b>${m.toFixed(1)} hPa</b>`;
+      pressaoTexto = `🌧️Chove geralmente com pressão média de <b>${m.toFixed(1)} hPa</b>`;
     } else {
-      pressaoTexto = `🌧️ Dados insuficientes para calcular pressão média de chuva`;
+      pressaoTexto = `🌧️Dados insuficientes para calcular pressão média de chuva`;
     }
   } else {
-    pressaoTexto = `🌧️ Dados históricos não disponíveis`;
+    pressaoTexto = `🌧️Dados históricos não disponíveis`;
   }
 
   /* ===== FENÔMENO ONI ===== */
@@ -892,6 +901,12 @@ const piscina = avaliarPiscina(
   atual.current_weather.temperature,
   atual.hourly.precipitation_probability[idx],
   atual.current_weather.windspeed
+);
+
+const alergiasTexto = avaliarAlergias(
+  atual.hourly.relativehumidity_2m?.[idx] ?? 50,
+  atual.hourly.windspeed_10m?.[idx] ?? 0,
+  estacao
 );
 
   /* ===== IMPACTO SOMENTE BRASIL ===== */
@@ -960,7 +975,7 @@ const piscina = avaliarPiscina(
 
     const regiao = regiaoPorEstado[est];
     if (regiao && impacto[regiao]?.[fenomeno]) {
-      impactoTexto = `📍 Impacto no ${regiao}: ${impacto[regiao][fenomeno]}`;
+      impactoTexto = `Impacto no ${regiao}:${impacto[regiao][fenomeno]}`;
     }
   }
 
@@ -982,19 +997,18 @@ const praia = possuiPraia
 
 /* ===== MONTA LINHA STATUS FINAL ===== */
 linhaStatus.innerHTML = `
-<div>🕒 Data e Hora Local da Coleta: <b>${dataHoraLocal}</b></div>
+<div>🕒Data e Hora Local da Coleta:<b>${dataHoraLocal}</b></div>
  ${statusTexto ? `<div>${statusTexto}</div>` : ""}
   ${chuvaTexto ? `<div>${chuvaTexto}</div>` : ""}
   ${pressaoTexto ? `<div>${pressaoTexto}</div>` : ""}
 <div>
-    ${pesca} ${corrida}  ${ciclismo} ${piscina} ${praia} ${aviao} ${carro}
+    ${corrida}  ${ciclismo} ${pesca} ${estrelas} ${piscina} ${praia} ${aviao} ${carro}
   </div>
   <div>
-    🌊 Fenômeno: <b>${fenomeno}</b>
-    • 🗓️ Estação: <b>${estacao}</b>
-  </div>
-  ${impactoTexto ? `<div>${impactoTexto}</div>` : ""}
-`;
+    🗓️Estação:<b>${estacao}</b> 
+      ${alergiasTexto ? `${alergiasTexto}` : ""}
+     <div>
+      🌊Fenômeno:<b>${fenomeno}(${impactoTexto ? `${impactoTexto})</div>` : ""}`;
 }
 
  /* =========================
@@ -1161,44 +1175,56 @@ function montarGraficoMensal(labels, min, med, max){
 
 function avaliarPesca(pressao, vento, chuva){
   if (pressao >= 1015 && vento <= 8 && chuva === 0)
-    return "🎣Boa";
+    return "🎣Boa ";
   if (pressao >= 1008 && vento <= 12 && chuva < 40)
-    return "🎣Regular";
-  return "🎣Ruim";
+    return "🎣Regular ";
+  return "🎣Ruim ";
 }
 
 function avaliarCorrida(temp, chuva, vento, uv){
   if (temp >= 15 && temp <= 28 && chuva < 20 && vento <= 12 && uv <= 7)
-    return "🏃Boa";
+    return "🏃Boa ";
   if (temp >= 10 && temp <= 32 && chuva < 40)
-    return "🏃Regular";
-  return "🏃Não indicada";
+    return "🏃Regular ";
+  return "🏃Não indicada ";
 }
 
 function avaliaCiclismo(probChuva, vento, pressao) {
   if (probChuva > 50 || vento > 25 || pressao < 1008)
-    return "🚴Não recomendado";
+    return "🚴Não recomendado ";
   if (vento <= 10 && probChuva < 20)
-    return "🚴Bom p/pedalar";
-  return "🚴Regular";
+    return "🚴Bom p/pedalar ";
+  return "🚴Regular ";
 }
 
 function avaliarAviao(vento, vis, chuva, tempestade){
   if (tempestade || vento > 35 || vis < 2000)
-    return "✈️Risco elevado";
+    return "✈️Risco elevado ";
   if (vento > 20 || chuva > 2)
-    return "✈️Atenção!";
-  return "✈️ Vôo tranquilo";
+    return "✈️Atenção! ";
+  return "✈️Vôo tranquilo ";
 }
 
 function avaliarCarro(chuvaProb, vis, vento){
   if (chuvaProb > 70 || vis < 1500)
-    return "🚗Cuidado na estrada!";
+    return "🚗Cuidado na estrada! ";
   if (chuvaProb > 40 || vento > 30)
-    return "🚗Atenção na estrada!";
-  return "🚗Boa dirigibilidade";
+    return "🚗Atenção na estrada! ";
+  return "🚗Boa dirigibilidade ";
 }
 
+function avaliarAlergias(umidade, vento, estacao) {
+  // condições boas
+  if (umidade >= 50 && vento <= 15)
+    return "🤧Alergias:Baixa";
+
+  // condições intermediárias
+  if (umidade >= 35 && vento <= 25)
+    return "🤧Alergias:Moderada";
+
+  // tempo seco ou muito vento
+  return "🤧Alergias:Alta";
+}
 /* =========================
    FUNÇÕES UTILITÁRIAS
 ========================= */
@@ -1223,12 +1249,24 @@ function normalizarEstadoParaSigla(estado){
 
 function avaliarPiscina(temp, chuvaProb, vento){
   if (chuvaProb > 60)
-    return "🏊 Não recomendado";
+    return "🏊Não recomendado ";
   if (temp >= 22 && chuvaProb < 30 && vento <= 20)
-    return "🏊Boa";
-  return "🏊Regular";
+    return "🏊Boa ";
+  return "🏊Regular ";
 }
 
+function avaliarEstrelas(nebulosidade, chuvaProb, luaIluminacao) {
+  // Nebulosidade baixa, pouca chuva e lua fraca = céu bom
+  if (nebulosidade <= 20 && chuvaProb < 20 && luaIluminacao <= 30)
+    return "🔭Boa ";
+
+  // Condições intermediárias
+  if (nebulosidade <= 50 && chuvaProb < 40)
+    return "🔭Razoável ";
+
+  // Muito nublado, chuva ou lua cheia
+  return "🔭Ruim ";
+}
 
 /* =========================
    FORMATADORES
@@ -1306,11 +1344,11 @@ function definirStatus(p,c){
  }
  else if(c>1||p<1012){
   linhaStatus.classList.add("chuva");
-  linhaStatus.innerText="🌧️ Tempo:Possibilidade de chuva";
+  linhaStatus.innerText="🌧️Tempo:Possibilidade de chuva";
  }
  else{
   linhaStatus.classList.add("bom");
-  linhaStatus.innerText="☀️Tempo: Tempo bom";
+  linhaStatus.innerText="☀️Tempo:Tempo bom";
  }
 }
 
