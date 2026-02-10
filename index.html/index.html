@@ -272,7 +272,6 @@ linhaSol=document.getElementById("linha-sol"),
 previsao5=document.getElementById("previsao-5dias"),
 btnModo=document.getElementById("toggleModo");
 
-
 /* =========================
    Distância das cidades até a praia 
 ========================= */
@@ -290,7 +289,6 @@ function distanciaKm(lat1, lon1, lat2, lon2){
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
   return R * c;
 }
-
 /* =========================
    Pontos GPS litorânea 
 ========================= */
@@ -303,7 +301,6 @@ const pontosLitoralBrasil = [
   [-29.0, -49.7], // Xangri-lá
   [-29.0, -50.0], // Osório
   [-30.3, -50.2], // Palmares do Sul
-
   // SC
   [-26.7, -48.6], // Barra Velha
   [-26.8, -48.6], // Balneário Piçarras
@@ -323,7 +320,6 @@ const pontosLitoralBrasil = [
   [-28.7, -49.0], // Pescaria Brava
   [-28.8, -48.7], // Bombinhas (parte sul)
   [-27.3, -48.5], // Brusque (próximo ao litoral)
-  
   // PR
   [-25.5, -48.5], // Matinhos
   [-25.6, -48.5], // Caiobá
@@ -331,7 +327,6 @@ const pontosLitoralBrasil = [
   [-25.9, -48.6], // Pontal do Paraná
   [-26.0, -48.5], // Paranaguá
   [-25.5, -48.7], // Ilha do Mel
-
   // SP
   [-23.5, -45.4], // Santos
   [-23.9, -45.4], // Guarujá
@@ -341,7 +336,6 @@ const pontosLitoralBrasil = [
   [-23.6, -45.4], // São Sebastião
   [-24.3, -46.6], // Caraguatatuba
   [-24.1, -46.6], // Praia das Toninhas
-
   // RJ
   [-22.8, -43.2], // Rio de Janeiro
   [-23.0, -43.1], // Niterói
@@ -352,7 +346,6 @@ const pontosLitoralBrasil = [
   [-22.5, -42.0], // Araruama
   [-22.4, -42.0], // Iguaba Grande
   [-22.3, -42.0], // Saquarema
-
   // ES
   [-20.3, -40.3], // Vitória
   [-20.4, -40.3], // Vila Velha
@@ -361,7 +354,6 @@ const pontosLitoralBrasil = [
   [-19.2, -40.1], // Piúma
   [-18.8, -39.8], // Itapemirim
   [-18.7, -39.7], // Marataízes
-
   // BA
   [-17.9, -39.0], // Porto Seguro
   [-16.5, -39.1], // Ilhéus
@@ -372,34 +364,28 @@ const pontosLitoralBrasil = [
   [-12.5, -38.0], // Imbassaí
   [-11.5, -37.5], // Santo André
   [-11.3, -37.5], // Cumuruxatiba
-
   // AL
   [-9.0, -35.7], // Maceió
   [-9.4, -35.7], // Maragogi
   [-9.3, -35.8], // Japaratinga
-
   // PE
   [-8.0, -34.9], // Recife
   [-8.1, -34.9], // Olinda
   [-8.4, -35.0], // Porto de Galinhas
   [-7.9, -35.1], // Ipojuca
-
   // RN
   [-5.8, -35.2], // Natal
   [-5.9, -35.1], // Pipa
   [-5.8, -35.0], // Tibau do Sul
-
   // CE
   [-3.7, -38.5], // Fortaleza
   [-3.8, -38.5], // Aquiraz
   [-3.5, -38.6], // Canoa Quebrada
   [-3.6, -38.7], // Aracati
-
   // MA
   [-2.5, -44.3], // São Luís
   [-2.7, -44.3], // Alcântara
   [-2.8, -44.2], // Raposa
-
   // PA
   [-0.7, -48.5], // Belém
   [-0.8, -48.5], // Barcarena
@@ -421,7 +407,6 @@ function cidadePossuiPraia(pais, lat, lon){
 /* =======================
 Avaliação da praia 
 ========================= */
-
 function avaliarPraia(temp, probChuva, vento, uv){
   if (temp >= 25 && probChuva < 20 && vento <= 15 && uv <= 8)
     return "🏖️Boa";
@@ -431,7 +416,6 @@ function avaliarPraia(temp, probChuva, vento, uv){
 
   return "🏖️Não indicada";
 }
-
 
 /* =========================
    MODO DIA / NOITE
@@ -573,7 +557,6 @@ for(let i = idx; i < atual.hourly.time.length; i++){
     break;
   }
 }
-
  /* =========================
     UV
  ========================= */
@@ -596,7 +579,6 @@ if (aq?.hourly?.pm2_5?.length && typeof idxAQ === "number") {
   const pm25 = aq.hourly.pm2_5[idxAQ] ?? 0;
   usAQI = pm25ToUSAQI(pm25);
 }
-  
 /* =========================
    PRESSÃO ATMOSFÉRICA (ATUAL REAL)
 ========================= */
@@ -615,7 +597,6 @@ linhaPressao.innerHTML =
   `🌬️Pressão: <b>${pressaoExibir_masc.toFixed(1)} hPa</b> • ` +
   `🌫️Qual. Ar: ${formatarAQ(usAQI)}`;
   
-
  /* =========================
     VISIBILIDADE (VALOR VÁLIDO)
  ========================= */
@@ -679,7 +660,6 @@ if(vis !== null){
     nevoeiro = "Nevoeiro Fraco ";
   }
 }
-
 // confirmação por umidade + vento
 const umid = atual.hourly.relativehumidity_2m[idx];
 const vento = atual.current_weather.windspeed;
@@ -748,7 +728,6 @@ linhaNevoeiro.innerHTML =
   return "Primavera";
 }
 
-
 /* Montar painel climático */
 
 montarPainelClimatico({
@@ -778,9 +757,7 @@ const estrelas = avaliarEstrelas(
   // 🔹 normalizações
   const siglaEstado = normalizarEstadoParaSigla(estado);
 
-
   /* ===== LUA ===== */
-  
   linhaLua.innerHTML =
     `🌙Lua: <b>${lua.fase}</b> • Luar: <b>${lua.iluminacao}%</b> • Idade: <b>${lua.idade} dias</b>`;
 
@@ -903,7 +880,6 @@ const carro = avaliarCarro(
   vis,
   atual.current_weather.windspeed
 );
-
 
 const piscina = avaliarPiscina(
   atual.current_weather.temperature,
@@ -1075,7 +1051,6 @@ ${pressaoTexto ? `<div>${pressaoTexto}</div>` : ""}
  montarGrafico(hist.hourly);
  buscarTemperaturasMensais();
 }
-
 /* =========================
    PM2.5 → US AQI
 ========================= */
@@ -1115,9 +1090,7 @@ async function buscarTemperaturasMensais(){
     const m = t.slice(0,7); // YYYY-MM
     meses[m] ??= {min:[], max:[], med:[]};
 
-    meses[m].min.push(d.daily.temperature_2m_min[i]);
-    meses[m].max.push(d.daily.temperature_2m_max[i]);
-    meses[m].med.push(d.daily.temperature_2m_mean[i]);
+meses[m].min.push(d.daily.temperature_2m_min[i]); meses[m].max.push(d.daily.temperature_2m_max[i]); meses[m].med.push(d.daily.temperature_2m_mean[i]);
   });
 
   const labels = [];
