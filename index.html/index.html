@@ -204,6 +204,8 @@ canvas{
   <canvas id="graficoMensal"></canvas>
 </div>
 
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/suncalc/1.9.0/suncalc.min.js"></script>
 <script>
 
 function limparTela(){
@@ -613,15 +615,17 @@ else if (typeof atual?.hourly?.pressure_msl?.[idx] === "number") {
 }
 let pressaoExibir_masc = atual.hourly.pressure_msl[idx] + 3.1;
 
-linhaPressao.innerHTML = `
-  🌬️Pressão: <b>${pressaoExibir_masc.toFixed(1)} hPa</b>
-  ${pressaoTexto ? `
-    <div style="font-size:13px; margin-top:4px; opacity:0.9">
-      ${pressaoTexto}
-    </div>
-  ` : ""}
-`;
+// Índice do dia
+const diaDoIdx = Math.floor(idx / 24);
+const horarioOuro = calcularHorarioOuroDoDiaCompacto(
+  atual.daily.sunrise[diaDoIdx],
+  atual.daily.sunset[diaDoIdx]
+);
 
+linhaPressao.innerHTML = `
+  🎈Pressão: <b>${(atual.hourly.pressure_msl[idx] + 3.1).toFixed(1)} hPa</b>
+  ${pressaoTexto ? ` | <span style="font-size:13px; opacity:0.9">${pressaoTexto}</span>` : ""}
+`;
  
 
  /* =========================
@@ -756,8 +760,23 @@ linhaNevoeiro.innerHTML =
   return "Primavera";
 }
 
+// =========================
+// FUNÇÃO HORÁRIO DE OURO COMPACTA
+// =========================
+function calcularHorarioOuroDoDiaCompacto(lat, lon, data = new Date()) {
+  const t = SunCalc.getTimes(data, lat, lon);
+  const pad = n => String(n).padStart(2, "0");
+
+  // Golden hour: 1 hora após nascer do sol até 1 hora antes do pôr do sol
+  const inicio = new Date(t.sunrise.getTime() + 0*60*60*1000);
+  const fim = new Date(t.sunset.getTime() - 0*60*60*1000);
+
+  return `${pad(inicio.getHours())}:${pad(inicio.getMinutes())} - ${pad(fim.getHours())}:${pad(fim.getMinutes())}`;
+}
+const fotografia = calcularHorarioOuroDoDiaCompacto(lat, lon, new Date());
 
 /* Montar painel climático */
+
 
 montarPainelClimatico({
   atual,
@@ -858,7 +877,7 @@ if (atual.current_weather?.time) {
     });
     if(press.length > 0){
       const m = press.reduce((a,b)=>a+b)/press.length;
-      pressaoTexto = `🌧️Chove geralmente com pressão média de <b>${m.toFixed(1)} hPa</b>`;
+      pressaoTexto = `🌧️Geralmente com pressão média de <b>${m.toFixed(1)} hPa</b>`;
     } else {
       pressaoTexto = `🌧️Dados insuficientes para calcular pressão média de chuva`;
     }
@@ -1035,7 +1054,22 @@ const praia = possuiPraia
     )
   : "🏖️N/A";
 
+
+// 1️⃣ Calcular Horário de Ouro e avaliação de fotografia
+const horarioOuro = calcularHorarioOuroCompacto(atual.daily.sunrise[0], atual.daily.sunset[0]);
+const avaliacaoFoto = avaliarFotografia(
+  atual.current_weather.temperature,
+  nebulosidade,
+  atual.hourly.precipitation_probability[idx],
+  atual.daily.sunrise[0],
+  atual.daily.sunset[0]
+);
+
+// Monta a exibição da fotografia com Horário de Ouro
+const fotografia = `${avaliacaoFoto} (Horário de Ouro: ${horarioOuro})`;
+
 /* ===== MONTA LINHA STATUS FINAL ===== */
+
 const mobileView = true; //Avaliar isto, true = Android / false = desktop
 const alertaTexto = "";
 linhaStatus.innerHTML = `
@@ -1058,8 +1092,14 @@ linhaStatus.innerHTML = `
   ${ciclismo ?? ""} 
   ${estrelas ?? ""} 
   ${pesca ?? ""} 
-  ${churrascoTexto ? `🍖${churrascoTexto}` : ""}
+  ${churrascoTexto ? ` 🍖${churrascoTexto}` : ""}
+  
 </div>
+  <div style="margin-top:4px">
+    <b style="color:#8B008B;font-size:14px;">
+Fotografia</b><br>
+  ${fotografia}
+  </div>
 
   <div style="margin-top:4px">
     <b style="color:#8B008B;font-size:14px;">Praia / Piscina</b><br>
@@ -1277,6 +1317,56 @@ function avaliarChurrasco(temperatura, precipitacao, vento) {
   } else {
     return "Melhor adiar.";
   }
+}
+/* =========================
+   HORÁRIO DE OURO (Fotografia)
+========================= */
+function calcularHorarioOuro(dia, duracaoMinutos = 90) {
+  if (!dia?.sunrise?.[0] || !dia?.sunset?.[0]) return "-";
+
+  const nascer = new Date(dia.sunrise[0]);
+  const porDoSol = new Date(dia.sunset[0]);
+
+  const manhaInicio = nascer;
+  const manhaFim = new Date(nascer.getTime() + duracaoMinutos * 60000);
+
+  const tardeFim = porDoSol;
+  const tardeInicio = new Date(porDoSol.getTime() - duracaoMinutos * 60000);
+
+  function formatHHMM(dt){
+    return `${String(dt.getHours()).padStart(2,"0")}:${String(dt.getMinutes()).padStart(2,"0")}`;
+  }
+
+  return `📸 Hora de ouro: ${formatHHMM(manhaInicio)}hs–${formatHHMM(manhaFim)}hs / ${formatHHMM(tardeInicio)}hs –${formatHHMM(tardeFim)}hs;`
+}
+
+function avaliarFotografia(temp, nebulosidade, chuvaProb, nascerSol, porSol) {
+  // Se muito nublado ou chuvoso = ruim
+  if (chuvaProb > 50 || nebulosidade > 70) return "📷Ruim";
+  
+  // Condições intermediárias
+  if (chuvaProb > 20 || nebulosidade > 40) return "📷Médio";
+  
+  // Céu limpo = bom
+  return "📷Bom";
+}
+
+function calcularHorarioOuroCompacto(sunrise, sunset){
+  // sunrise e sunset em formato "YYYY-MM-DDTHH:MM"
+  const formatarHora = (d) => `${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`;
+
+  const nascer = new Date(sunrise);
+  const por = new Date(sunset);
+
+  // Manhã: nascer do sol até +1h30
+  const manhaInicio = nascer;
+  const manhaFim = new Date(nascer.getTime() + 90*60*1000); // +1h30 em ms
+
+  // Tarde: -1h30 até pôr do sol
+  const tardeInicio = new Date(por.getTime() - 90*60*1000); 
+  const tardeFim = por;
+
+  return `${formatarHora(manhaInicio)} - ${formatarHora(manhaFim)} e ${formatarHora(tardeInicio)} - ${formatarHora(tardeFim)}`;
 }
 
 function avaliarCorrida(temp, chuva, vento, uv){
@@ -1498,6 +1588,25 @@ function formatarChuvaClasse(v){
  if(v<=80) return "chuva-muito";
  return "chuva-extremo";
 }
+
+// =========================
+// HORÁRIO DE OURO
+// =========================
+function horarioDeOuro(lat, lon, data = new Date()) {
+  // Usa o nascer e pôr do sol aproximado
+  const sunrise = SunCalc.getTimes(data, lat, lon).sunrise;
+  const sunset = SunCalc.getTimes(data, lat, lon).sunset;
+
+  // Golden hour: 1 hora após nascer do sol / 1 hora antes do pôr do sol
+  const inicio = new Date(sunrise.getTime() + 0 * 60 * 60 * 1000); // pode ajustar se quiser +0
+  const fim = new Date(sunset.getTime() - 0 * 60 * 60 * 1000);
+
+  const pad = n => String(n).padStart(2, "0");
+  return `${pad(inicio.getHours())}:${pad(inicio.getMinutes())} - ${pad(fim.getHours())}:${pad(fim.getMinutes())}`;
+}
+
+
+
 
 
 /* =========================
