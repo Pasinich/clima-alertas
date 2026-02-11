@@ -830,8 +830,9 @@ if (atual.current_weather?.time) {
       `${String(t.getHours()).padStart(2,"0")}:` +
       `${String(t.getMinutes()).padStart(2,"0")} hs`;
       
-    chuvaTexto = `Prox.Chuva prevista:<b>${dataHora} (${probChuva}%)</b>`;
-  }
+      chuvaTexto = `<span style="color:#8B008B; font-size:14px;">Prox.Chuva prevista:</span> <b>${dataHora} (${probChuva}%)</b>`;
+      
+    }
 
   /* ===== PRESSÃO MÉDIA / CHUVEIRO COMUM ===== */
   let pressaoTexto = "";
