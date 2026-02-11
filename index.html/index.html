@@ -612,7 +612,7 @@ else if (typeof atual?.hourly?.pressure_msl?.[idx] === "number") {
 }
 let pressaoExibir_masc = atual.hourly.pressure_msl[idx] + 3.1;
 linhaPressao.innerHTML =
-  `🌬️Pressão: <b>${pressaoExibir_masc.toFixed(1)} hPa</b>` ;
+  `🎈Pressão: <b>${pressaoExibir_masc.toFixed(1)} hPa</b>` ;
 
  
 
@@ -834,7 +834,7 @@ if (atual.current_weather?.time) {
       
     }
 
-  /* ===== PRESSÃO MÉDIA / CHUVEIRO COMUM ===== */
+  /* ===== PRESSÃO MÉDIA */
   let pressaoTexto = "";
   if(histSalvo && histSalvo.time?.length){
     const dias={};
@@ -868,6 +868,12 @@ const pesca = avaliarPesca(
   atual.hourly.pressure_msl[idx],
   atual.current_weather.windspeed,
   atual.hourly.precipitation[idx]
+);
+
+const churrascoTexto = avaliarChurrasco(
+  atual.current_weather.temperature,
+  atual.hourly.precipitation_probability[idx],
+  atual.hourly.windspeed_10m[idx]
 );
 
 const corrida = avaliarCorrida(
@@ -918,10 +924,21 @@ const alergiasTexto = avaliarAlergias(
   estacao
 );
 
+const gripeTexto = avaliarGripeResfriado(
+  atual.hourly.relativehumidity_2m?.[idx] ?? 50,
+  atual.current_weather.temperature
+);
+
 const mosquitosTexto = avaliarMosquitos(
   atual.hourly.relativehumidity_2m?.[idx] ?? 50,
   atual.hourly.precipitation_probability?.[idx] ?? 0,
   atual.current_weather.temperature
+);
+
+const pragasTexto = avaliarPragas(
+  atual.current_weather.temperature,
+  atual.hourly.precipitation_probability[idx],
+  atual.hourly.relativehumidity_2m[idx]
 );
 
   /* ===== IMPACTO SOMENTE BRASIL ===== */
@@ -1025,9 +1042,16 @@ linhaStatus.innerHTML = `
   ${alertaTexto ? `<div class="alerta">⚠️ ${alertaTexto}</div>` : ""}
 
   <div style="margin-top:6px">
-    <b style="color:#8B008B;font-size:14px;">Atividades ao ar livre (🌫️ <b>Qual. Ar:</b> ${formatarAQ(usAQI)})</b><br>
-    ${corrida ?? ""} ${caminhada ?? ""} ${ciclismo ?? ""} ${estrelas ?? ""} ${pesca ?? ""}
-  </div>
+  <b style="color:#8B008B;font-size:14px;">
+    Atividades ao ar livre (💨 <b>Qual. Ar:</b> ${formatarAQ(usAQI)})
+  </b><br>
+  ${corrida ?? ""} 
+  ${caminhada ?? ""} 
+  ${ciclismo ?? ""} 
+  ${estrelas ?? ""} 
+  ${pesca ?? ""} 
+  ${churrascoTexto ? `🍖${churrascoTexto}` : ""}
+</div>
 
   <div style="margin-top:4px">
     <b style="color:#8B008B;font-size:14px;">Praia / Piscina</b><br>
@@ -1040,18 +1064,19 @@ linhaStatus.innerHTML = `
   </div>
 
   ${alergiasTexto ? `
-    <div style="margin-top:4px">
-      <b style="color:#8B008B;font-size:14px;">Alergias</b><br>
-      ${alergiasTexto}
-    </div>
-  ` : ""}
+  <div style="margin-top:4px">
+    <b style="color:#8B008B;font-size:14px;">Alergias</b><br>
+   Pó/Pelos:</b>${alergiasTexto} 
+    <b style="color:#8B008B;font-size:14px;">  😷 Gripe/Resfriado:</b>${gripeTexto}
+  </div>
+` : ""}
 
-  ${mosquitosTexto ? `
-    <div style="margin-top:4px">
-      <b style="color:#8B008B;font-size:14px;">Pragas</b><br>
-      ${mosquitosTexto}
-    </div>
-  ` : ""}
+  ${mosquitosTexto || pragasTexto ? `
+  <div style="margin-top:4px">
+    <b style="color:#8B008B;font-size:14px;">Pragas</b><br>
+    ${mosquitosTexto}${pragasTexto ? ` ${pragasTexto}` : ""}
+  </div>
+` : ""}
 
   <div style="margin-top:6px">
     <b style="color:#8B008B;font-size:14px;">🗓️ Estação:</b> ${estacao ?? "-"}
@@ -1233,6 +1258,19 @@ function avaliarPesca(pressao, vento, chuva){
   return "🎣Ruim ";
 }
 
+function avaliarChurrasco(temperatura, precipitacao, vento) {
+  // temperatura ideal entre 20°C e 35°C
+  // pouca chance de chuva (<30%)
+  // vento leve (<20 km/h)
+  if (temperatura >= 20 && temperatura <= 35 && precipitacao < 30 && vento < 20) {
+    return "Ótimo!";
+  } else if (temperatura >= 15 && temperatura <= 40 && precipitacao < 50) {
+    return "Fique atento ao tempo.";
+  } else {
+    return "Melhor adiar.";
+  }
+}
+
 function avaliarCorrida(temp, chuva, vento, uv){
   if (temp >= 15 && temp <= 28 && chuva < 20 && vento <= 12 && uv <= 7)
     return "🏃Boa ";
@@ -1285,7 +1323,7 @@ function avaliarCarro(chuvaProb, vis, vento){
     return "🚗Cuidado na estrada! ";
   if (chuvaProb > 40 || vento > 30)
     return "🚗Atenção na estrada! ";
-  return "🚗Boa ";
+  return "🚗Boa Dirigibilidade ";
 }
 
 function avaliarAlergias(umidade, vento, estacao) {
@@ -1299,6 +1337,13 @@ function avaliarAlergias(umidade, vento, estacao) {
 
   // tempo seco ou muito vento
   return "🤧Alta";
+}
+
+function avaliarGripeResfriado(umidade, temp) {
+  // Exemplo: maior risco com temperatura baixa e umidade baixa
+  if (temp <= 18 && umidade <= 40) return "Alto risco";
+  if (temp <= 22 && umidade <= 50) return "Médio risco";
+  return "Baixo risco";
 }
 
 function avaliarMosquitos(umidade, chuvaProb, temp) {
@@ -1315,6 +1360,28 @@ function avaliarMosquitos(umidade, chuvaProb, temp) {
 
   // risco baixo
   return "🦟 Mosquitos: Baixo";
+}
+
+
+/* =========================
+   AVALIAR PRAGAS (SÓ AR LIVRE)
+========================= */
+function avaliarPragas(temp, chuva, umidade) {
+  /*
+    temp: temperatura atual em °C
+    chuva: probabilidade de chuva em %
+    umidade: umidade relativa em %
+    
+    Retorna uma string indicando risco de pragas
+  */
+
+  if(temp >= 25 && umidade >= 70 && chuva < 50){
+    return "🪰 Alto risco de pragas ao ar livre";
+  } else if(temp >= 20 && umidade >= 60){
+    return "🪰 Médio risco de pragas ao ar livre";
+  } else {
+    return "🪰 Baixo risco de pragas ao ar livre";
+  }
 }
 
 /* =========================
