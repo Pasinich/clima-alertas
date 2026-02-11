@@ -1024,40 +1024,40 @@ linhaStatus.innerHTML = `
   ${alertaTexto ? `<div class="alerta">⚠️ ${alertaTexto}</div>` : ""}
 
   <div style="margin-top:6px">
-    <b style="color:#1565c0">Atividades ao ar livre (🌫️ <b>Qual. Ar:</b> ${formatarAQ(usAQI)})</b><br>
+    <b style="color:#8B008B;font-size:14px;">Atividades ao ar livre (🌫️ <b>Qual. Ar:</b> ${formatarAQ(usAQI)})</b><br>
     ${corrida ?? ""} ${caminhada ?? ""} ${ciclismo ?? ""} ${estrelas ?? ""} ${pesca ?? ""}
   </div>
 
   <div style="margin-top:4px">
-    <b style="color:#1565c0">Praia / Piscina</b><br>
+    <b style="color:#8B008B;font-size:14px;">Praia / Piscina</b><br>
     ${praia ?? ""} ${piscina ?? ""}
   </div>
 
   <div style="margin-top:4px">
-    <b style="color:#1565c0">Trânsito / Viagens</b><br>
+    <b style="color:#8B008B;font-size:14px;">Trânsito / Viagens</b><br>
     ${aviao ?? ""} ${carro ?? ""}
   </div>
 
   ${alergiasTexto ? `
     <div style="margin-top:4px">
-      <b style="color:#1565c0">Alergias</b><br>
+      <b style="color:#8B008B;font-size:14px;">Alergias</b><br>
       ${alergiasTexto}
     </div>
   ` : ""}
 
   ${mosquitosTexto ? `
     <div style="margin-top:4px">
-      <b style="color:#1565c0">Pragas</b><br>
+      <b style="color:#8B008B;font-size:14px;">Pragas</b><br>
       ${mosquitosTexto}
     </div>
   ` : ""}
 
   <div style="margin-top:6px">
-    <b>🗓️ Estação:</b> ${estacao ?? "-"}
+    <b style="color:#8B008B;font-size:14px;">🗓️ Estação:</b> ${estacao ?? "-"}
   </div>
 
   <div>
-    🌊 <b>Fenômeno:</b> ${fenomeno ?? "-"}${impactoTexto ? ` (${impactoTexto})` : ""}
+    🌊 <b style="color:#8B008B;font-size:14px;">Fenômeno:</b> ${fenomeno ?? "-"}${impactoTexto ? ` (${impactoTexto})` : ""}
   </div>
 `;
 }
