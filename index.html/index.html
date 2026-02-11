@@ -235,6 +235,7 @@ function limparTela(){
 let lat=null, lon=null;
 let chart=null, chartPrevisao=null;
 let histSalvo=null;
+let pressaoTexto = "";
 let chartMensal = null;
 let paisSelecionado = "";
 let oni = -0.6;
@@ -611,8 +612,15 @@ else if (typeof atual?.hourly?.pressure_msl?.[idx] === "number") {
   pressaoExibir = atual.hourly.pressure_msl[idx];
 }
 let pressaoExibir_masc = atual.hourly.pressure_msl[idx] + 3.1;
-linhaPressao.innerHTML =
-  `🎈Pressão: <b>${pressaoExibir_masc.toFixed(1)} hPa</b>` ;
+
+linhaPressao.innerHTML = `
+  🌬️Pressão: <b>${pressaoExibir_masc.toFixed(1)} hPa</b>
+  ${pressaoTexto ? `
+    <div style="font-size:13px; margin-top:4px; opacity:0.9">
+      ${pressaoTexto}
+    </div>
+  ` : ""}
+`;
 
  
 
@@ -835,7 +843,7 @@ if (atual.current_weather?.time) {
     }
 
   /* ===== PRESSÃO MÉDIA */
-  let pressaoTexto = "";
+  pressaoTexto = "";
   if(histSalvo && histSalvo.time?.length){
     const dias={};
     histSalvo.time.forEach((t,i)=>{
@@ -1066,8 +1074,8 @@ linhaStatus.innerHTML = `
   ${alergiasTexto ? `
   <div style="margin-top:4px">
     <b style="color:#8B008B;font-size:14px;">Alergias</b><br>
-   Pó/Pelos:</b>${alergiasTexto} 
-    <b style="color:#8B008B;font-size:14px;">  😷 Gripe/Resfriado:</b>${gripeTexto}
+   </b>${alergiasTexto} 
+    <b style="color:#8B008B;font-size:14px;">  (😷🌡️🤒)</b>${gripeTexto}
   </div>
 ` : ""}
 
@@ -1283,7 +1291,7 @@ function avaliarCaminhada(temp, chuvaProb, vento, uv, vis) {
 
   // ❌ condições ruins
   if (chuvaProb > 60 || vento > 30 || vis < 1500)
-    return "🚶Caminhada:Ruim ";
+    return "🚶Ruim ";
 
   // ⚠️ condições razoáveis
   if (
@@ -1329,14 +1337,14 @@ function avaliarCarro(chuvaProb, vis, vento){
 function avaliarAlergias(umidade, vento, estacao) {
   // condições boas
   if (umidade >= 50 && vento <= 15)
-    return "🤧Baixa";
+    return "(🤧🌾👀👃)Baixa";
 
   // condições intermediárias
   if (umidade >= 35 && vento <= 25)
-    return "🤧Moderada";
+    return "(🤧🌾👀👃)Moderada";
 
   // tempo seco ou muito vento
-  return "🤧Alta";
+  return "(🤧🌾👀👃)Alta";
 }
 
 function avaliarGripeResfriado(umidade, temp) {
@@ -1352,14 +1360,14 @@ function avaliarMosquitos(umidade, chuvaProb, temp) {
 
   // risco alto
   if (umidade >= 75 && (chuvaProb >= 40 || temp >= 28))
-    return "🦟 Mosquitos: Elevado";
+    return "(🦟)Elevado";
 
   // risco médio
   if (umidade >= 60 || chuvaProb >= 20)
-    return "🦟 Mosquitos: Médio";
+    return "(🦟)Médio";
 
   // risco baixo
-  return "🦟 Mosquitos: Baixo";
+  return "(🦟) Baixo";
 }
 
 
@@ -1376,11 +1384,11 @@ function avaliarPragas(temp, chuva, umidade) {
   */
 
   if(temp >= 25 && umidade >= 70 && chuva < 50){
-    return "🪰 Alto risco de pragas ao ar livre";
+    return "(🪰🪳🕷️)Alto risco de pragas ao ar livre";
   } else if(temp >= 20 && umidade >= 60){
-    return "🪰 Médio risco de pragas ao ar livre";
+    return "(🪰🪳🕷️) Médio risco de pragas ao ar livre";
   } else {
-    return "🪰 Baixo risco de pragas ao ar livre";
+    return "(🪰🪳🕷️)Baixo risco de pragas ao ar livre";
   }
 }
 
