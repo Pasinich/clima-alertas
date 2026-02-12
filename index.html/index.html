@@ -1085,7 +1085,7 @@ linhaStatus.innerHTML = `
 
   <div style="margin-top:6px">
   <b style="color:#8B008B;font-size:14px;">
-    Atividades ao ar livre (💨 <b>Qual. Ar:</b> ${formatarAQ(usAQI)})
+    Atividades ao Ar Livre (<b>Qualidade do Ar:</b> ${formatarAQ(usAQI)})
   </b><br>
   ${corrida ?? ""} 
   ${caminhada ?? ""} 
@@ -1121,7 +1121,7 @@ Fotografia</b><br>
 
   ${mosquitosTexto || pragasTexto ? `
   <div style="margin-top:4px">
-    <b style="color:#8B008B;font-size:14px;">Pragas</b><br>
+    <b style="color:#8B008B;font-size:14px;">Pragas/Insetos</b><br>
     ${mosquitosTexto}${pragasTexto ? ` ${pragasTexto}` : ""}
   </div>
 ` : ""}
