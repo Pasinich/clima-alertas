@@ -99,12 +99,12 @@ input{
 /* =========================
    QUALIDADE DO AR
 ========================= */
-.aq-bom{color:#0A3D0A;font-weight:bold;}
-.aq-mod{color:#ffeb3b;font-weight:bold;}
-.aq-ruim{color:#ff9800;font-weight:bold;}
-.aq-muito{color:#f44336;font-weight:bold;}
-.aq-severo{color:#f44336;font-weight:bold;}
-.aq-extremo{color:#b71c1c;font-weight:bold;}
+.aq-bom      { color: #000000; font-weight: bold; }   /* Verde escuro — bom */
+.aq-mod      { color: #000000; font-weight: bold; }   /* Verde claro — moderado */
+.aq-ruim     { color: #000000; font-weight: bold; }   /* Laranja — insalubre para grupos sensíveis */
+.aq-muito    { color: #000000; font-weight: bold; }   /* Laranja avermelhado — muito insalubre */
+.aq-severo   { color: #000000; font-weight: bold; }   /* Vermelho vivo — severo */
+.aq-extremo  { color: #000000; font-weight: bold; }   /* Vermelho escuro — extremo */
 
 /* =========================
    CHUVA
@@ -424,17 +424,13 @@ function cidadePossuiPraia(pais, lat, lon){
 /* =======================
 Avaliação da praia 
 ========================= */
-
 function avaliarPraia(temp, probChuva, vento, uv){
   if (temp >= 25 && probChuva < 20 && vento <= 15 && uv <= 8)
     return "🏖️Boa";
-
   if (temp >= 20 && probChuva < 40)
     return "🏖️Regular";
-
   return "🏖️Não indicada";
 }
-
 
 /* =========================
    MODO DIA / NOITE
@@ -670,7 +666,7 @@ linhaPressao.innerHTML = `
   `(<b>${direcaoVento}</b>)`;
 
 /* =========================
-    RAJADAS DE VENTO (ADICIONADO)
+    RAJADAS DE VENTO
  ========================= */
  let rajadas = "—";
  if(atual.hourly.windspeed_10m?.[idx] != null){
@@ -678,7 +674,7 @@ linhaPressao.innerHTML = `
  }
 
 /* =========================
-    NEVOEIRO + RAJADAS (CORRIGIDO)
+    NEVOEIRO + RAJADAS 
  ========================= */
 let nevoeiro = "Ausente🌤️";
 
@@ -775,9 +771,29 @@ function calcularHorarioOuroDoDiaCompacto(lat, lon, data = new Date()) {
 }
 const fotografia = calcularHorarioOuroDoDiaCompacto(lat, lon, new Date());
 
+function calcularHorarioOuroDoDia(lat, lon, data = new Date(), timezone = 'America/Sao_Paulo') {
+  const t = SunCalc.getTimes(data, lat, lon);
+
+  // Horário de ouro: manhã e tarde
+  const inicioManha = new Date(t.sunrise.getTime() + 1*60*60*1000);
+  const fimManha    = new Date(t.sunrise.getTime() + 2.5*60*60*1000);
+  const inicioTarde = new Date(t.sunset.getTime() - 2.5*60*60*1000);
+  const fimTarde    = new Date(t.sunset.getTime() - 0.5*60*60*1000);
+
+  // Formatar hora no fuso da cidade
+  const formatar = d => new Intl.DateTimeFormat('pt-BR', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+    timeZone: timezone
+  }).format(d);
+
+  // Monta a string com “às” e “e”
+  return `${formatar(inicioManha)} às ${formatar(fimManha)} e ${formatar(inicioTarde)} às ${formatar(fimTarde)}`;
+}
+
+
 /* Montar painel climático */
-
-
 montarPainelClimatico({
   atual,
   idx,
@@ -826,23 +842,6 @@ const estrelas = avaliarEstrelas(
     statusTexto = "☀️Tempo bom";
   }
 
-  /* ===== HORA LOCAL ===== */
-  /*const horaAtualCidade = atual.current_weather?.time?.slice(11, 16) ?? "—";*/
-  let dataHoraLocal = "—";
-
-if (atual.current_weather?.time) {
-  const dt = new Date(atual.current_weather.time);
-
-  dataHoraLocal =
-    `${String(dt.getDate()).padStart(2, "0")}/` +
-    `${String(dt.getMonth() + 1).padStart(2, "0")}/` +
-    `${dt.getFullYear()} - ` +
-    `${String(dt.getHours()).padStart(2, "0")}:` +
-    `${String(dt.getMinutes()).padStart(2, "0")}:` +
-    `${String(dt.getSeconds()).padStart(2, "0")}`;
-}
-
-
   /* ===== CHUVA PREVISTA ===== */
   let chuvaTexto = "";
   if (Number.isInteger(idxChuva) && idxChuva >= 0) {
@@ -877,7 +876,7 @@ if (atual.current_weather?.time) {
     });
     if(press.length > 0){
       const m = press.reduce((a,b)=>a+b)/press.length;
-      pressaoTexto = `🌧️Com pressão média de <b>${m.toFixed(1)} hPa</b>`;
+      pressaoTexto = `🌧️Com pressão média:<b>${m.toFixed(1)} hPa</b>`;
     } else {
       pressaoTexto = `🌧️Dados insuficientes para calcular pressão média de chuva`;
     }
@@ -890,7 +889,7 @@ if (atual.current_weather?.time) {
   if (oni >= 0.5) fenomeno = "El Niño";
   else if (oni <= -0.5) fenomeno = "La Niña";
 
-/* ===== AVALIAÇÕES ===== */
+/* ===== AVALIAÇÕES  Atividades ===== */
 const pesca = avaliarPesca(
   atual.hourly.pressure_msl[idx],
   atual.current_weather.windspeed,
@@ -918,12 +917,32 @@ const caminhada = avaliarCaminhada(
   vis
 );
 
-// 🚴 Ciclismo 
 const ciclismo = avaliaCiclismo(
   atual.hourly.precipitation_probability[idx],
   atual.current_weather.windspeed,
   atual.hourly.pressure_msl[idx]
 );
+
+function avaliarPesca(pressao, vento, chuva){
+  if (pressao >= 1015 && vento <= 8 && chuva === 0)
+    return "🎣Boa ";
+  if (pressao >= 1008 && vento <= 12 && chuva < 40)
+    return "🎣Regular ";
+  return "🎣Ruim ";
+}
+
+function avaliarChurrasco(temperatura, precipitacao, vento) {
+  // temperatura ideal entre 20°C e 35°C
+  // pouca chance de chuva (<30%)
+  // vento leve (<20 km/h)
+  if (temperatura >= 20 && temperatura <= 35 && precipitacao < 30 && vento < 20) {
+    return "Ótimo!";
+  } else if (temperatura >= 15 && temperatura <= 40 && precipitacao < 50) {
+    return "Fique atento ao tempo.";
+  } else {
+    return "Melhor adiar.";
+  }
+}
 
 const aviao = avaliarAviao(
   atual.current_weather.windspeed,
@@ -937,7 +956,6 @@ const carro = avaliarCarro(
   vis,
   atual.current_weather.windspeed
 );
-
 
 const piscina = avaliarPiscina(
   atual.current_weather.temperature,
@@ -1038,7 +1056,7 @@ const pragasTexto = avaliarPragas(
     }
   }
 
-// 🌊 PRAIA
+// Possuí praia a cidade 
 const possuiPraia = cidadePossuiPraia(
   (pais || "").toUpperCase(),
   lat,
@@ -1055,7 +1073,7 @@ const praia = possuiPraia
   : "🏖️N/A";
 
 
-// 1️⃣ Calcular Horário de Ouro e avaliação de fotografia
+// Calcular Horário de Ouro e avaliação de fotografia
 const horarioOuro = calcularHorarioOuroCompacto(atual.daily.sunrise[0], atual.daily.sunset[0]);
 const avaliacaoFoto = avaliarFotografia(
   atual.current_weather.temperature,
@@ -1085,7 +1103,7 @@ linhaStatus.innerHTML = `
 
   <div style="margin-top:6px">
   <b style="color:#8B008B;font-size:14px;">
-    Atividades ao Ar Livre (<b>Qualidade do Ar:</b> ${formatarAQ(usAQI)})
+    Atividades ao Ar Livre (<b>Qual. do Ar:</b> ${formatarAQ(usAQI)})
   </b><br>
   ${corrida ?? ""} 
   ${caminhada ?? ""} 
@@ -1181,7 +1199,6 @@ function pm25ToUSAQI(pm25){
 /* =========================
    HISTÓRICO MENSAL (12 MESES)
 ========================= */
-
 async function buscarTemperaturasMensais(){
   const hoje = new Date();
   const inicio = new Date(hoje.getFullYear()-1, hoje.getMonth(), 1);
@@ -1193,26 +1210,20 @@ async function buscarTemperaturasMensais(){
     `&daily=temperature_2m_min,temperature_2m_max,temperature_2m_mean` +
     `&timezone=auto`
   );
-
   const d = await r.json();
   if(!d?.daily?.time) return;
-
   const meses = {};
-
   d.daily.time.forEach((t,i)=>{
     const m = t.slice(0,7); // YYYY-MM
     meses[m] ??= {min:[], max:[], med:[]};
-
     meses[m].min.push(d.daily.temperature_2m_min[i]);
     meses[m].max.push(d.daily.temperature_2m_max[i]);
     meses[m].med.push(d.daily.temperature_2m_mean[i]);
   });
-
   const labels = [];
   const min = [];
   const max = [];
   const med = [];
-
   const nomesMes = [
   "Jan","Fev","Mar","Abr","Mai","Jun",
   "Jul","Ago","Set","Out","Nov","Dez"
@@ -1298,26 +1309,7 @@ function montarGraficoMensal(labels, min, med, max){
   );
 }
 
-function avaliarPesca(pressao, vento, chuva){
-  if (pressao >= 1015 && vento <= 8 && chuva === 0)
-    return "🎣Boa ";
-  if (pressao >= 1008 && vento <= 12 && chuva < 40)
-    return "🎣Regular ";
-  return "🎣Ruim ";
-}
 
-function avaliarChurrasco(temperatura, precipitacao, vento) {
-  // temperatura ideal entre 20°C e 35°C
-  // pouca chance de chuva (<30%)
-  // vento leve (<20 km/h)
-  if (temperatura >= 20 && temperatura <= 35 && precipitacao < 30 && vento < 20) {
-    return "Ótimo!";
-  } else if (temperatura >= 15 && temperatura <= 40 && precipitacao < 50) {
-    return "Fique atento ao tempo.";
-  } else {
-    return "Melhor adiar.";
-  }
-}
 /* =========================
    HORÁRIO DE OURO (Fotografia)
 ========================= */
@@ -1351,6 +1343,9 @@ function avaliarFotografia(temp, nebulosidade, chuvaProb, nascerSol, porSol) {
   return "📷Bom";
 }
 
+/* =========================
+   Horário de ouro
+========================= */
 function calcularHorarioOuroCompacto(sunrise, sunset){
   // sunrise e sunset em formato "YYYY-MM-DDTHH:MM"
   const formatarHora = (d) => `${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`;
@@ -1366,7 +1361,7 @@ function calcularHorarioOuroCompacto(sunrise, sunset){
   const tardeInicio = new Date(por.getTime() - 90*60*1000); 
   const tardeFim = por;
 
-  return `${formatarHora(manhaInicio)} - ${formatarHora(manhaFim)} e ${formatarHora(tardeInicio)} - ${formatarHora(tardeFim)}`;
+  return `${formatarHora(manhaInicio)} as ${formatarHora(manhaFim)} e ${formatarHora(tardeInicio)} as ${formatarHora(tardeFim)}`;
 }
 
 function avaliarCorrida(temp, chuva, vento, uv){
@@ -1378,12 +1373,8 @@ function avaliarCorrida(temp, chuva, vento, uv){
 }
 
 function avaliarCaminhada(temp, chuvaProb, vento, uv, vis) {
-
-  // ❌ condições ruins
   if (chuvaProb > 60 || vento > 30 || vis < 1500)
     return "🚶Ruim ";
-
-  // ⚠️ condições razoáveis
   if (
     (temp >= 10 && temp < 15) ||
     (temp > 30 && temp <= 35) ||
@@ -1392,11 +1383,8 @@ function avaliarCaminhada(temp, chuvaProb, vento, uv, vis) {
     uv > 8
   )
     return "🥾Razoável ";
-
-  // ✅ condições boas
   if (temp >= 15 && temp <= 30 && chuvaProb < 30 && vento <= 20 && uv <= 7)
     return "🥾Boa ";
-
   return "🥾Razoável ";
 }
 
@@ -1406,6 +1394,22 @@ function avaliaCiclismo(probChuva, vento, pressao) {
   if (vento <= 10 && probChuva < 20)
     return "🚴Bom ";
   return "🚴Regular ";
+}
+
+function avaliarPiscina(temp, chuvaProb, vento){
+  if (chuvaProb > 60)
+    return "🏊Não recomendado ";
+  if (temp >= 22 && chuvaProb < 30 && vento <= 20)
+    return "🏊Boa ";
+  return "🏊Regular ";
+}
+
+function avaliarEstrelas(nebulosidade, chuvaProb, luaIluminacao) {
+  if (nebulosidade <= 20 && chuvaProb < 20 && luaIluminacao <= 30)
+    return "🔭Boa ";
+  if (nebulosidade <= 50 && chuvaProb < 40)
+    return "🔭Razoável ";
+  return "🔭Ruim ";
 }
 
 function avaliarAviao(vento, vis, chuva, tempestade){
@@ -1425,15 +1429,10 @@ function avaliarCarro(chuvaProb, vis, vento){
 }
 
 function avaliarAlergias(umidade, vento, estacao) {
-  // condições boas
   if (umidade >= 50 && vento <= 15)
     return "(🤧🌾👀👃)Baixa";
-
-  // condições intermediárias
   if (umidade >= 35 && vento <= 25)
     return "(🤧🌾👀👃)Moderada";
-
-  // tempo seco ou muito vento
   return "(🤧🌾👀👃)Alta";
 }
 
@@ -1447,32 +1446,14 @@ function avaliarGripeResfriado(umidade, temp) {
 function avaliarMosquitos(umidade, chuvaProb, temp) {
   if (umidade == null || chuvaProb == null || temp == null)
     return "";
-
-  // risco alto
   if (umidade >= 75 && (chuvaProb >= 40 || temp >= 28))
     return "(🦟)Elevado";
-
-  // risco médio
   if (umidade >= 60 || chuvaProb >= 20)
     return "(🦟)Médio";
-
-  // risco baixo
   return "(🦟) Baixo";
 }
 
-
-/* =========================
-   AVALIAR PRAGAS (SÓ AR LIVRE)
-========================= */
 function avaliarPragas(temp, chuva, umidade) {
-  /*
-    temp: temperatura atual em °C
-    chuva: probabilidade de chuva em %
-    umidade: umidade relativa em %
-    
-    Retorna uma string indicando risco de pragas
-  */
-
   if(temp >= 25 && umidade >= 70 && chuva < 50){
     return "(🪰🪳🕷️)Alto risco de pragas ao ar livre";
   } else if(temp >= 20 && umidade >= 60){
@@ -1485,7 +1466,6 @@ function avaliarPragas(temp, chuva, umidade) {
 /* =========================
    FUNÇÕES UTILITÁRIAS
 ========================= */
-
 function normalizarEstadoParaSigla(estado){
   if (!estado) return "";
 
@@ -1504,27 +1484,6 @@ function normalizarEstadoParaSigla(estado){
     .trim();
 }
 
-function avaliarPiscina(temp, chuvaProb, vento){
-  if (chuvaProb > 60)
-    return "🏊Não recomendado ";
-  if (temp >= 22 && chuvaProb < 30 && vento <= 20)
-    return "🏊Boa ";
-  return "🏊Regular ";
-}
-
-function avaliarEstrelas(nebulosidade, chuvaProb, luaIluminacao) {
-  // Nebulosidade baixa, pouca chuva e lua fraca = céu bom
-  if (nebulosidade <= 20 && chuvaProb < 20 && luaIluminacao <= 30)
-    return "🔭Boa ";
-
-  // Condições intermediárias
-  if (nebulosidade <= 50 && chuvaProb < 40)
-    return "🔭Razoável ";
-
-  // Muito nublado, chuva ou lua cheia
-  return "🔭Ruim ";
-}
-
 /* =========================
    FORMATADORES
 ========================= */
@@ -1537,6 +1496,9 @@ function formatarAQ(v){
  return `<span class="aq-extremo">Extrema (${v})</span>`;
 }
 
+/* =========================
+   UV
+========================= */
 function formatarUV(v){
  let classe="",descricao="";
  if(v<=2){classe="aq-bom";descricao="Baixo";}
@@ -1588,26 +1550,6 @@ function formatarChuvaClasse(v){
  if(v<=80) return "chuva-muito";
  return "chuva-extremo";
 }
-
-// =========================
-// HORÁRIO DE OURO
-// =========================
-function horarioDeOuro(lat, lon, data = new Date()) {
-  // Usa o nascer e pôr do sol aproximado
-  const sunrise = SunCalc.getTimes(data, lat, lon).sunrise;
-  const sunset = SunCalc.getTimes(data, lat, lon).sunset;
-
-  // Golden hour: 1 hora após nascer do sol / 1 hora antes do pôr do sol
-  const inicio = new Date(sunrise.getTime() + 0 * 60 * 60 * 1000); // pode ajustar se quiser +0
-  const fim = new Date(sunset.getTime() - 0 * 60 * 60 * 1000);
-
-  const pad = n => String(n).padStart(2, "0");
-  return `${pad(inicio.getHours())}:${pad(inicio.getMinutes())} - ${pad(fim.getHours())}:${pad(fim.getMinutes())}`;
-}
-
-
-
-
 
 /* =========================
    STATUS
