@@ -877,7 +877,7 @@ if (atual.current_weather?.time) {
     });
     if(press.length > 0){
       const m = press.reduce((a,b)=>a+b)/press.length;
-      pressaoTexto = `🌧️Geralmente com pressão média de <b>${m.toFixed(1)} hPa</b>`;
+      pressaoTexto = `🌧️Com pressão média de <b>${m.toFixed(1)} hPa</b>`;
     } else {
       pressaoTexto = `🌧️Dados insuficientes para calcular pressão média de chuva`;
     }
