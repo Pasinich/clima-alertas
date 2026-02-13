@@ -242,6 +242,8 @@ let chartMensal = null;
 let paisSelecionado = "";
 let oni = -0.6;
 let estadoSelecionado = null;
+let tempCidade = null;
+let dadosCidade = null;
 
 async function obterEstadoPorLatLon(lat, lon){
   try{
@@ -957,6 +959,16 @@ const carro = avaliarCarro(
   atual.current_weather.windspeed
 );
 
+// Exemplo de variáveis já disponíveis do clima da cidade pesquisada
+tempCidade = atual.current_weather?.temperature ?? null;
+const tempAtual = tempCidade; // temperatura atual
+const chuvaProbAtual = atual.hourly?.precipitation_probability[idx] ?? 0;
+const ventoAtual = atual.current_weather?.windspeed ?? 0;
+const aqAtual = usAQI; // qualidade do ar
+
+// Avaliar moto
+const moto = avaliarMoto(tempAtual, chuvaProbAtual, ventoAtual, aqAtual);
+
 const piscina = avaliarPiscina(
   atual.current_weather.temperature,
   atual.hourly.precipitation_probability[idx],
@@ -1125,10 +1137,10 @@ Fotografia</b><br>
     ${praia ?? ""} ${piscina ?? ""}
   </div>
 
-  <div style="margin-top:4px">
-    <b style="color:#8B008B;font-size:14px;">Trânsito / Viagens</b><br>
-    ${aviao ?? ""} ${carro ?? ""}
-  </div>
+<div style="margin-top:4px">
+  <b style="color:#8B008B;font-size:14px;">Trânsito / Viagens</b><br>
+  ${aviao ?? ""} ${carro ?? ""} ${moto ?? ""}
+</div>
 
   ${alergiasTexto ? `
   <div style="margin-top:4px">
@@ -1422,6 +1434,23 @@ function avaliarCarro(chuvaProb, vis, vento){
   if (chuvaProb > 40 || vento > 30)
     return "🚗Atenção na estrada! ";
   return "🚗Boa Dirigibilidade ";
+}
+
+function avaliarMoto(temp, chuvaProb, vento, aqIndex) {
+  // temp: temperatura atual em °C
+  // chuvaProb: probabilidade de chuva em %
+  // vento: velocidade do vento em km/h
+  // aqIndex: qualidade do ar US AQI
+
+  if(temp == null || chuvaProb == null || vento == null || aqIndex == null) return "";
+
+  // Condições para alerta
+  if(chuvaProb > 40) return "🏍️ Muita chuva";
+  if(vento > 40) return "🏍️ Vento forte";
+  if(aqIndex > 150) return "🏍️Ar poluído";
+
+  // Se todas condições ok
+  return "🏍️ Seguro";
 }
 
 function avaliarAlergias(umidade, vento, estacao) {
