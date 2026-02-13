@@ -792,6 +792,7 @@ function calcularHorarioOuroDoDia(lat, lon, data = new Date(), timezone = 'Ameri
   return `${formatar(inicioManha)} às ${formatar(fimManha)} e ${formatar(inicioTarde)} às ${formatar(fimTarde)}`;
 }
 
+
 /* Montar painel climático */
 montarPainelClimatico({
   atual,
@@ -1083,7 +1084,7 @@ const avaliacaoFoto = avaliarFotografia(
 );
 
 // Monta a exibição da fotografia com Horário de Ouro
-const fotografia = `${avaliacaoFoto} (Horário de Ouro: ${horarioOuro})`;
+const fotografia = `${avaliacaoFoto} (Hora de Ouro: ${horarioOuro})`;
 
 /* ===== MONTA LINHA STATUS FINAL ===== */
 
@@ -1110,14 +1111,15 @@ linhaStatus.innerHTML = `
   ${estrelas ?? ""} 
   ${pesca ?? ""} 
   ${churrascoTexto ? ` 🍖${churrascoTexto}` : ""}
+  ${fotografia}
   
-</div>
+<!--</div>
   <div style="margin-top:4px">
     <b style="color:#8B008B;font-size:14px;">
 Fotografia</b><br>
   ${fotografia}
   </div>
-
+-->
   <div style="margin-top:4px">
     <b style="color:#8B008B;font-size:14px;">Praia / Piscina</b><br>
     ${praia ?? ""} ${piscina ?? ""}
@@ -1332,13 +1334,8 @@ function calcularHorarioOuro(dia, duracaoMinutos = 90) {
 }
 
 function avaliarFotografia(temp, nebulosidade, chuvaProb, nascerSol, porSol) {
-  // Se muito nublado ou chuvoso = ruim
   if (chuvaProb > 50 || nebulosidade > 70) return "📷Ruim";
-  
-  // Condições intermediárias
   if (chuvaProb > 20 || nebulosidade > 40) return "📷Médio";
-  
-  // Céu limpo = bom
   return "📷Bom";
 }
 
