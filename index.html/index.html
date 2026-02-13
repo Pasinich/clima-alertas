@@ -423,16 +423,7 @@ function cidadePossuiPraia(pais, lat, lon){
   );
 }
 
-/* =======================
-Avaliação da praia 
-========================= */
-function avaliarPraia(temp, probChuva, vento, uv){
-  if (temp >= 25 && probChuva < 20 && vento <= 15 && uv <= 8)
-    return "🏖️Boa";
-  if (temp >= 20 && probChuva < 40)
-    return "🏖️Regular";
-  return "🏖️Não indicada";
-}
+
 
 /* =========================
    MODO DIA / NOITE
@@ -925,26 +916,7 @@ const ciclismo = avaliaCiclismo(
   atual.hourly.pressure_msl[idx]
 );
 
-function avaliarPesca(pressao, vento, chuva){
-  if (pressao >= 1015 && vento <= 8 && chuva === 0)
-    return "🎣Boa ";
-  if (pressao >= 1008 && vento <= 12 && chuva < 40)
-    return "🎣Regular ";
-  return "🎣Ruim ";
-}
 
-function avaliarChurrasco(temperatura, precipitacao, vento) {
-  // temperatura ideal entre 20°C e 35°C
-  // pouca chance de chuva (<30%)
-  // vento leve (<20 km/h)
-  if (temperatura >= 20 && temperatura <= 35 && precipitacao < 30 && vento < 20) {
-    return "Ótimo!";
-  } else if (temperatura >= 15 && temperatura <= 40 && precipitacao < 50) {
-    return "Fique atento ao tempo.";
-  } else {
-    return "Melhor adiar.";
-  }
-}
 
 const aviao = avaliarAviao(
   atual.current_weather.windspeed,
@@ -1122,7 +1094,7 @@ linhaStatus.innerHTML = `
   ${ciclismo ?? ""} 
   ${estrelas ?? ""} 
   ${pesca ?? ""} 
-  ${churrascoTexto ? ` 🍖${churrascoTexto}` : ""}
+  ${churrascoTexto ? `  🍖${churrascoTexto}` : ""}
   ${fotografia}
   
 <!--</div>
@@ -1381,7 +1353,7 @@ function avaliarCorrida(temp, chuva, vento, uv){
 }
 
 function avaliarCaminhada(temp, chuvaProb, vento, uv, vis) {
-  if (chuvaProb > 60 || vento > 30 || vis < 1500)
+  if (chuvaProb > 60 || vento > 30 || vis < 1500 || temp > 35 || temp < 5)
     return "🚶Ruim ";
   if (
     (temp >= 10 && temp < 15) ||
@@ -1390,10 +1362,10 @@ function avaliarCaminhada(temp, chuvaProb, vento, uv, vis) {
     vento > 20 ||
     uv > 8
   )
-    return "🥾Razoável ";
+    return "🚶‍♀️Razoável ";
   if (temp >= 15 && temp <= 30 && chuvaProb < 30 && vento <= 20 && uv <= 7)
-    return "🥾Boa ";
-  return "🥾Razoável ";
+    return "🚶‍♀️Boa ";
+  return "🚶‍♀️Razoável ";
 }
 
 function avaliaCiclismo(probChuva, vento, pressao) {
@@ -1404,6 +1376,46 @@ function avaliaCiclismo(probChuva, vento, pressao) {
   return "🚴Regular ";
 }
 
+function avaliarEstrelas(nebulosidade, chuvaProb, luaIluminacao) {
+  if (nebulosidade <= 20 && chuvaProb < 20 && luaIluminacao <= 30)
+    return " 🔭Boa ";
+  if (nebulosidade <= 50 && chuvaProb < 40)
+    return " 🔭Razoável ";
+  return " 🔭Ruim ";
+}
+
+function avaliarPesca(pressao, vento, chuva){
+  if (pressao >= 1015 && vento <= 8 && chuva === 0)
+    return "🎣Boa ";
+  if (pressao >= 1008 && vento <= 12 && chuva < 40)
+    return "🎣Regular ";
+  return "🎣Ruim ";
+}
+
+function avaliarChurrasco(temperatura, precipitacao, vento) {
+  // temperatura ideal entre 20°C e 35°C
+  // pouca chance de chuva (<30%)
+  // vento leve (<20 km/h)
+  if (temperatura >= 20 && temperatura <= 35 && precipitacao < 30 && vento < 20) {
+    return "Ótimo!";
+  } else if (temperatura >= 15 && temperatura <= 40 && precipitacao < 50) {
+    return "Fique atento!";
+  } else {
+    return "Melhor adiar";
+  }
+}
+
+/* =======================
+Avaliação da praia 
+========================= */
+function avaliarPraia(temp, probChuva, vento, uv){
+  if (temp >= 25 && probChuva < 20 && vento <= 15 && uv <= 8)
+    return "🏖️Boa";
+  if (temp >= 20 && probChuva < 40)
+    return "🏖️Regular";
+  return "🏖️Não indicada";
+}
+
 function avaliarPiscina(temp, chuvaProb, vento){
   if (chuvaProb > 60)
     return "🏊Não recomendado ";
@@ -1412,13 +1424,6 @@ function avaliarPiscina(temp, chuvaProb, vento){
   return "🏊Regular ";
 }
 
-function avaliarEstrelas(nebulosidade, chuvaProb, luaIluminacao) {
-  if (nebulosidade <= 20 && chuvaProb < 20 && luaIluminacao <= 30)
-    return "🔭Boa ";
-  if (nebulosidade <= 50 && chuvaProb < 40)
-    return "🔭Razoável ";
-  return "🔭Ruim ";
-}
 
 function avaliarAviao(vento, vis, chuva, tempestade){
   if (tempestade || vento > 35 || vis < 2000)
