@@ -849,8 +849,14 @@ const estrelas = avaliarEstrelas(
       `${String(t.getHours()).padStart(2,"0")}:` +
       `${String(t.getMinutes()).padStart(2,"0")} hs`;
       
-      chuvaTexto = `<span style="color:#8B008B; font-size:14px;">Prox.Chuva prevista:</span> <b>${dataHora} (${probChuva}%)</b>`;
-      
+      const chuvaAtual = Number(atual?.hourly?.precipitation?.[idx] ?? 0);
+
+if (chuvaAtual > 0) {
+  chuvaTexto = "";
+} else if (dataHora) {
+  chuvaTexto = `<span style="color:#8B008B; font-size:14px;">
+  Prox.Chuva prevista:</span> <b>${dataHora} (${probChuva}%)</b>`;
+}
     }
 
   /* ===== PRESSÃO MÉDIA */
