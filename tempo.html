@@ -319,7 +319,7 @@ if (btnMic && ('webkitSpeechRecognition' in window || 'SpeechRecognition' in win
         recognition.start();
         ouvindo = true;
         btnMic.classList.add("escutando");
-        btnMic.innerText = "🛑";
+        btnMic.innerText = "🗣️";
       } catch (e) {}
     } else {
       recognition.stop();
