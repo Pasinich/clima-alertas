@@ -968,6 +968,7 @@ const estrelas = avaliarEstrelas(
   nebulosidade,
   atual.hourly.precipitation_probability[idx],
   iluminacaoLua
+  
 );
 
   // 🔹 normalizações
@@ -1214,6 +1215,21 @@ const possuiPraia = cidadePossuiPraia(
   lon
 );
 
+let alturaOnda = null;
+
+if (possuiPraia) {
+  buscarAlturaOnda(lat, lon).then(valor => {
+    const el = document.getElementById("altura-onda");
+    if (!el) return;
+
+    if (valor != null) {
+      el.innerHTML = valor.toFixed(1) + " m";
+    } else {
+      el.innerHTML = "-";
+    }
+  });
+}
+
 const praia = possuiPraia
   ? avaliarPraia(
       atual.current_weather.temperature,
@@ -1222,6 +1238,19 @@ const praia = possuiPraia
       atual.daily.uv_index_max?.[0] ?? 0
     )
   : "🏖️N/A";
+
+let praiaTexto;
+let ondaTexto;
+
+if (possuiPraia) {
+  praiaTexto = praia ?? "-";
+  ondaTexto = alturaOnda != null 
+    ? alturaOnda.toFixed(1) + " m"
+    : "-";
+} else {
+  praiaTexto = `<span style="color:#888;">N/A</span>`;
+  ondaTexto = `<span style="color:#888;">N/A</span>`;
+}
 
 
 // Calcular Horário de Ouro e avaliação de fotografia
@@ -1272,9 +1301,18 @@ Fotografia</b><br>
   </div>
 -->
   <div style="margin-top:4px">
-    <b style="color:#8B008B;font-size:14px;">Praia / Piscina</b><br>
-    ${praia ?? ""} ${piscina ?? ""}
-  </div>
+  <b style="color:#8B008B;font-size:14px;">
+    Praia / Ondas / Piscina
+  </b><br>
+
+  🏖️<b>${praiaTexto}</b> |
+  🌊<b id="altura-onda">${
+    possuiPraia 
+      ? "..." 
+      : `<span style="color:#888;">N/A</span>`
+  }</b> |
+  <b>${piscina ?? "-"}</b>
+</div>
 
 <div style="margin-top:4px">
   <b style="color:#8B008B;font-size:14px;">Trânsito / Viagens</b><br>
@@ -1577,11 +1615,46 @@ Avaliação da praia
 ========================= */
 function avaliarPraia(temp, probChuva, vento, uv){
   if (temp >= 25 && probChuva < 20 && vento <= 15 && uv <= 8)
-    return "🏖️Boa";
+    return "Boa";
   if (temp >= 20 && probChuva < 40)
-    return "🏖️Regular";
-  return "🏖️Não indicada";
+    return "Regular";
+  return "Não indicada";
 }
+
+
+/* =========================
+   ALTURA DAS ONDAS (API MARINHA)
+========================= */
+async function buscarAlturaOnda(lat, lon) {
+  try {
+    const r = await fetch(
+      `https://marine-api.open-meteo.com/v1/marine?latitude=${lat}&longitude=${lon}&hourly=wave_height&timezone=auto`
+    );
+
+    const d = await r.json();
+
+    if (!d.hourly?.wave_height) return null;
+
+    // pega a onda mais próxima da hora atual
+    const agora = Date.now();
+    let idx = 0;
+    let menorDif = Infinity;
+
+    d.hourly.time.forEach((t, i) => {
+      const dif = Math.abs(new Date(t).getTime() - agora);
+      if (dif < menorDif) {
+        menorDif = dif;
+        idx = i;
+      }
+    });
+
+    return d.hourly.wave_height[idx];
+
+  } catch {
+    return null;
+  }
+}
+
 
 function avaliarPiscina(temp, chuvaProb, vento){
   if (chuvaProb > 60)
