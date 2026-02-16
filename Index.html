@@ -564,18 +564,6 @@ async function buscar(){
   if(d < minAQ){ minAQ = d; idxAQ = i; }
  });
 
-function mostrarCidade(nome, pais) {
-  const el = document.getElementById("localizacao");
-
-  if (!el) return;
-
-  if (pais && pais !== "BR") {
-    el.innerHTML = `📍 ${nome} - ${pais}`;
-  } else {
-    el.innerHTML = `📍 ${nome}`;
-  }
-}
-
 /* =========================
    PRÓXIMA CHUVA
 ========================= */
@@ -1814,56 +1802,6 @@ navigator.geolocation?.getCurrentPosition(async p=>{
   await buscar();
 });
 
-/* =========================
-   GEOLOCALIZAÇÃO AUTOMÁTICA
-========================= */
-window.addEventListener("load", () => {
-
-  if (!navigator.geolocation) {
-    nomeCidade.innerText = "Geolocalização não suportada";
-    return;
-  }
-
-  navigator.geolocation.getCurrentPosition(
-    async (pos) => {
-
-      lat = pos.coords.latitude;
-      lon = pos.coords.longitude;
-
-      try {
-        // 🔹 Pega nome da cidade pelo lat/lon
-        const r = await fetch(
-          `https://geocoding-api.open-meteo.com/v1/reverse?latitude=${lat}&longitude=${lon}&language=pt`
-        );
-        const d = await r.json();
-
-        if (d?.results?.length) {
-          const c = d.results[0];
-
-          const local = c.country_code === "BR" && c.admin1
-            ? `${c.name} - ${c.admin1}`
-            : `${c.name} - ${c.country}`;
-
-          nomeCidade.innerText = local;
-          paisSelecionado = c.country_code;
-          estadoSelecionado = c.admin1 ?? null;
-
-        } else {
-          nomeCidade.innerText = "Localização atual";
-        }
-
-      } catch {
-        nomeCidade.innerText = "Localização atual";
-      }
-
-      
-    },
-    () => {
-      nomeCidade.innerText = "Permissão negada";
-    }
-  );
-
-});
 
 </script>
 </body>
