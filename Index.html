@@ -92,19 +92,19 @@ input{
 .linha-info{margin-top:6px;font-size:14px;}
 .linha-status{margin-top:6px;font-size:13px;font-weight:bold;padding:6px;border-radius:8px;}
 
-.bom{background:#2e7d32;}
+.bom{background:#f9a825;color:#000;}
 .chuva{background:#f9a825;color:#000;}
-.tempestade{background:#c62828;}
+.tempestade{background:#f9a825;color:#000;}
 
 /* =========================
    QUALIDADE DO AR
 ========================= */
-.aq-bom{color:#0A3D0A;font-weight:bold;}
-.aq-mod{color:#ffeb3b;font-weight:bold;}
-.aq-ruim{color:#ff9800;font-weight:bold;}
-.aq-muito{color:#f44336;font-weight:bold;}
-.aq-severo{color:#f44336;font-weight:bold;}
-.aq-extremo{color:#b71c1c;font-weight:bold;}
+.aq-bom      { color: #000000; font-weight: bold; }   /* Verde escuro — bom */
+.aq-mod      { color: #000000; font-weight: bold; }   /* Verde claro — moderado */
+.aq-ruim     { color: #000000; font-weight: bold; }   /* Laranja — insalubre para grupos sensíveis */
+.aq-muito    { color: #000000; font-weight: bold; }   /* Laranja avermelhado — muito insalubre */
+.aq-severo   { color: #000000; font-weight: bold; }   /* Vermelho vivo — severo */
+.aq-extremo  { color: #000000; font-weight: bold; }   /* Vermelho escuro — extremo */
 
 /* =========================
    CHUVA
@@ -173,7 +173,7 @@ canvas{
 </header>
 
 <div class="card">
- <input id="cidade" placeholder="Digite a cidade">
+ <input id="cidade" placeholder="Digite a cidade!">
  <div id="lista" class="autocomplete"></div>
 
  <!-- ===== DADOS ATUAIS ===== -->
@@ -200,13 +200,63 @@ canvas{
  <canvas id="grafico"></canvas>
 </div>
 
+<div class="card">
+  <canvas id="graficoMensal"></canvas>
+</div>
+
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/suncalc/1.9.0/suncalc.min.js"></script>
 <script>
+
+function limparTela(){
+  info.innerHTML = "⏳ Carregando dados...";
+  linhaPressao.innerHTML = "";
+  linhaVisibilidade.innerHTML = "";
+  linhaVento.innerHTML = "";
+  linhaUmidade.innerHTML = "";
+  linhaNevoeiro.innerHTML = "";
+  linhaLua.innerHTML = "";
+  linhaStatus.innerHTML = "";
+  linhaAviso.innerHTML = "";
+  linhaSol.innerHTML = "";
+  previsao5.innerHTML = "";
+
+  // destrói gráficos antigos
+  chart?.destroy(); 
+  chartPrevisao?.destroy();
+  chartMensal?.destroy();
+
+  chart = null;
+  chartPrevisao = null;
+  chartMensal = null;
+}
+
 /* =========================
    VARIÁVEIS GLOBAIS
 ========================= */
 let lat=null, lon=null;
 let chart=null, chartPrevisao=null;
 let histSalvo=null;
+let pressaoTexto = "";
+let chartMensal = null;
+let paisSelecionado = "";
+let oni = -0.6;
+let estadoSelecionado = null;
+let tempCidade = null;
+let dadosCidade = null;
+
+async function obterEstadoPorLatLon(lat, lon){
+  try{
+    const r = await fetch(
+      `https://geocoding-api.open-meteo.com/v1/reverse` +
+      `?latitude=${lat}&longitude=${lon}&language=pt`
+    );
+    const d = await r.json();
+    return d?.results?.[0]?.admin1 ?? null;
+  }catch{
+    return null;
+  }
+}
 
 /* =========================
    ELEMENTOS DOM
@@ -227,6 +277,154 @@ linhaSol=document.getElementById("linha-sol"),
 previsao5=document.getElementById("previsao-5dias"),
 btnModo=document.getElementById("toggleModo");
 
+
+/* =========================
+   Distância das cidades até a praia 
+========================= */
+function distanciaKm(lat1, lon1, lat2, lon2){
+  const R = 6371; // raio da Terra em km
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+
+  const a =
+    Math.sin(dLat/2) * Math.sin(dLat/2) +
+    Math.cos(lat1 * Math.PI/180) *
+    Math.cos(lat2 * Math.PI/180) *
+    Math.sin(dLon/2) * Math.sin(dLon/2);
+
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  return R * c;
+}
+
+/* =========================
+   Pontos GPS litorânea 
+========================= */
+const pontosLitoralBrasil = [
+  // RS
+  [-33.3, -53.4], // Torres
+  [-31.4, -51.2], // Tramandaí
+  [-30.0, -50.2], // Capão da Canoa
+  [-29.2, -49.7], // Imbé
+  [-29.0, -49.7], // Xangri-lá
+  [-29.0, -50.0], // Osório
+  [-30.3, -50.2], // Palmares do Sul
+
+  // SC
+  [-26.7, -48.6], // Barra Velha
+  [-26.8, -48.6], // Balneário Piçarras
+  [-27.0, -48.6], // Itajaí
+  [-27.1, -48.6], // Navegantes
+  [-27.1, -48.6], // Porto Belo
+  [-27.1, -48.6], // Bombinhas
+  [-27.6, -48.6], // Balneário Camboriú
+  [-27.6, -48.6], // Itapema
+  [-27.7, -48.5], // Tijucas
+  [-27.5, -48.5], // Florianópolis
+  [-27.6, -48.5], // São José
+  [-28.0, -48.7], // Palhoça
+  [-28.1, -48.7], // Imbituba
+  [-28.5, -49.0], // Garopaba
+  [-28.5, -49.0], // Laguna
+  [-28.7, -49.0], // Pescaria Brava
+  [-28.8, -48.7], // Bombinhas (parte sul)
+  [-27.3, -48.5], // Brusque (próximo ao litoral)
+  
+  // PR
+  [-25.5, -48.5], // Matinhos
+  [-25.6, -48.5], // Caiobá
+  [-25.7, -48.5], // Guaratuba
+  [-25.9, -48.6], // Pontal do Paraná
+  [-26.0, -48.5], // Paranaguá
+  [-25.5, -48.7], // Ilha do Mel
+
+  // SP
+  [-23.5, -45.4], // Santos
+  [-23.9, -45.4], // Guarujá
+  [-24.0, -45.5], // Bertioga
+  [-23.8, -45.5], // Ilhabela
+  [-24.6, -46.7], // Ubatuba
+  [-23.6, -45.4], // São Sebastião
+  [-24.3, -46.6], // Caraguatatuba
+  [-24.1, -46.6], // Praia das Toninhas
+
+  // RJ
+  [-22.8, -43.2], // Rio de Janeiro
+  [-23.0, -43.1], // Niterói
+  [-22.6, -41.8], // Arraial do Cabo
+  [-22.9, -42.0], // Búzios
+  [-22.7, -42.0], // Cabo Frio
+  [-22.5, -41.7], // São Pedro da Aldeia
+  [-22.5, -42.0], // Araruama
+  [-22.4, -42.0], // Iguaba Grande
+  [-22.3, -42.0], // Saquarema
+
+  // ES
+  [-20.3, -40.3], // Vitória
+  [-20.4, -40.3], // Vila Velha
+  [-19.0, -40.3], // Guarapari
+  [-18.9, -39.9], // Anchieta
+  [-19.2, -40.1], // Piúma
+  [-18.8, -39.8], // Itapemirim
+  [-18.7, -39.7], // Marataízes
+
+  // BA
+  [-17.9, -39.0], // Porto Seguro
+  [-16.5, -39.1], // Ilhéus
+  [-14.8, -39.0], // Itacaré
+  [-13.0, -38.5], // Salvador
+  [-12.9, -38.5], // Lauro de Freitas
+  [-12.6, -38.0], // Praia do Forte
+  [-12.5, -38.0], // Imbassaí
+  [-11.5, -37.5], // Santo André
+  [-11.3, -37.5], // Cumuruxatiba
+
+  // AL
+  [-9.0, -35.7], // Maceió
+  [-9.4, -35.7], // Maragogi
+  [-9.3, -35.8], // Japaratinga
+
+  // PE
+  [-8.0, -34.9], // Recife
+  [-8.1, -34.9], // Olinda
+  [-8.4, -35.0], // Porto de Galinhas
+  [-7.9, -35.1], // Ipojuca
+
+  // RN
+  [-5.8, -35.2], // Natal
+  [-5.9, -35.1], // Pipa
+  [-5.8, -35.0], // Tibau do Sul
+
+  // CE
+  [-3.7, -38.5], // Fortaleza
+  [-3.8, -38.5], // Aquiraz
+  [-3.5, -38.6], // Canoa Quebrada
+  [-3.6, -38.7], // Aracati
+
+  // MA
+  [-2.5, -44.3], // São Luís
+  [-2.7, -44.3], // Alcântara
+  [-2.8, -44.2], // Raposa
+
+  // PA
+  [-0.7, -48.5], // Belém
+  [-0.8, -48.5], // Barcarena
+  [-0.9, -48.6], // Maracanã
+];
+
+/* =======================
+Cidade possui praia 
+========================= */
+function cidadePossuiPraia(pais, lat, lon){
+  if (pais !== "BR") return false;
+
+  return pontosLitoralBrasil.some(
+    ([plLat, plLon]) =>
+      distanciaKm(lat, lon, plLat, plLon) <= 70
+  );
+}
+
+
+
 /* =========================
    MODO DIA / NOITE
 ========================= */
@@ -234,8 +432,8 @@ function aplicarModo(m){
  document.body.classList.toggle("dark", m==="dark");
 
  btnModo.innerHTML = m==="dark"
-  ? "☀️ <span style='font-size:10px'>Modo Dia</span>"
-  : "🌙 <span style='font-size:10px'>Modo Noite</span>";
+  ? "☀️<span style='font-size:10px'>Modo Dia</span>"
+  : "🌙<span style='font-size:10px'>Modo Noite</span>";
 
  localStorage.setItem("modo", m);
  if(histSalvo) montarGrafico(histSalvo);
@@ -263,33 +461,55 @@ cidade.addEventListener("focus",()=>{
 /* =========================
    AUTOCOMPLETE DE CIDADES
 ========================= */
-cidade.addEventListener("input",async()=>{
- lista.innerHTML="";
- if(cidade.value.length < 2) return;
+cidade.addEventListener("input", async () => {
+  lista.innerHTML = "";
 
- const r = await fetch(
-  `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(cidade.value)}&count=10&language=pt`
- );
- const d = await r.json();
- if(!d.results) return;
+  if (cidade.value.length < 2) return;
 
- d.results.forEach(c=>{
-  const local = c.country_code==="BR" && c.admin1
-   ? `${c.name} - ${c.admin1}`
-   : `${c.name} - ${c.country}`;
+  const r = await fetch(
+    `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(cidade.value)}&count=10&language=pt`
+  );
 
-  const div = document.createElement("div");
-  div.innerText = local;
-  div.onclick = ()=>{
-   cidade.value = local;
-   nomeCidade.innerText = local;
-   lat = c.latitude;
-   lon = c.longitude;
-   lista.innerHTML = "";
-   buscar();
-  };
-  lista.appendChild(div);
- });
+  const d = await r.json();
+  if (!d.results) return;
+
+  // 🔥 Prioriza cidades do Brasil
+  d.results.sort((a, b) => {
+    if (a.country_code === "BR" && b.country_code !== "BR") return -1;
+    if (a.country_code !== "BR" && b.country_code === "BR") return 1;
+    return 0;
+  });
+
+  d.results.forEach(c => {
+
+    let local;
+
+    if (c.country_code === "BR" && c.admin1) {
+      local = `${c.name} - ${c.admin1}`;
+    } else if (c.admin1) {
+      local = `${c.name} - ${c.admin1} - ${c.country}`;
+    } else {
+      local = `${c.name} - ${c.country}`;
+    }
+
+    const div = document.createElement("div");
+    div.innerText = local;
+
+    div.onclick = () => {
+      cidade.value = local;
+      nomeCidade.innerText = local;
+      lat = c.latitude;
+      lon = c.longitude;
+      paisSelecionado = c.country_code;
+      estadoSelecionado = c.admin1 ?? null;
+
+      lista.innerHTML = "";
+      limparTela();
+      buscar();
+    };
+
+    lista.appendChild(div);
+  });
 });
 
 /* =========================
@@ -307,13 +527,17 @@ cidade.addEventListener("keydown",e=>{
 ========================= */
 async function buscar(){
  if(lat===null || lon===null){
-  info.innerHTML="📍 Selecione a cidade na lista";
+  info.innerHTML="📍Selecione a cidade na lista";
   return;
  }
 
- /* ===== API ATUAL ===== */
+  /* ===== API ATUAL ===== */
  const rAtual = await fetch(
-  `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&hourly=apparent_temperature,relativehumidity_2m,pressure_msl,precipitation,precipitation_probability,visibility,cloudcover&daily=sunrise,sunset,temperature_2m_min,temperature_2m_max,precipitation_sum,precipitation_probability_max,uv_index_max&timezone=auto`
+  `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}` +
+  `&current_weather=true` +
+  `&hourly=apparent_temperature,relativehumidity_2m,pressure_msl,precipitation,precipitation_probability,visibility,cloudcover,windspeed_10m` +
+  `&daily=sunrise,sunset,temperature_2m_min,temperature_2m_max,precipitation_sum,precipitation_probability_max,uv_index_max` +
+  `&timezone=auto`
  );
  const atual = await rAtual.json();
 
@@ -340,22 +564,36 @@ async function buscar(){
   if(d < minAQ){ minAQ = d; idxAQ = i; }
  });
 
- /* =========================
-    PRÓXIMA CHUVA
- ========================= */
- let proximaChuva = "—";
- let probChuva = 0;
+function mostrarCidade(nome, pais) {
+  const el = document.getElementById("localizacao");
 
- for(let i = idx; i < atual.hourly.time.length; i++){
+  if (!el) return;
+
+  if (pais && pais !== "BR") {
+    el.innerHTML = `📍 ${nome} - ${pais}`;
+  } else {
+    el.innerHTML = `📍 ${nome}`;
+  }
+}
+
+/* =========================
+   PRÓXIMA CHUVA
+========================= */
+let proximaChuva = "—";
+let probChuva = 0;
+let idxChuva = -1; // índice da próxima chuva
+
+for(let i = idx; i < atual.hourly.time.length; i++){
   const mm = atual.hourly.precipitation?.[i] ?? 0;
   const prob = atual.hourly.precipitation_probability?.[i] ?? 0;
 
   if(mm > 0 || prob >= 20){
-   proximaChuva = atual.hourly.time[i].slice(11,16);
-   probChuva = prob;
-   break;
+    proximaChuva = atual.hourly.time[i].slice(11,16); // ainda mantemos hora para compatibilidade
+    probChuva = prob;
+    idxChuva = i; // guarda o índice
+    break;
   }
- }
+}
 
  /* =========================
     UV
@@ -365,19 +603,48 @@ async function buscar(){
 
  info.innerHTML = `
   <span style="font-size:13px">
-   🌡️ <b>${atual.current_weather.temperature}°C</b> • 
-   Sensação: ${atual.hourly.apparent_temperature[idx]}°C • 
-   ☀️ UV: <b class="${classe}">${uvIndex}</b> (${descricao})
+   🌡️<b>${atual.current_weather.temperature}°C </b>(
+   Sensação: ${atual.hourly.apparent_temperature[idx]}°C) 
+   • ☀️UV: <b class="${classe}">${uvIndex}</b> (${descricao})
   </span>`;
+  
   /* =========================
-    QUALIDADE DO AR / PRESSÃO
- ========================= */
- const pm25 = aq.hourly.pm2_5[idxAQ] ?? 0;
- const usAQI = pm25ToUSAQI(pm25);
+   QUALIDADE DO AR (AQI)
+========================= */
+let usAQI = 0;
 
- linhaPressao.innerHTML =
-  `🌬️ Pressão: <b>${atual.hourly.pressure_msl[idx]} hPa</b> • ` +
-  `🌫️ Qual. Ar: ${formatarAQ(usAQI)}`;
+if (aq?.hourly?.pm2_5?.length && typeof idxAQ === "number") {
+  const pm25 = aq.hourly.pm2_5[idxAQ] ?? 0;
+  usAQI = pm25ToUSAQI(pm25);
+}
+  
+/* =========================
+   PRESSÃO ATMOSFÉRICA (ATUAL REAL)
+========================= */
+let pressaoExibir = "—";
+
+// prioridade máxima: valor atual real
+if (typeof atual?.current_weather?.pressure_msl === "number") {
+  pressaoExibir = atual.current_weather.pressure_msl;
+}
+// fallback apenas se não existir
+else if (typeof atual?.hourly?.pressure_msl?.[idx] === "number") {
+  pressaoExibir = atual.hourly.pressure_msl[idx];
+}
+let pressaoExibir_masc = atual.hourly.pressure_msl[idx];
+
+// Índice do dia
+const diaDoIdx = Math.floor(idx / 24);
+const horarioOuro = calcularHorarioOuroDoDiaCompacto(
+  atual.daily.sunrise[diaDoIdx],
+  atual.daily.sunset[diaDoIdx]
+);
+
+linhaPressao.innerHTML = `
+  🎈Pressão: <b>${(atual.hourly.pressure_msl[idx] ).toFixed(1)} hPa</b>
+  ${/*pressaoTexto ? ` | <span style="font-size:13px; opacity:0.9">${pressaoTexto}</span>` :*/ ""}
+`;
+ 
 
  /* =========================
     VISIBILIDADE (VALOR VÁLIDO)
@@ -386,16 +653,16 @@ async function buscar(){
 
  for(let i = idx; i < atual.hourly.visibility.length; i++){
   const v = atual.hourly.visibility[i];
-  if(v != null && v <= 20000){ vis = v; break; }
+  if(v != null && v <= 30000){ vis = v; break; }
  }
  if(vis === null){
   for(let i = idx-1; i >= 0; i--){
    const v = atual.hourly.visibility[i];
-   if(v != null && v <= 20000){ vis = v; break; }
+   if(v != null && v <= 30000){ vis = v; break; }
   }
  }
 
- const visibilidade = vis != null ? (vis/1000).toFixed(1) : "—";
+ const visibilidade = vis != null ? (vis/1600).toFixed(2) : "—";
 
  /* =========================
     DIREÇÃO DO VENTO
@@ -416,18 +683,43 @@ async function buscar(){
  const direcaoVento = degParaDirecao(deg);
 
  linhaVisibilidade.innerHTML =
-  `👁️ Visib.: <b>${visibilidade} km</b> • ` +
-  `💨 Vento: <b>${atual.current_weather.windspeed} km/h</b> ` +
+  `👁️Visibil.:<b>${visibilidade} km</b> • ` +
+  `💨Vento:<b>${atual.current_weather.windspeed} km/h</b> ` +
   `(<b>${direcaoVento}</b>)`;
 
- /* =========================
-    NEVOEIRO
+/* =========================
+    RAJADAS DE VENTO
  ========================= */
- let nevoeiro = "Ausente 🌤️";
- if(visibilidade !== "—" && parseFloat(visibilidade) < 1){
-  nevoeiro = "Presente 🌫️";
+ let rajadas = "—";
+ if(atual.hourly.windspeed_10m?.[idx] != null){
+  rajadas = (atual.hourly.windspeed_10m[idx] * 1.6).toFixed(1);
  }
- linhaNevoeiro.innerHTML = `🌫️ Nevoeiro: <b>${nevoeiro}</b>`;
+
+/* =========================
+    NEVOEIRO + RAJADAS 
+ ========================= */
+let nevoeiro = "Ausente🌤️";
+
+// nevoeiro pela visibilidade (em METROS)
+if(vis !== null){
+  if(vis <= 1000){
+    nevoeiro = "Nevoeiro Denso ";
+  }
+  else if(vis <= 2000){
+    nevoeiro = "Nevoeiro Fraco ";
+  }
+}
+
+// confirmação por umidade + vento
+const umid = atual.hourly.relativehumidity_2m[idx];
+const vento = atual.current_weather.windspeed;
+
+if(vis !== null && umid >= 84 && vento <= 4){
+  nevoeiro = "Nevoeiros Esparsos ";
+}
+
+linhaNevoeiro.innerHTML =
+ `🌫️ Nevoeiro: <b>${nevoeiro}</b> • 🌬️Rajadas: <b>${rajadas} km/h</b>`;
 
  /* =========================
     UMIDADE / CHUVA / NEBULOSIDADE
@@ -449,33 +741,441 @@ async function buscar(){
  const nebulosidade = neb !== null ? neb : "—";
 
  linhaUmidade.innerHTML =
-  `💧 Umidade: <b>${atual.hourly.relativehumidity_2m[idx]}%</b> • ` +
-  `🌧️ Chuva: <b class="${formatarChuvaClasse(chuvaHora)}">${chuvaHora}%</b> • ` +
-  `☁️ Nebulosidade: <b>${nebulosidade}%</b>`;
+  `💧Umidade:<b>${atual.hourly.relativehumidity_2m[idx]}%</b> • ` +
+  `🌧️Chuva:<b class="${formatarChuvaClasse(chuvaHora)}">${chuvaHora}%</b> • ` +
+  `☁️Nebulosidade:<b>${nebulosidade}%</b>`;
+ 
+ 
+ function estacaoDoAno(data = new Date(), lat = -30) {
+  const d = data.getDate();
+  const m = data.getMonth() + 1;
+  const norte = lat >= 0;
 
- /* =========================
-    LUA
- ========================= */
- const lua = calcularLua(new Date());
- linhaLua.innerHTML =
-  `🌙 Lua: <b>${lua.fase}</b> • Iluminação: <b>${lua.iluminacao}%</b>`;
+  if (norte) {
+    // Hemisfério Norte
+    if ((m === 12 && d >= 21) || (m <= 3 && (m < 3 || d <= 20))) {
+      return "Inverno";
+    }
+    if ((m === 3 && d >= 21) || (m <= 6 && (m < 6 || d <= 20))) {
+      return "Primavera";
+    }
+    if ((m === 6 && d >= 21) || (m <= 9 && (m < 9 || d <= 22))) {
+      return "Verão";
+    }
+    return "Outono";
+  }
 
- /* =========================
-    STATUS CLIMÁTICO
- ========================= */
- definirStatus(
+  // Hemisfério Sul
+  if ((m === 12 && d >= 21) || (m <= 3 && (m < 3 || d <= 20))) {
+    return "Verão";
+  }
+  if ((m === 3 && d >= 21) || (m <= 6 && (m < 6 || d <= 20))) {
+    return "Outono";
+  }
+  if ((m === 6 && d >= 21) || (m <= 9 && (m < 9 || d <= 22))) {
+    return "Inverno";
+  }
+  return "Primavera";
+}
+
+// =========================
+// FUNÇÃO HORÁRIO DE OURO COMPACTA
+// =========================
+function calcularHorarioOuroDoDiaCompacto(lat, lon, data = new Date()) {
+  const t = SunCalc.getTimes(data, lat, lon);
+  const pad = n => String(n).padStart(2, "0");
+
+  // Golden hour: 1 hora após nascer do sol até 1 hora antes do pôr do sol
+  const inicio = new Date(t.sunrise.getTime() + 0*60*60*1000);
+  const fim = new Date(t.sunset.getTime() - 0*60*60*1000);
+
+  return `${pad(inicio.getHours())}:${pad(inicio.getMinutes())} - ${pad(fim.getHours())}:${pad(fim.getMinutes())}`;
+}
+const fotografia = calcularHorarioOuroDoDiaCompacto(lat, lon, new Date());
+
+function calcularHorarioOuroDoDia(lat, lon, data = new Date(), timezone = 'America/Sao_Paulo') {
+  const t = SunCalc.getTimes(data, lat, lon);
+
+  // Horário de ouro: manhã e tarde
+  const inicioManha = new Date(t.sunrise.getTime() + 1*60*60*1000);
+  const fimManha    = new Date(t.sunrise.getTime() + 2.5*60*60*1000);
+  const inicioTarde = new Date(t.sunset.getTime() - 2.5*60*60*1000);
+  const fimTarde    = new Date(t.sunset.getTime() - 0.5*60*60*1000);
+
+  // Formatar hora no fuso da cidade
+  const formatar = d => new Intl.DateTimeFormat('pt-BR', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+    timeZone: timezone
+  }).format(d);
+
+  // Monta a string com “às” e “e”
+  return `${formatar(inicioManha)} às ${formatar(fimManha)} e ${formatar(inicioTarde)} às ${formatar(fimTarde)}`;
+}
+
+
+/* Montar painel climático */
+montarPainelClimatico({
+  atual,
+  idx,
+  idxChuva,
+  probChuva,
+  pais: paisSelecionado,   
+  estado: estadoSelecionado ,
+  cidade: nomeCidade.innerText,
+  nebulosidade 
+});
+
+async function montarPainelClimatico(
+{ atual, idx, idxChuva, probChuva, pais, estado,cidade, nebulosidade }) {
+const lat = atual.latitude ?? latitudeSelecionada ?? -30;
+const estacao = estacaoDoAno(new Date(), lat);
+const lua = calcularLua(new Date());
+const iluminacaoLua = Number(lua.iluminacao);
+
+const estrelas = avaliarEstrelas(
+  nebulosidade,
+  atual.hourly.precipitation_probability[idx],
+  iluminacaoLua
+);
+
+  // 🔹 normalizações
+  const siglaEstado = normalizarEstadoParaSigla(estado);
+
+
+  /* ===== LUA ===== */
+  
+  linhaLua.innerHTML =
+    `🌙Lua: <b>${lua.fase}</b> • Luar: <b>${lua.iluminacao}%</b> • Idade: <b>${lua.idade} dias</b>`;
+
+  /* ===== STATUS BASE (COLORIDO) ===== */
+  let statusTexto = "";
+  if(atual.hourly.precipitation[idx] > 8 || atual.hourly.pressure_msl[idx] < 1005){
+    linhaStatus.className = "linha-status tempestade";
+    statusTexto = "⛈️Risco de Tempestade";
+  }
+  else if(atual.hourly.precipitation[idx] > 1 || atual.hourly.pressure_msl[idx] < 1012){
+    linhaStatus.className = "linha-status chuva";
+    statusTexto = "🌧️Possibilidade de Chuva";
+  }
+  else{
+    linhaStatus.className = "linha-status bom";
+    statusTexto = "☀️Tempo bom";
+  }
+
+  /* ===== CHUVA PREVISTA ===== */
+  let chuvaTexto = "";
+  if (Number.isInteger(idxChuva) && idxChuva >= 0) {
+    const t = new Date(atual.hourly.time[idxChuva]);
+    
+  // soma 3 hora
+     t.setHours(t.getHours() + 3); /* soma 3 horas para ajustar o tempo de chuva*/
+    const dataHora =
+      `${String(t.getDate()).padStart(2,"0")}/` +
+      `${String(t.getMonth()+1).padStart(2,"0")}/` +
+      `${t.getFullYear()} - ` +
+      `${String(t.getHours()).padStart(2,"0")}:` +
+      `${String(t.getMinutes()).padStart(2,"0")} hs`;
+      
+
+const chuvaAtual = Number(atual?.hourly?.precipitation?.[idx] ?? 0);
+
+if (chuvaAtual > 0) {
+  chuvaTexto = "";
+} else if (dataHora) {
+  chuvaTexto = `<span style="color:#8B008B; font-size:14px;">
+  Prox.Chuva prevista:</span> <b>${dataHora} (${probChuva}%)</b>`;
+}
+      
+    }
+
+  /* ===== PRESSÃO MÉDIA */
+  pressaoTexto = "";
+  if(histSalvo && histSalvo.time?.length){
+    const dias={};
+    histSalvo.time.forEach((t,i)=>{
+      const d=t.split("T")[0];
+      dias[d] ??= {p:[], mm:0};
+      dias[d].p.push(histSalvo.pressure_msl[i]);
+      dias[d].mm += histSalvo.precipitation[i];
+    });
+    const press=[];
+    Object.values(dias).forEach(d=>{
+      if(d.mm>=1) press.push(d.p.reduce((a,b)=>a+b)/d.p.length);
+    });
+    if(press.length > 0){
+      const m = press.reduce((a,b)=>a+b)/press.length;
+      pressaoTexto = `🌧️Com pressão média:<b>${m.toFixed(1)} hPa</b>`;
+    } else {
+      pressaoTexto = `🌧️Dados insuficientes para calcular pressão média de chuva`;
+    }
+  } else {
+    pressaoTexto = `🌧️Dados históricos não disponíveis`;
+  }
+
+  /* ===== FENÔMENO ONI ===== */
+  let fenomeno = "Neutro";
+  if (oni >= 0.5) fenomeno = "El Niño";
+  else if (oni <= -0.5) fenomeno = "La Niña";
+
+/* ===== AVALIAÇÕES  Atividades ===== */
+const pesca = avaliarPesca(
   atual.hourly.pressure_msl[idx],
+  atual.current_weather.windspeed,
   atual.hourly.precipitation[idx]
- );
+);
 
- const horaAtualCidade =
-  atual.current_weather?.time?.slice(11,16) ?? "—";
+const churrascoTexto = avaliarChurrasco(
+  atual.current_weather.temperature,
+  atual.hourly.precipitation_probability[idx],
+  atual.hourly.windspeed_10m[idx]
+);
 
- if(proximaChuva !== "—"){
-  linhaStatus.innerHTML +=
-   ` • 🌧️Chuva às: <b>${proximaChuva} (${probChuva}%)</b> • ` + `Hora coleta:${horaAtualCidade}`;
-  linhaStatus.style.fontSize = "12px";
- }
+const corrida = avaliarCorrida(
+  atual.current_weather.temperature,
+  atual.hourly.precipitation_probability[idx],
+  atual.current_weather.windspeed,
+  atual.daily.uv_index_max?.[0] ?? 0
+);
+
+const caminhada = avaliarCaminhada(
+  atual.current_weather.temperature,
+  atual.hourly.precipitation_probability[idx],
+  atual.current_weather.windspeed,
+  atual.daily.uv_index_max?.[0] ?? 0,
+  vis
+);
+
+const ciclismo = avaliaCiclismo(
+  atual.hourly.precipitation_probability[idx],
+  atual.current_weather.windspeed,
+  atual.hourly.pressure_msl[idx]
+);
+
+
+
+const aviao = avaliarAviao(
+  atual.current_weather.windspeed,
+  vis,
+  atual.hourly.precipitation[idx],
+  statusTexto.includes("Tempestade")
+);
+
+const carro = avaliarCarro(
+  atual.hourly.precipitation_probability[idx],
+  vis,
+  atual.current_weather.windspeed
+);
+
+// Exemplo de variáveis já disponíveis do clima da cidade pesquisada
+tempCidade = atual.current_weather?.temperature ?? null;
+const tempAtual = tempCidade; // temperatura atual
+const chuvaProbAtual = atual.hourly?.precipitation_probability[idx] ?? 0;
+const ventoAtual = atual.current_weather?.windspeed ?? 0;
+const aqAtual = usAQI; // qualidade do ar
+
+// Avaliar moto
+const moto = avaliarMoto(tempAtual, chuvaProbAtual, ventoAtual, aqAtual);
+
+const piscina = avaliarPiscina(
+  atual.current_weather.temperature,
+  atual.hourly.precipitation_probability[idx],
+  atual.current_weather.windspeed
+);
+
+const alergiasTexto = avaliarAlergias(
+  atual.hourly.relativehumidity_2m?.[idx] ?? 50,
+  atual.hourly.windspeed_10m?.[idx] ?? 0,
+  estacao
+);
+
+const gripeTexto = avaliarGripeResfriado(
+  atual.hourly.relativehumidity_2m?.[idx] ?? 50,
+  atual.current_weather.temperature
+);
+
+const mosquitosTexto = avaliarMosquitos(
+  atual.hourly.relativehumidity_2m?.[idx] ?? 50,
+  atual.hourly.precipitation_probability?.[idx] ?? 0,
+  atual.current_weather.temperature
+);
+
+const pragasTexto = avaliarPragas(
+  atual.current_weather.temperature,
+  atual.hourly.precipitation_probability[idx],
+  atual.hourly.relativehumidity_2m[idx]
+);
+
+  /* ===== IMPACTO SOMENTE BRASIL ===== */
+  let impactoTexto = "";
+  const paisNorm = (pais || "").toUpperCase().trim();
+
+  if (paisNorm === "BR" || paisNorm === "BRA" || paisNorm.includes("BRASIL") || paisNorm.includes("BRAZIL")) {
+
+    const mapaEstados = {
+      "RIO GRANDE DO SUL":"RS","SANTA CATARINA":"SC","PARANA":"PR",
+      "SAO PAULO":"SP","RIO DE JANEIRO":"RJ","MINAS GERAIS":"MG","ESPIRITO SANTO":"ES",
+      "MATO GROSSO":"MT","MATO GROSSO DO SUL":"MS","GOIAS":"GO","DISTRITO FEDERAL":"DF",
+      "BAHIA":"BA","SERGIPE":"SE","ALAGOAS":"AL","PERNAMBUCO":"PE","PARAIBA":"PB",
+      "RIO GRANDE DO NORTE":"RN","CEARA":"CE","PIAUI":"PI","MARANHAO":"MA",
+      "AMAZONAS":"AM","PARA":"PA","ACRE":"AC","RONDONIA":"RO","RORAIMA":"RR",
+      "AMAPA":"AP","TOCANTINS":"TO"
+    };
+
+    let est = (estado || "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toUpperCase()
+      .replace("ESTADO DE ", "")
+      .replace(" STATE", "")
+      .replace(" REGION", "")
+      .trim();
+
+    est = mapaEstados[est] ?? est;
+
+    const regiaoPorEstado = {
+      RS:"Sul",SC:"Sul",PR:"Sul",
+      SP:"Sudeste",RJ:"Sudeste",MG:"Sudeste",ES:"Sudeste",
+      MT:"Centro-Oeste",MS:"Centro-Oeste",GO:"Centro-Oeste",DF:"Centro-Oeste",
+      BA:"Nordeste",SE:"Nordeste",AL:"Nordeste",PE:"Nordeste",PB:"Nordeste",
+      RN:"Nordeste",CE:"Nordeste",PI:"Nordeste",MA:"Nordeste",
+      AM:"Norte",PA:"Norte",AC:"Norte",RO:"Norte",RR:"Norte",AP:"Norte",TO:"Norte"
+    };
+
+    const impacto = {
+      Sul:{
+        "El Niño":"Chuvas acima da média e temporais",
+        "La Niña":"Frio intenso e tempo mais seco",
+        "Neutro":"Clima próximo do normal"
+      },
+      Sudeste:{
+        "El Niño":"Calor forte e chuva irregular",
+        "La Niña":"Verões mais chuvosos",
+        "Neutro":"Padrão típico"
+      },
+      "Centro-Oeste":{
+        "El Niño":"Calor e chuva mal distribuída",
+        "La Niña":"Chuvas mais constantes",
+        "Neutro":"Condições normais"
+      },
+      Nordeste:{
+        "El Niño":"Tendência a seca",
+        "La Niña":"Mais episódios de chuva",
+        "Neutro":"Variável"
+      },
+      Norte:{
+        "El Niño":"Menos chuva na Amazônia",
+        "La Niña":"Chuvas acima da média",
+        "Neutro":"Regime normal"
+      }
+    };
+
+    const regiao = regiaoPorEstado[est];
+    if (regiao && impacto[regiao]?.[fenomeno]) {
+      impactoTexto = `Impacto no ${regiao}:${impacto[regiao][fenomeno]}`;
+    }
+  }
+
+// Possuí praia a cidade 
+const possuiPraia = cidadePossuiPraia(
+  (pais || "").toUpperCase(),
+  lat,
+  lon
+);
+
+const praia = possuiPraia
+  ? avaliarPraia(
+      atual.current_weather.temperature,
+      atual.hourly.precipitation_probability[idx],
+      atual.current_weather.windspeed,
+      atual.daily.uv_index_max?.[0] ?? 0
+    )
+  : "🏖️N/A";
+
+
+// Calcular Horário de Ouro e avaliação de fotografia
+const horarioOuro = calcularHorarioOuroCompacto(atual.daily.sunrise[0], atual.daily.sunset[0]);
+const avaliacaoFoto = avaliarFotografia(
+  atual.current_weather.temperature,
+  nebulosidade,
+  atual.hourly.precipitation_probability[idx],
+  atual.daily.sunrise[0],
+  atual.daily.sunset[0]
+);
+
+// Monta a exibição da fotografia com Horário de Ouro
+const fotografia = `${avaliacaoFoto} (Hora de Ouro: ${horarioOuro})`;
+
+/* ===== MONTA LINHA STATUS FINAL ===== */
+
+const mobileView = true; //Avaliar isto, true = Android / false = desktop
+const alertaTexto = "";
+linhaStatus.innerHTML = `
+  ${!mobileView ? `
+    <div>🕒 Data e Hora da Coleta: <b>${dataHoraLocal ?? ""}</b></div>
+  ` : ""}
+
+  ${chuvaTexto ? `<div>🌧️ ${chuvaTexto}</div>` : ""}
+
+  ${pressaoTexto && !mobileView ? `<div>📉 ${pressaoTexto}</div>` : ""}
+
+  ${alertaTexto ? `<div class="alerta">⚠️ ${alertaTexto}</div>` : ""}
+
+  <div style="margin-top:6px">
+  <b style="color:#8B008B;font-size:14px;">
+    Atividades ao Ar Livre (<b>Qual. do Ar:</b> ${formatarAQ(usAQI)})
+  </b><br>
+  ${corrida ?? ""} 
+  ${caminhada ?? ""} 
+  ${ciclismo ?? ""} 
+  ${estrelas ?? ""} 
+  ${pesca ?? ""} 
+  ${churrascoTexto ? `  🍖${churrascoTexto}` : ""}
+  ${fotografia}
+  
+<!--</div>
+  <div style="margin-top:4px">
+    <b style="color:#8B008B;font-size:14px;">
+Fotografia</b><br>
+  ${fotografia}
+  </div>
+-->
+  <div style="margin-top:4px">
+    <b style="color:#8B008B;font-size:14px;">Praia / Piscina</b><br>
+    ${praia ?? ""} ${piscina ?? ""}
+  </div>
+
+<div style="margin-top:4px">
+  <b style="color:#8B008B;font-size:14px;">Trânsito / Viagens</b><br>
+  ${aviao ?? ""} ${carro ?? ""} ${moto ?? ""}
+</div>
+
+  ${alergiasTexto ? `
+  <div style="margin-top:4px">
+    <b style="color:#8B008B;font-size:14px;">Saúde/Bem Estar</b><br>
+   </b>${alergiasTexto} 
+    <b style="color:#8B008B;font-size:14px;">  (😷🌡️🤒)</b>${gripeTexto}
+  </div>
+` : ""}
+
+  ${mosquitosTexto || pragasTexto ? `
+  <div style="margin-top:4px">
+    <b style="color:#8B008B;font-size:14px;">Pragas/Insetos</b><br>
+    ${mosquitosTexto}${pragasTexto ? ` ${pragasTexto}` : ""}
+  </div>
+` : ""}
+
+  <div style="margin-top:6px">
+    <b style="color:#8B008B;font-size:14px;">🗓️ Estação:</b> ${estacao ?? "-"}
+  </div>
+
+  <div>
+    🌊 <b style="color:#8B008B;font-size:14px;">Fenômeno:</b> ${fenomeno ?? "-"}${impactoTexto ? ` (${impactoTexto})` : ""}
+  </div>
+`;
+}
+
  /* =========================
     LINHA DO SOL
  ========================= */
@@ -501,6 +1201,7 @@ async function buscar(){
 
  calcularPressaoChuva(hist.hourly);
  montarGrafico(hist.hourly);
+ buscarTemperaturasMensais();
 }
 
 /* =========================
@@ -518,6 +1219,334 @@ function pm25ToUSAQI(pm25){
 }
 
 /* =========================
+   HISTÓRICO MENSAL (12 MESES)
+========================= */
+async function buscarTemperaturasMensais(){
+  const hoje = new Date();
+  const inicio = new Date(hoje.getFullYear()-1, hoje.getMonth(), 1);
+
+  const r = await fetch(
+    `https://archive-api.open-meteo.com/v1/archive?latitude=${lat}&longitude=${lon}` +
+    `&start_date=${inicio.toISOString().split("T")[0]}` +
+    `&end_date=${hoje.toISOString().split("T")[0]}` +
+    `&daily=temperature_2m_min,temperature_2m_max,temperature_2m_mean` +
+    `&timezone=auto`
+  );
+  const d = await r.json();
+  if(!d?.daily?.time) return;
+  const meses = {};
+  d.daily.time.forEach((t,i)=>{
+    const m = t.slice(0,7); // YYYY-MM
+    meses[m] ??= {min:[], max:[], med:[]};
+    meses[m].min.push(d.daily.temperature_2m_min[i]);
+    meses[m].max.push(d.daily.temperature_2m_max[i]);
+    meses[m].med.push(d.daily.temperature_2m_mean[i]);
+  });
+  const labels = [];
+  const min = [];
+  const max = [];
+  const med = [];
+  const nomesMes = [
+  "Jan","Fev","Mar","Abr","Mai","Jun",
+  "Jul","Ago","Set","Out","Nov","Dez"
+];
+
+Object.keys(meses).slice(-12).forEach(m=>{
+  const [ano,mes] = m.split("-");
+
+  labels.push(`${nomesMes[Number(mes)-1]}/${ano.slice(2)}`);
+
+  min.push(media(meses[m].min).toFixed(1));
+  max.push(media(meses[m].max).toFixed(1));
+  med.push(media(meses[m].med).toFixed(1));
+});
+
+  montarGraficoMensal(labels, min, med, max);
+}
+
+function media(arr){
+  return arr.reduce((a,b)=>a+b,0) / arr.length;
+}
+
+function montarGraficoMensal(labels, min, med, max){
+  chartMensal?.destroy();
+
+  chartMensal = new Chart(
+    document.getElementById("graficoMensal"),
+    {
+      type:"line",
+      data:{
+        labels,
+        datasets:[
+          {
+            label:"Mínima(°C)",
+            data:min,
+            tension:.35,
+            borderWidth:2,
+            pointRadius:4
+          },
+          {
+            label:"Média(°C)",
+            data:med,
+            tension:.35,
+            borderWidth:3,
+            pointRadius:4
+          },
+          {
+            label:"Máxima(°C)",
+            data:max,
+            tension:.35,
+            borderWidth:2,
+            pointRadius:4
+          }
+        ]
+      },
+      options:{
+        plugins:{
+          title:{
+            display:true,
+            text:"Temperatura Mensal - últimos 12 Meses — Mín., Média e Máx.",
+            font:{size:13, weight:"bold"},
+            color:document.body.classList.contains("dark") ? "#e6edf3" : "#000"
+          }
+        },
+        scales: {
+          x: {
+            ticks: {
+              color: "#006400", // verde escuro
+              font: {
+                size: 12,
+                weight: "bold"
+              }
+            }
+          },
+          y: {
+            ticks: {
+              color: "#006400" // opcional: se quiser o eixo Y também verde escuro
+            }
+          }
+        }
+      }
+    }
+  );
+}
+
+
+/* =========================
+   HORÁRIO DE OURO (Fotografia)
+========================= */
+function calcularHorarioOuro(dia, duracaoMinutos = 90) {
+  if (!dia?.sunrise?.[0] || !dia?.sunset?.[0]) return "-";
+
+  const nascer = new Date(dia.sunrise[0]);
+  const porDoSol = new Date(dia.sunset[0]);
+
+  const manhaInicio = nascer;
+  const manhaFim = new Date(nascer.getTime() + duracaoMinutos * 60000);
+
+  const tardeFim = porDoSol;
+  const tardeInicio = new Date(porDoSol.getTime() - duracaoMinutos * 60000);
+
+  function formatHHMM(dt){
+    return `${String(dt.getHours()).padStart(2,"0")}:${String(dt.getMinutes()).padStart(2,"0")}`;
+  }
+
+  return `📸 Hora de ouro: ${formatHHMM(manhaInicio)}hs–${formatHHMM(manhaFim)}hs / ${formatHHMM(tardeInicio)}hs –${formatHHMM(tardeFim)}hs;`
+}
+
+function avaliarFotografia(temp, nebulosidade, chuvaProb, nascerSol, porSol) {
+  if (chuvaProb > 50 || nebulosidade > 70) return "📷Ruim";
+  if (chuvaProb > 20 || nebulosidade > 40) return "📷Médio";
+  return "📷Bom";
+}
+
+/* =========================
+   Horário de ouro
+========================= */
+function calcularHorarioOuroCompacto(sunrise, sunset){
+  // sunrise e sunset em formato "YYYY-MM-DDTHH:MM"
+  const formatarHora = (d) => `${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`;
+
+  const nascer = new Date(sunrise);
+  const por = new Date(sunset);
+
+  // Manhã: nascer do sol até +1h30
+  const manhaInicio = nascer;
+  const manhaFim = new Date(nascer.getTime() + 90*60*1000); // +1h30 em ms
+
+  // Tarde: -1h30 até pôr do sol
+  const tardeInicio = new Date(por.getTime() - 90*60*1000); 
+  const tardeFim = por;
+
+  return `${formatarHora(manhaInicio)} as ${formatarHora(manhaFim)} e ${formatarHora(tardeInicio)} as ${formatarHora(tardeFim)}`;
+}
+
+function avaliarCorrida(temp, chuva, vento, uv){
+  if (temp >= 15 && temp <= 28 && chuva < 20 && vento <= 12 && uv <= 7)
+    return "🏃Boa ";
+  if (temp >= 10 && temp <= 32 && chuva < 40)
+    return "🏃Regular ";
+  return "🏃Não indicada ";
+}
+
+function avaliarCaminhada(temp, chuvaProb, vento, uv, vis) {
+  if (chuvaProb > 60 || vento > 30 || vis < 1500 || temp > 35 || temp < 5)
+    return "🚶Ruim ";
+  if (
+    (temp >= 10 && temp < 15) ||
+    (temp > 30 && temp <= 35) ||
+    chuvaProb >= 30 ||
+    vento > 20 ||
+    uv > 8
+  )
+    return "🚶‍♀️Razoável ";
+  if (temp >= 15 && temp <= 30 && chuvaProb < 30 && vento <= 20 && uv <= 7)
+    return "🚶‍♀️Boa ";
+  return "🚶‍♀️Razoável ";
+}
+
+function avaliaCiclismo(probChuva, vento, pressao) {
+  if (probChuva > 50 || vento > 25 || pressao < 1008)
+    return "🚴Não recomendado ";
+  if (vento <= 10 && probChuva < 20)
+    return "🚴Bom ";
+  return "🚴Regular ";
+}
+
+function avaliarEstrelas(nebulosidade, chuvaProb, luaIluminacao) {
+  if (nebulosidade <= 20 && chuvaProb < 20 && luaIluminacao <= 30)
+    return " 🔭Boa ";
+  if (nebulosidade <= 50 && chuvaProb < 40)
+    return " 🔭Razoável ";
+  return " 🔭Ruim ";
+}
+
+function avaliarPesca(pressao, vento, chuva){
+  if (pressao >= 1015 && vento <= 8 && chuva === 0)
+    return "🎣Boa ";
+  if (pressao >= 1008 && vento <= 12 && chuva < 40)
+    return "🎣Regular ";
+  return "🎣Ruim ";
+}
+
+function avaliarChurrasco(temperatura, precipitacao, vento) {
+  // temperatura ideal entre 20°C e 35°C
+  // pouca chance de chuva (<30%)
+  // vento leve (<20 km/h)
+  if (temperatura >= 20 && temperatura <= 35 && precipitacao < 30 && vento < 20) {
+    return "Ótimo!";
+  } else if (temperatura >= 15 && temperatura <= 40 && precipitacao < 50) {
+    return "Fique atento!";
+  } else {
+    return "Melhor adiar";
+  }
+}
+
+/* =======================
+Avaliação da praia 
+========================= */
+function avaliarPraia(temp, probChuva, vento, uv){
+  if (temp >= 25 && probChuva < 20 && vento <= 15 && uv <= 8)
+    return "🏖️Boa";
+  if (temp >= 20 && probChuva < 40)
+    return "🏖️Regular";
+  return "🏖️Não indicada";
+}
+
+function avaliarPiscina(temp, chuvaProb, vento){
+  if (chuvaProb > 60)
+    return "🏊Não recomendado ";
+  if (temp >= 22 && chuvaProb < 30 && vento <= 20)
+    return "🏊Boa ";
+  return "🏊Regular ";
+}
+
+
+function avaliarAviao(vento, vis, chuva, tempestade){
+  if (tempestade || vento > 35 || vis < 2000)
+    return "✈️Risco elevado ";
+  if (vento > 20 || chuva > 2)
+    return "✈️Atenção! ";
+  return "✈️Vôo tranquilo ";
+}
+
+function avaliarCarro(chuvaProb, vis, vento){
+  if (chuvaProb > 70 || vis < 1500)
+    return "🚗Cuidado na estrada! ";
+  if (chuvaProb > 40 || vento > 30)
+    return "🚗Atenção na estrada! ";
+  return "🚗Boa Dirigibilidade ";
+}
+
+function avaliarMoto(temp, chuvaProb, vento, aqIndex) {
+  if(temp == null || chuvaProb == null || vento == null || aqIndex == null) return "";
+
+  // Condições para alerta
+  if(chuvaProb > 40) return "🏍️ Muita chuva";
+  if(vento > 40) return "🏍️ Vento forte";
+  if(aqIndex > 150) return "🏍️Ar poluído";
+
+  // Se todas condições ok
+  return "🏍️ Seguro";
+}
+
+function avaliarAlergias(umidade, vento, estacao) {
+  if (umidade >= 50 && vento <= 15)
+    return "(🤧🌾👀👃)Baixa";
+  if (umidade >= 35 && vento <= 25)
+    return "(🤧🌾👀👃)Moderada";
+  return "(🤧🌾👀👃)Alta";
+}
+
+function avaliarGripeResfriado(umidade, temp) {
+  // Exemplo: maior risco com temperatura baixa e umidade baixa
+  if (temp <= 18 && umidade <= 40) return "Alto risco";
+  if (temp <= 22 && umidade <= 50) return "Médio risco";
+  return "Baixo risco";
+}
+
+function avaliarMosquitos(umidade, chuvaProb, temp) {
+  if (umidade == null || chuvaProb == null || temp == null)
+    return "";
+  if (umidade >= 75 && (chuvaProb >= 40 || temp >= 28))
+    return "(🦟)Elevado";
+  if (umidade >= 60 || chuvaProb >= 20)
+    return "(🦟)Médio";
+  return "(🦟) Baixo";
+}
+
+function avaliarPragas(temp, chuva, umidade) {
+  if(temp >= 25 && umidade >= 70 && chuva < 50){
+    return "(🪰🪳🕷️)Alto risco de pragas ao ar livre";
+  } else if(temp >= 20 && umidade >= 60){
+    return "(🪰🪳🕷️) Médio risco de pragas ao ar livre";
+  } else {
+    return "(🪰🪳🕷️)Baixo risco de pragas ao ar livre";
+  }
+}
+
+/* =========================
+   FUNÇÕES UTILITÁRIAS
+========================= */
+function normalizarEstadoParaSigla(estado){
+  if (!estado) return "";
+
+  const mapaEstados = {
+    "RIO GRANDE DO SUL":"RS","SANTA CATARINA":"SC","PARANA":"PR",
+    "SAO PAULO":"SP","RIO DE JANEIRO":"RJ","ESPIRITO SANTO":"ES",
+    "BAHIA":"BA","SERGIPE":"SE","ALAGOAS":"AL","PERNAMBUCO":"PE",
+    "PARAIBA":"PB","RIO GRANDE DO NORTE":"RN","CEARA":"CE","PIAUI":"PI",
+    "MARANHAO":"MA","PARA":"PA","AMAPA":"AP"
+  };
+
+  const chave = estado
+    .normalize("NFD").replace(/[\u0300-\u036f]/g,"")
+    .toUpperCase()
+    .replace("ESTADO DE ","")
+    .trim();
+}
+
+/* =========================
    FORMATADORES
 ========================= */
 function formatarAQ(v){
@@ -529,6 +1558,9 @@ function formatarAQ(v){
  return `<span class="aq-extremo">Extrema (${v})</span>`;
 }
 
+/* =========================
+   UV
+========================= */
 function formatarUV(v){
  let classe="",descricao="";
  if(v<=2){classe="aq-bom";descricao="Baixo";}
@@ -543,18 +1575,34 @@ function formatarUV(v){
    LUA
 ========================= */
 function calcularLua(data){
- const ref=new Date(Date.UTC(2000,0,6,18,14,0));
- const ciclo=29.53058867;
- const dias=(data-ref)/86400000;
- const idade=((dias%ciclo)+ciclo)%ciclo;
- const frac=idade/ciclo;
- const iluminacao=Math.round((1-Math.cos(2*Math.PI*frac))/2*100);
- let fase="";
- if(idade<1.85) fase="Lua Nova 🌑";
- else if(idade<14.77) fase="Lua Crescente 🌒";
- else if(idade<16.61) fase="Lua Cheia 🌕";
- else fase="Lua Minguante 🌖";
- return {fase,iluminacao};
+  const ref = new Date(Date.UTC(2000, 0, 6, 18, 14, 0));
+  const ciclo = 29.530588853;
+
+  const dias = (data.getTime() - ref.getTime()) / 86400000;
+  const idade = ((dias % ciclo) + ciclo) % ciclo;
+  const frac = idade / ciclo;
+
+  const iluminacao = Math.round(
+    (1 - Math.cos(2 * Math.PI * frac)) / 2 * 100
+  );
+
+  let fase = "";
+
+  if (idade < 1.84566) fase = "Lua Nova 🌑";
+  else if (idade < 5.53699) fase = "Lua Crescente 🌒";
+  else if (idade < 9.22831) fase = "Quarto Crescente 🌓";
+  else if (idade < 12.91963) fase = "Crescente Gibosa 🌔";
+  else if (idade < 16.61096) fase = "Lua Cheia 🌕";
+  else if (idade < 20.30228) fase = "Minguante Gibosa 🌖";
+  else if (idade < 23.99361) fase = "Quarto Minguante 🌗";
+  else if (idade < 27.68493) fase = "Lua Minguante 🌘";
+  else fase = "Lua Nova 🌑";
+
+  return {
+    fase,
+    iluminacao,
+    idade: idade.toFixed(1)
+  };
 }
 
 function formatarChuvaClasse(v){
@@ -572,15 +1620,15 @@ function definirStatus(p,c){
  linhaStatus.className="linha-status";
  if(c>8||p<1005){
   linhaStatus.classList.add("tempestade");
-  linhaStatus.innerText="⛈️Risco tempest.";
+  linhaStatus.innerText="⛈️Tempo:Risco de Tempestade";
  }
  else if(c>1||p<1012){
   linhaStatus.classList.add("chuva");
-  linhaStatus.innerText="🌧️ Possibil. chuva";
+  linhaStatus.innerText="🌧️Tempo:Possibilidade de chuva";
  }
  else{
   linhaStatus.classList.add("bom");
-  linhaStatus.innerText="☀️ Tempo bom";
+  linhaStatus.innerText="☀️Tempo:Tempo bom";
  }
 }
 
@@ -641,11 +1689,9 @@ function calcularPressaoChuva(h){
   if(d.mm>=1) press.push(d.p.reduce((a,b)=>a+b)/d.p.length);
  });
  if(press.length<3){
-  linhaAviso.innerHTML="🌧️ Dados insuficientes para padrão confiável.";
+  linhaAviso.innerHTML="🌧️ *Dados insuficientes para padrão confiável.";
   return;
  }
- const m=press.reduce((a,b)=>a+b)/press.length;
- linhaAviso.innerHTML=`🌧️ Chove geralmente com pressão média de <b>${m.toFixed(1)} hPa</b>`;
 }
 
 /* =========================
@@ -734,12 +1780,91 @@ function montarGrafico(h){
 /* =========================
    GEOLOCALIZAÇÃO INICIAL
 ========================= */
-navigator.geolocation?.getCurrentPosition(p=>{
- lat=p.coords.latitude;
- lon=p.coords.longitude;
- nomeCidade.innerText="Sua localização";
- buscar();
+navigator.geolocation?.getCurrentPosition(async p=>{
+  lat = p.coords.latitude;
+  lon = p.coords.longitude;
+
+  const estadoGeo = await obterEstadoPorLatLon(lat, lon);
+
+  paisSelecionado = "BR";
+  estadoSelecionado = estadoGeo; 
+
+  cidade.value = estadoGeo
+    ? `Localização - ${estadoGeo}`
+    : "Sua Localização";
+
+  let nomeExibir = "Buscando sua localização!";
+  if (paisSelecionado === "BR" && estadoGeo) {
+      const mapaEstados = {
+        "RIO GRANDE DO SUL":"RS","SANTA CATARINA":"SC","PARANA":"PR",
+        "SAO PAULO":"SP","RIO DE JANEIRO":"RJ","MINAS GERAIS":"MG","ESPIRITO SANTO":"ES",
+        "MATO GROSSO":"MT","MATO GROSSO DO SUL":"MS","GOIAS":"GO","DISTRITO FEDERAL":"DF",
+        "BAHIA":"BA","SERGIPE":"SE","ALAGOAS":"AL","PERNAMBUCO":"PE","PARAIBA":"PB",
+        "RIO GRANDE DO NORTE":"RN","CEARA":"CE","PIAUI":"PI","MARANHAO":"MA",
+        "AMAZONAS":"AM","PARA":"PA","ACRE":"AC","RONDONIA":"RO","RORAIMA":"RR",
+        "AMAPA":"AP","TOCANTINS":"TO"
+      };
+
+      const sigla = mapaEstados[estadoGeo] ?? "";
+      nomeExibir = estadoGeo.charAt(0) + estadoGeo.slice(1).toLowerCase() + (sigla ? ` (${sigla})` : "");
+  }
+
+  nomeCidade.innerText = nomeExibir;
+
+  await buscar();
 });
+
+/* =========================
+   GEOLOCALIZAÇÃO AUTOMÁTICA
+========================= */
+window.addEventListener("load", () => {
+
+  if (!navigator.geolocation) {
+    nomeCidade.innerText = "Geolocalização não suportada";
+    return;
+  }
+
+  navigator.geolocation.getCurrentPosition(
+    async (pos) => {
+
+      lat = pos.coords.latitude;
+      lon = pos.coords.longitude;
+
+      try {
+        // 🔹 Pega nome da cidade pelo lat/lon
+        const r = await fetch(
+          `https://geocoding-api.open-meteo.com/v1/reverse?latitude=${lat}&longitude=${lon}&language=pt`
+        );
+        const d = await r.json();
+
+        if (d?.results?.length) {
+          const c = d.results[0];
+
+          const local = c.country_code === "BR" && c.admin1
+            ? `${c.name} - ${c.admin1}`
+            : `${c.name} - ${c.country}`;
+
+          nomeCidade.innerText = local;
+          paisSelecionado = c.country_code;
+          estadoSelecionado = c.admin1 ?? null;
+
+        } else {
+          nomeCidade.innerText = "Localização atual";
+        }
+
+      } catch {
+        nomeCidade.innerText = "Localização atual";
+      }
+
+      
+    },
+    () => {
+      nomeCidade.innerText = "Permissão negada";
+    }
+  );
+
+});
+
 </script>
 </body>
 </html>
