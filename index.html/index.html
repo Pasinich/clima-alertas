@@ -173,7 +173,7 @@ canvas{
 </header>
 
 <div class="card">
- <input id="cidade" placeholder="Digite a cidade!">
+ <input id="cidade" placeholder="Digite a cidade">
  <div id="lista" class="autocomplete"></div>
 
  <!-- ===== DADOS ATUAIS ===== -->
@@ -461,55 +461,38 @@ cidade.addEventListener("focus",()=>{
 /* =========================
    AUTOCOMPLETE DE CIDADES
 ========================= */
-cidade.addEventListener("input", async () => {
+cidade.addEventListener("input",async()=>{
+ lista.innerHTML="";
+ if(cidade.value.length < 2) return;
+
+ const r = await fetch(
+  `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(cidade.value)}&count=10&language=pt`
+ );
+ const d = await r.json();
+ if(!d.results) return;
+
+ d.results.forEach(c=>{
+  const local = c.country_code==="BR" && c.admin1
+   ? `${c.name} - ${c.admin1}`
+   : `${c.name} - ${c.country}`;
+
+  const div = document.createElement("div");
+  div.innerText = local;
+  div.onclick = ()=>{
+  cidade.value = local;
+  nomeCidade.innerText = local;
+  lat = c.latitude;
+  lon = c.longitude;
+  paisSelecionado = c.country_code;
+  estadoSelecionado = c.admin1 ?? null; 
   lista.innerHTML = "";
 
-  if (cidade.value.length < 2) return;
+  limparTela();
+  buscar();
+};
 
-  const r = await fetch(
-    `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(cidade.value)}&count=10&language=pt`
-  );
-
-  const d = await r.json();
-  if (!d.results) return;
-
-  // 🔥 Prioriza cidades do Brasil
-  d.results.sort((a, b) => {
-    if (a.country_code === "BR" && b.country_code !== "BR") return -1;
-    if (a.country_code !== "BR" && b.country_code === "BR") return 1;
-    return 0;
-  });
-
-  d.results.forEach(c => {
-
-    let local;
-
-    if (c.country_code === "BR" && c.admin1) {
-      local = `${c.name} - ${c.admin1}`;
-    } else if (c.admin1) {
-      local = `${c.name} - ${c.admin1} - ${c.country}`;
-    } else {
-      local = `${c.name} - ${c.country}`;
-    }
-
-    const div = document.createElement("div");
-    div.innerText = local;
-
-    div.onclick = () => {
-      cidade.value = local;
-      nomeCidade.innerText = local;
-      lat = c.latitude;
-      lon = c.longitude;
-      paisSelecionado = c.country_code;
-      estadoSelecionado = c.admin1 ?? null;
-
-      lista.innerHTML = "";
-      limparTela();
-      buscar();
-    };
-
-    lista.appendChild(div);
-  });
+  lista.appendChild(div);
+ });
 });
 
 /* =========================
@@ -619,7 +602,7 @@ if (typeof atual?.current_weather?.pressure_msl === "number") {
 else if (typeof atual?.hourly?.pressure_msl?.[idx] === "number") {
   pressaoExibir = atual.hourly.pressure_msl[idx];
 }
-let pressaoExibir_masc = atual.hourly.pressure_msl[idx];
+let pressaoExibir_masc = atual.hourly.pressure_msl[idx] + 3.1;
 
 // Índice do dia
 const diaDoIdx = Math.floor(idx / 24);
@@ -629,7 +612,7 @@ const horarioOuro = calcularHorarioOuroDoDiaCompacto(
 );
 
 linhaPressao.innerHTML = `
-  🎈Pressão: <b>${(atual.hourly.pressure_msl[idx] ).toFixed(1)} hPa</b>
+  🎈Pressão: <b>${(atual.hourly.pressure_msl[idx] + 3.1).toFixed(1)} hPa</b>
   ${/*pressaoTexto ? ` | <span style="font-size:13px; opacity:0.9">${pressaoTexto}</span>` :*/ ""}
 `;
  
@@ -866,8 +849,7 @@ const estrelas = avaliarEstrelas(
       `${String(t.getHours()).padStart(2,"0")}:` +
       `${String(t.getMinutes()).padStart(2,"0")} hs`;
       
-
-const chuvaAtual = Number(atual?.hourly?.precipitation?.[idx] ?? 0);
+      const chuvaAtual = Number(atual?.hourly?.precipitation?.[idx] ?? 0);
 
 if (chuvaAtual > 0) {
   chuvaTexto = "";
@@ -875,7 +857,6 @@ if (chuvaAtual > 0) {
   chuvaTexto = `<span style="color:#8B008B; font-size:14px;">
   Prox.Chuva prevista:</span> <b>${dataHora} (${probChuva}%)</b>`;
 }
-      
     }
 
   /* ===== PRESSÃO MÉDIA */
@@ -1467,6 +1448,11 @@ function avaliarCarro(chuvaProb, vis, vento){
 }
 
 function avaliarMoto(temp, chuvaProb, vento, aqIndex) {
+  // temp: temperatura atual em °C
+  // chuvaProb: probabilidade de chuva em %
+  // vento: velocidade do vento em km/h
+  // aqIndex: qualidade do ar US AQI
+
   if(temp == null || chuvaProb == null || vento == null || aqIndex == null) return "";
 
   // Condições para alerta
@@ -1779,9 +1765,9 @@ navigator.geolocation?.getCurrentPosition(async p=>{
 
   cidade.value = estadoGeo
     ? `Localização - ${estadoGeo}`
-    : "Sua Localização";
+    : "Buscando sua localização";
 
-  let nomeExibir = "Buscando sua localização!";
+  let nomeExibir = "Localização";
   if (paisSelecionado === "BR" && estadoGeo) {
       const mapaEstados = {
         "RIO GRANDE DO SUL":"RS","SANTA CATARINA":"SC","PARANA":"PR",
@@ -1800,58 +1786,6 @@ navigator.geolocation?.getCurrentPosition(async p=>{
   nomeCidade.innerText = nomeExibir;
 
   await buscar();
-});
-
-/* =========================
-   GEOLOCALIZAÇÃO AUTOMÁTICA
-========================= */
-window.addEventListener("load", () => {
-
-  if (!navigator.geolocation) {
-    nomeCidade.innerText = "Geolocalização não suportada";
-    return;
-  }
-
-  navigator.geolocation.getCurrentPosition(
-    async (pos) => {
-
-      lat = pos.coords.latitude;
-      lon = pos.coords.longitude;
-
-      try {
-        // 🔹 Pega nome da cidade pelo lat/lon
-        const r = await fetch(
-          `https://geocoding-api.open-meteo.com/v1/reverse?latitude=${lat}&longitude=${lon}&language=pt`
-        );
-        const d = await r.json();
-
-        if (d?.results?.length) {
-          const c = d.results[0];
-
-          const local = c.country_code === "BR" && c.admin1
-            ? `${c.name} - ${c.admin1}`
-            : `${c.name} - ${c.country}`;
-
-          nomeCidade.innerText = local;
-          paisSelecionado = c.country_code;
-          estadoSelecionado = c.admin1 ?? null;
-
-        } else {
-          nomeCidade.innerText = "Localização atual";
-        }
-
-      } catch {
-        nomeCidade.innerText = "Localização atual";
-      }
-
-      limparTela();
-      buscar();
-    },
-    () => {
-      nomeCidade.innerText = "Permissão negada";
-    }
-  );
-
 });
 
 </script>
