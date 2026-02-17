@@ -1314,7 +1314,7 @@ linhaStatus.innerHTML = `
   ${ciclismo ?? ""} 
   ${estrelas ?? ""} 
   ${pesca ?? ""} 
-  ${churrascoTexto ? `  churrasco🍖${churrascoTexto}` : ""}
+  ${churrascoTexto ? `  Churrasco:${churrascoTexto}` : ""}
   ${fotografia}
   
 <!--</div>
@@ -1329,8 +1329,8 @@ Fotografia</b><br>
     Praia / Ondas / Piscina
   </b><br>
 
-  🏖️<b>${praiaTexto}</b> |
-  🌊<b id="altura-onda">${
+  Praia:<b>${praiaTexto}</b> |
+  Ondas:<b id="altura-onda">${
     possuiPraia 
       ? "..." 
       : `<span style="color:#888;">N/A</span>`
@@ -1347,7 +1347,7 @@ Fotografia</b><br>
   <div style="margin-top:4px">
     <b style="color:#8B008B;font-size:14px;">Saúde/Bem Estar</b><br>
    </b>${alergiasTexto} 
-    <b style="color:#8B008B;font-size:14px;">  (😷🌡️🤒)</b>${gripeTexto}
+    <b style="color:#8B008B;font-size:14px;"> Gripe:</b>${gripeTexto}
   </div>
 ` : ""}
 
@@ -1359,11 +1359,11 @@ Fotografia</b><br>
 ` : ""}
 
   <div style="margin-top:6px">
-    <b style="color:#8B008B;font-size:14px;">🗓️ Estação:</b> ${estacao ?? "-"}
+    <b style="color:#8B008B;font-size:14px;"> Estação:</b> ${estacao ?? "-"}
   </div>
 
   <div>
-    🌊 <b style="color:#8B008B;font-size:14px;">Fenômeno:</b> ${fenomeno ?? "-"}${impactoTexto ? ` (${impactoTexto})` : ""}
+   <b style="color:#8B008B;font-size:14px;">Fenômeno:</b> ${fenomeno ?? "-"}${impactoTexto ? ` (${impactoTexto})` : ""}
   </div>
   
   
@@ -1611,15 +1611,15 @@ function calcularHorarioOuroCompacto(sunrise, sunset){
 
 function avaliarCorrida(temp, chuva, vento, uv){
   if (temp >= 15 && temp <= 28 && chuva < 20 && vento <= 12 && uv <= 7)
-    return "🏃Boa ";
+    return "Correr:Boa ";
   if (temp >= 10 && temp <= 32 && chuva < 40)
-    return "🏃Regular ";
-  return "🏃Não indicada ";
+    return "Correr:Regular ";
+  return "Correr:Não indicada ";
 }
 
 function avaliarCaminhada(temp, chuvaProb, vento, uv, vis) {
   if (chuvaProb > 60 || vento > 30 || vis < 1500 || temp > 35 || temp < 5)
-    return "🚶Ruim ";
+    return "Andar:Ruim ";
   if (
     (temp >= 10 && temp < 15) ||
     (temp > 30 && temp <= 35) ||
@@ -1627,10 +1627,10 @@ function avaliarCaminhada(temp, chuvaProb, vento, uv, vis) {
     vento > 20 ||
     uv > 8
   )
-    return "🚶‍♀️Razoável ";
+    return "Andar:Razoável ";
   if (temp >= 15 && temp <= 30 && chuvaProb < 30 && vento <= 20 && uv <= 7)
-    return "🚶‍♀️Boa ";
-  return "🚶‍♀️Razoável ";
+    return "Andar:Boa ";
+  return "Andar:Razoável ";
 }
 
 function avaliaCiclismo(probChuva, vento, pressao) {
