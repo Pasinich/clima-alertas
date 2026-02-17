@@ -1290,8 +1290,12 @@ const fotografia = `${avaliacaoFoto} (Hora de Ouro: ${horarioOuro})`;
 
 /* ===== MONTA LINHA STATUS FINAL ===== */
 
-const mobileView = true; //Avaliar isto, true = Android / false = desktop
+const mobileView = true; // true = Android / false = desktop
 const alertaTexto = "";
+
+// Painel relativo para posicionar o botão flutuante
+linhaStatus.style.position = "relative";
+
 linhaStatus.innerHTML = `
   ${!mobileView ? `
     <div>🕒 Data e Hora da Coleta: <b>${dataHoraLocal ?? ""}</b></div>
@@ -1304,93 +1308,105 @@ linhaStatus.innerHTML = `
   ${alertaTexto ? `<div class="alerta">⚠️ ${alertaTexto}</div>` : ""}
 
   <div style="margin-top:6px">
-  <b style="color:#8B008B;font-size:14px;">
-    Atividades ao Ar Livre <b>  - Qualidade do Ar</b>${formatarAQ(usAQI)}
-  </b><br>
-  ${corrida ?? ""} 
-  ${caminhada ?? ""} 
-  ${ciclismo ?? ""} 
-  ${estrelas ?? ""} 
-  ${pesca ?? ""} 
-  ${churrascoTexto ? `  Churrasco${churrascoTexto}` : ""}
-  
-  ${fotografia}
-  
-<!--</div>
-  <div style="margin-top:4px">
     <b style="color:#8B008B;font-size:14px;">
-Fotografia</b><br>
-  ${fotografia}
+      Atividades ao Ar Livre <b>  - Qualidade do Ar</b>${formatarAQ(usAQI)}
+    </b><br>
+    ${corrida ?? ""} 
+    ${caminhada ?? ""} 
+    ${ciclismo ?? ""} 
+    ${estrelas ?? ""} 
+    ${pesca ?? ""} 
+    ${churrascoTexto ? `  Churrasco${churrascoTexto}` : ""}
+    ${fotografia}
   </div>
--->
-  <div style="margin-top:4px">
-  <b style="color:#8B008B;font-size:14px;">
-    Praia / Ondas / Piscina
-  </b><br>
-    <b style="color:#8B008B;font-size:14px;">Praia</b>(${praiaTexto})</b>
-      <b style="color:#8B008B;font-size:14px;">Ondas</b>(<b id="altura-onda">${
-    possuiPraia 
-      ? "..." 
-      : `<span style="color:#888;">N/A</span>`
-  }</b>)
-    <b style="color:#8B008B;font-size:14px;">Piscina</b>${piscina ?? "-"}</b>
-</div>
 
-<div style="margin-top:4px">
-  <b style="color:#8B008B;font-size:14px;">Trânsito / Viagens</b><br>
-      <b style="color:#8B008B;font-size:14px;">Vôo</b>${aviao ?? ""}     <b style="color:#8B008B;font-size:14px;">Dirigir</b>${carro ?? ""}     <b style="color:#8B008B;font-size:14px;">Motocicleta</b>${moto ?? ""}
-</div>
+  <div style="margin-top:4px">
+    <b style="color:#8B008B;font-size:14px;">Praia / Ondas / Piscina</b><br>
+    <b style="color:#8B008B;font-size:14px;">Praia</b>(${praiaTexto}) |
+    <b style="color:#8B008B;font-size:14px;">Ondas</b>(<b id="altura-onda">${
+      possuiPraia ? "..." : `<span style="color:#888;">N/A</span>`
+    }</b>) |
+    <b style="color:#8B008B;font-size:14px;">Piscina</b>${piscina ?? "-"}
+  </div>
+
+  <div style="margin-top:4px">
+    <b style="color:#8B008B;font-size:14px;">Trânsito / Viagens</b><br>
+    <b style="color:#8B008B;font-size:14px;">Vôo</b>${aviao ?? ""} |
+    <b style="color:#8B008B;font-size:14px;">Dirigir</b>${carro ?? ""} |
+    <b style="color:#8B008B;font-size:14px;">Motocicleta</b>${moto ?? ""}
+  </div>
 
   ${alergiasTexto ? `
-  <div style="margin-top:4px">
-    <b style="color:#8B008B;font-size:14px;">Saúde/Bem Estar</b><br>
-   <b style="color:#8B008B;font-size:14px;"> Alergias</b>(${alergiasTexto})
-    <b style="color:#8B008B;font-size:14px;"> Gripe(</b>${gripeTexto})
-  </div>
-` : ""}
+    <div style="margin-top:4px">
+      <b style="color:#8B008B;font-size:14px;">Saúde/Bem Estar</b><br>
+      <b style="color:#8B008B;font-size:14px;">Alergias</b>(${alergiasTexto}) |
+      <b style="color:#8B008B;font-size:14px;">Gripe</b>(${gripeTexto})
+    </div>` : ""}
 
   ${mosquitosTexto || pragasTexto ? `
-  <div style="margin-top:4px">
-    <b style="color:#8B008B;font-size:14px;">Pragas/Insetos</b><br>
-    <b style="color:#8B008B;font-size:14px;">Mosquitos</b>(${mosquitosTexto})     <b style="color:#8B008B;font-size:14px;">Pragas</b>(${pragasTexto ? `${pragasTexto}` : ""})
-  </div>
-` : ""}
+    <div style="margin-top:4px">
+      <b style="color:#8B008B;font-size:14px;">Pragas/Insetos</b><br>
+      <b style="color:#8B008B;font-size:14px;">Mosquitos</b>(${mosquitosTexto}) |
+      <b style="color:#8B008B;font-size:14px;">Pragas</b>(${pragasTexto ?? ""})
+    </div>` : ""}
 
   <div style="margin-top:6px">
-    <b style="color:#8B008B;font-size:14px;"> Estação:</b> ${estacao ?? "-"}
+    <b style="color:#8B008B;font-size:14px;">Estação:</b> ${estacao ?? "-"}
   </div>
 
   <div>
-   <b style="color:#8B008B;font-size:14px;">Fenômeno:</b> ${fenomeno ?? "-"}${impactoTexto ? ` (${impactoTexto})` : ""}
+    <b style="color:#8B008B;font-size:14px;">Fenômeno:</b> ${fenomeno ?? "-"}${impactoTexto ? ` (${impactoTexto})` : ""}
   </div>
-  
-  
-  <button id="btnOuvir" style="
+
+  <!-- Botão flutuante com classe para animação -->
+  <button id="btnOuvir" class="btnVoz" style="
+    position:absolute;
+    bottom:10px;
+    right:10px;
     border:none;
-    background:none;
-    font-size:20px;
-    cursor:pointer;">
-    🔊
-  </button>
+    background:#ffffffcc;
+    font-size:22px;
+    cursor:pointer;
+    border-radius:50%;
+    width:50px;
+    height:50px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    box-shadow:0 2px 6px rgba(0,0,0,0.25);
+    transition: transform 0.2s;
+  ">🔊</button>
 `;
 
-// 🔊 Ativa botão de voz depois de criar o HTML
+// ===== ANIMAÇÃO CSS =====
+const style = document.createElement("style");
+style.innerHTML = `
+  @keyframes pulsar {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.15); }
+    100% { transform: scale(1); }
+  }
+  .pulsando {
+    animation: pulsar 1s infinite;
+  }
+`;
+document.head.appendChild(style);
 
+// 🔊 Ativa botão de voz
 if ("speechSynthesis" in window) {
-
   const btnOuvir = document.getElementById("btnOuvir");
 
   if (btnOuvir) {
-
     btnOuvir.onclick = function () {
-
-      // 🔁 Se já estiver lendo → cancela
+      // Se já estiver lendo → cancela
       if (window.speechSynthesis.speaking) {
         window.speechSynthesis.cancel();
         btnOuvir.innerText = "🔊";
+        btnOuvir.classList.remove("pulsando");
         return;
       }
 
+      // Clona o painel e remove o botão para pegar só o texto
       const clone = linhaStatus.cloneNode(true);
       const botao = clone.querySelector("#btnOuvir");
       if (botao) botao.remove();
@@ -1402,18 +1418,20 @@ if ("speechSynthesis" in window) {
       fala.lang = "pt-BR";
       fala.rate = 1;
 
-      // ⏸️ Quando começa a ler
-      fala.onstart = function () {
+      // Começa a falar → muda ícone e inicia animação
+      fala.onstart = () => {
         btnOuvir.innerText = "⏸️";
+        btnOuvir.classList.add("pulsando");
       };
 
-      // 🔊 Quando termina
-      fala.onend = function () {
+      // Termina ou erro → volta ao normal
+      fala.onend = () => {
         btnOuvir.innerText = "🔊";
+        btnOuvir.classList.remove("pulsando");
       };
-
-      fala.onerror = function () {
+      fala.onerror = () => {
         btnOuvir.innerText = "🔊";
+        btnOuvir.classList.remove("pulsando");
       };
 
       window.speechSynthesis.speak(fala);
