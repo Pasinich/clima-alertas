@@ -575,8 +575,6 @@ function cidadePossuiPraia(pais, lat, lon){
   );
 }
 
-
-
 /* =========================
    MODO DIA / NOITE
 ========================= */
@@ -1267,7 +1265,7 @@ let ondaTexto;
 if (possuiPraia) {
   praiaTexto = praia ?? "-";
   ondaTexto = alturaOnda != null 
-    ? alturaOnda.toFixed(1) + " m"
+    ? alturaOnda.toFixed(1) + " metros "
     : "-";
 } else {
   praiaTexto = `<span style="color:#888;">N/A</span>`;
@@ -1307,7 +1305,7 @@ linhaStatus.innerHTML = `
 
   <div style="margin-top:6px">
   <b style="color:#8B008B;font-size:14px;">
-    Atividades ao Ar Livre (<b>Qualidade do Ar:</b> ${formatarAQ(usAQI)})
+    Atividades ao Ar Livre <b>  - Qualidade do Ar</b>${formatarAQ(usAQI)}
   </b><br>
   ${corrida ?? ""} 
   ${caminhada ?? ""} 
@@ -1329,24 +1327,24 @@ Fotografia</b><br>
   <b style="color:#8B008B;font-size:14px;">
     Praia / Ondas / Piscina
   </b><br>
-  <b>${praiaTexto}</b>
-  Ondas:<b id="altura-onda">${
+    <b style="color:#8B008B;font-size:14px;">Praia</b>(${praiaTexto})</b>
+      <b style="color:#8B008B;font-size:14px;">Ondas</b>(<b id="altura-onda">${
     possuiPraia 
       ? "..." 
       : `<span style="color:#888;">N/A</span>`
-  }</b>
-  <b>${piscina ?? "-"}</b>
+  }</b>)
+    <b style="color:#8B008B;font-size:14px;">Piscina</b>${piscina ?? "-"}</b>
 </div>
 
 <div style="margin-top:4px">
   <b style="color:#8B008B;font-size:14px;">Trânsito / Viagens</b><br>
-  ${aviao ?? ""} ${carro ?? ""} ${moto ?? ""}
+      <b style="color:#8B008B;font-size:14px;">Vôo</b>${aviao ?? ""}     <b style="color:#8B008B;font-size:14px;">Dirigir</b>${carro ?? ""}     <b style="color:#8B008B;font-size:14px;">Motocicleta</b>${moto ?? ""}
 </div>
 
   ${alergiasTexto ? `
   <div style="margin-top:4px">
     <b style="color:#8B008B;font-size:14px;">Saúde/Bem Estar</b><br>
-   </b>${alergiasTexto} 
+   <b style="color:#8B008B;font-size:14px;"> Alergias</b>(${alergiasTexto})
     <b style="color:#8B008B;font-size:14px;"> Gripe(</b>${gripeTexto})
   </div>
 ` : ""}
@@ -1354,7 +1352,7 @@ Fotografia</b><br>
   ${mosquitosTexto || pragasTexto ? `
   <div style="margin-top:4px">
     <b style="color:#8B008B;font-size:14px;">Pragas/Insetos</b><br>
-    ${mosquitosTexto}${pragasTexto ? ` ${pragasTexto}` : ""}
+    <b style="color:#8B008B;font-size:14px;">Mosquitos</b>(${mosquitosTexto})     <b style="color:#8B008B;font-size:14px;">Pragas</b>(${pragasTexto ? `${pragasTexto}` : ""})
   </div>
 ` : ""}
 
@@ -1675,10 +1673,10 @@ Avaliação da praia
 ========================= */
 function avaliarPraia(temp, probChuva, vento, uv){
   if (temp >= 25 && probChuva < 20 && vento <= 15 && uv <= 8)
-    return "Praia(Boa) ";
+    return "Boa";
   if (temp >= 20 && probChuva < 40)
-    return "Praia(Regular) ";
-  return "Praia(Não indicada) ";
+    return "Regular";
+  return "Não indicada";
 }
 
 
@@ -1718,47 +1716,47 @@ async function buscarAlturaOnda(lat, lon) {
 
 function avaliarPiscina(temp, chuvaProb, vento){
   if (chuvaProb > 60)
-    return "Piscina(Não recomendado) ";
+    return "(Não recomendado) ";
   if (temp >= 22 && chuvaProb < 30 && vento <= 20)
-    return "Piscina(Boa) ";
-  return "Piscina(Regular) ";
+    return "(Boa) ";
+  return "(Regular) ";
 }
 
 
 function avaliarAviao(vento, vis, chuva, tempestade){
   if (tempestade || vento > 35 || vis < 2000)
-    return "Vôo(Risco elevado) ";
+    return "(Risco elevado) ";
   if (vento > 20 || chuva > 2)
-    return "Vôo(Atenção) ";
-  return "Vôo(Tranquilo) ";
+    return "(Atenção) ";
+  return "(Tranquilo) ";
 }
 
 function avaliarCarro(chuvaProb, vis, vento){
   if (chuvaProb > 70 || vis < 1500)
-    return "Dirigir(Cuidado na estrada) ";
+    return "(Cuidado na estrada) ";
   if (chuvaProb > 40 || vento > 30)
-    return ", Dirigir(Atenção na estrada) ";
-  return "Dirigir(Tranquilo)";
+    return "(Atenção na estrada) ";
+  return "(Tranquilo)";
 }
 
 function avaliarMoto(temp, chuvaProb, vento, aqIndex) {
   if(temp == null || chuvaProb == null || vento == null || aqIndex == null) return "";
 
   // Condições para alerta
-  if(chuvaProb > 40) return "Motocicleta(Muita chuva) ";
-  if(vento > 40) return "Motocicleta(Vento forte) ";
-  if(aqIndex > 150) return "Motocicleta(Ar poluído)";
+  if(chuvaProb > 40) return "(Muita chuva) ";
+  if(vento > 40) return "(Vento forte) ";
+  if(aqIndex > 150) return "(Ar poluído)";
 
   // Se todas condições ok
-  return "Motocicleta(Seguro) ";
+  return "(Seguro) ";
 }
 
 function avaliarAlergias(umidade, vento, estacao) {
   if (umidade >= 50 && vento <= 15)
-    return "Alergia(Baixa) ";
+    return "Baixa ";
   if (umidade >= 35 && vento <= 25)
-    return "Alergia(Moderada) ";
-  return "Alergia(Alta) ";
+    return "Moderada ";
+  return "Alta ";
 }
 
 function avaliarGripeResfriado(umidade, temp) {
@@ -1772,19 +1770,19 @@ function avaliarMosquitos(umidade, chuvaProb, temp) {
   if (umidade == null || chuvaProb == null || temp == null)
     return "";
   if (umidade >= 75 && (chuvaProb >= 40 || temp >= 28))
-    return "(🦟)Elevado";
+    return "Elevado";
   if (umidade >= 60 || chuvaProb >= 20)
-    return "(🦟)Médio";
-  return "(🦟) Baixo";
+    return "Médio";
+  return "Baixo";
 }
 
 function avaliarPragas(temp, chuva, umidade) {
   if(temp >= 25 && umidade >= 70 && chuva < 50){
-    return "(🪰🪳🕷️)Alto risco de pragas ao ar livre";
+    return "Alto risco de pragas ao ar livre";
   } else if(temp >= 20 && umidade >= 60){
-    return "(🪰🪳🕷️) Médio risco de pragas ao ar livre";
+    return "Médio risco de pragas ao ar livre";
   } else {
-    return "(🪰🪳🕷️)Baixo risco de pragas ao ar livre";
+    return "Baixo risco de pragas ao ar livre";
   }
 }
 
@@ -1813,12 +1811,12 @@ function normalizarEstadoParaSigla(estado){
    FORMATADORES
 ========================= */
 function formatarAQ(v){
- if(v<=50) return `<span class="aq-bom">Boa (${v})</span>`;
- if(v<=100) return `<span class="aq-mod">Moderada (${v})</span>`;
- if(v<=150) return `<span class="aq-ruim">Insalubre (${v})</span>`;
- if(v<=200) return `<span class="aq-muito">Muito Insalub. (${v})</span>`;
- if(v<=300) return `<span class="aq-severo">Severo (${v})</span>`;
- return `<span class="aq-extremo">Extrema (${v})</span>`;
+ if(v<=50) return `<span class="aq-bom">(Boa (${v}))</span>`;
+ if(v<=100) return `<span class="aq-mod">(Moderada (${v}))</span>`;
+ if(v<=150) return `<span class="aq-ruim">(Insalubre (${v}))</span>`;
+ if(v<=200) return `<span class="aq-muito">(Muito Insalub. (${v}))</span>`;
+ if(v<=300) return `<span class="aq-severo">(Severo (${v}))</span>`;
+ return `<span class="aq-extremo">(Extrema (${v}))</span>`;
 }
 
 /* =========================
