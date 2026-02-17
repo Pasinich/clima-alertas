@@ -1384,18 +1384,19 @@ if ("speechSynthesis" in window) {
 
     btnOuvir.onclick = function () {
 
-      const texto = linhaStatus.innerText;
+      const clone = linhaStatus.cloneNode(true);
 
-      if (!texto || texto.trim() === "") {
-        alert("Clima ainda não disponível.");
-        return;
-      }
+      const botao = clone.querySelector("#btnOuvir");
+      if (botao) botao.remove();
+
+      const texto = clone.innerText.trim();
+      if (!texto) return;
 
       const fala = new SpeechSynthesisUtterance(texto);
       fala.lang = "pt-BR";
       fala.rate = 1;
 
-      window.speechSynthesis.cancel(); // evita sobrepor voz
+      window.speechSynthesis.cancel();
       window.speechSynthesis.speak(fala);
     };
   }
