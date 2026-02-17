@@ -1299,7 +1299,7 @@ linhaStatus.innerHTML = `
     <div>🕒 Data e Hora da Coleta: <b>${dataHoraLocal ?? ""}</b></div>
   ` : ""}
 
-  ${chuvaTexto ? `<div>🌧️ ${chuvaTexto}</div>` : ""}
+  ${chuvaTexto ? `<div>${chuvaTexto}</div>` : ""}
 
   ${pressaoTexto && !mobileView ? `<div>📉 ${pressaoTexto}</div>` : ""}
 
@@ -1611,15 +1611,15 @@ function calcularHorarioOuroCompacto(sunrise, sunset){
 
 function avaliarCorrida(temp, chuva, vento, uv){
   if (temp >= 15 && temp <= 28 && chuva < 20 && vento <= 12 && uv <= 7)
-    return "Correr:Boa ";
+    return "Correr:Boa, ";
   if (temp >= 10 && temp <= 32 && chuva < 40)
-    return "Correr:Regular ";
-  return "Correr:Não indicada ";
+    return "Correr:Regular, ";
+  return "Correr:Não indicada, ";
 }
 
 function avaliarCaminhada(temp, chuvaProb, vento, uv, vis) {
   if (chuvaProb > 60 || vento > 30 || vis < 1500 || temp > 35 || temp < 5)
-    return "Andar:Ruim ";
+    return "Andar:Ruim, ";
   if (
     (temp >= 10 && temp < 15) ||
     (temp > 30 && temp <= 35) ||
@@ -1627,18 +1627,18 @@ function avaliarCaminhada(temp, chuvaProb, vento, uv, vis) {
     vento > 20 ||
     uv > 8
   )
-    return "Andar:Razoável ";
+    return "Andar:Razoável, ";
   if (temp >= 15 && temp <= 30 && chuvaProb < 30 && vento <= 20 && uv <= 7)
-    return "Andar:Boa ";
-  return "Andar:Razoável ";
+    return "Andar:Boa, ";
+  return "Andar:Razoável, ";
 }
 
 function avaliaCiclismo(probChuva, vento, pressao) {
   if (probChuva > 50 || vento > 25 || pressao < 1008)
-    return "🚴Não recomendado ";
+    return "Ciclismo:Não recomendado, ";
   if (vento <= 10 && probChuva < 20)
-    return "🚴Bom ";
-  return "🚴Regular ";
+    return "Ciclismo:Bom, ";
+  return "Ciclismo:Regular, ";
 }
 
 function avaliarEstrelas(nebulosidade, chuvaProb, luaIluminacao) {
