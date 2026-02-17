@@ -2159,6 +2159,7 @@ function montarTextoFalado() {
 if ("speechSynthesis" in window) {
 
   let falando = false;
+  let utteranceAtual = null;
 
   document.addEventListener("click", function (e) {
 
@@ -2166,33 +2167,43 @@ if ("speechSynthesis" in window) {
 
     const btn = e.target;
 
+    // 🔁 Se já estiver falando → cancela
     if (falando) {
       window.speechSynthesis.cancel();
       falando = false;
       btn.innerText = "🔊";
+      utteranceAtual = null;
       return;
     }
 
     const texto = montarTextoFalado();
     if (!texto) return;
 
-    const fala = new SpeechSynthesisUtterance(texto);
-    fala.lang = "pt-BR";
-    fala.rate = 0.95;
-    fala.pitch = 1.1;
+    utteranceAtual = new SpeechSynthesisUtterance(texto);
+    utteranceAtual.lang = "pt-BR";
+    utteranceAtual.rate = 0.95;
+    utteranceAtual.pitch = 1.1;
 
-    fala.onstart = () => {
+    utteranceAtual.onstart = () => {
       falando = true;
-      btn.innerText = "🔴";
+      btn.innerText = "🔴"; // ícone quando está lendo
     };
 
-    fala.onend = () => {
+    utteranceAtual.onend = () => {
+      falando = false;
+      btn.innerText = "🔊"; // volta ao normal
+      utteranceAtual = null;
+    };
+
+    utteranceAtual.onerror = () => {
       falando = false;
       btn.innerText = "🔊";
+      utteranceAtual = null;
     };
 
-    window.speechSynthesis.cancel();
-    window.speechSynthesis.speak(fala);
+    window.speechSynthesis.cancel(); // segurança extra
+    window.speechSynthesis.speak(utteranceAtual);
+
   });
 
 }
