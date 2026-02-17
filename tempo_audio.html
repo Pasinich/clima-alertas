@@ -1296,15 +1296,32 @@ const alertaTexto = "";
 // Painel relativo para posicionar o botão flutuante
 linhaStatus.style.position = "relative";
 
+// Monta a seção Praia/Ondas/Piscina
+let secaoAgua = "";
+
+if (possuiPraia) {
+  // Se a cidade tiver praia, mostra praia e ondas
+  secaoAgua = `
+  <div style="margin-top:4px">
+    <b style="color:#8B008B;font-size:14px;">Praia / Ondas / Piscina</b><br>
+    <b style="color:#8B008B;font-size:14px;">Praia</b>(${praiaTexto}) |
+    <b style="color:#8B008B;font-size:14px;">Ondas</b>(<b id="altura-onda">...</b>) |
+    <b style="color:#8B008B;font-size:14px;">Piscina</b>${piscina ?? "-"}
+  </div>`;
+} else {
+  // Se não houver praia, mostra somente piscina deslocada à esquerda
+  secaoAgua = `
+  <div style="margin-top:4px">
+  <b style="color:#8B008B;font-size:14px;">Piscina</b><br>
+    <b style="color:#8B008B;font-size:14px;">Piscina</b>${piscina ?? "-"}
+  </div>`;
+}
+
 linhaStatus.innerHTML = `
-  ${!mobileView ? `
-    <div>🕒 Data e Hora da Coleta: <b>${dataHoraLocal ?? ""}</b></div>
-  ` : ""}
+  ${!mobileView ? `<div>🕒 Data e Hora da Coleta: <b>${dataHoraLocal ?? ""}</b></div>` : ""}
 
   ${chuvaTexto ? `<div>${chuvaTexto}</div>` : ""}
-
   ${pressaoTexto && !mobileView ? `<div>📉 ${pressaoTexto}</div>` : ""}
-
   ${alertaTexto ? `<div class="alerta">⚠️ ${alertaTexto}</div>` : ""}
 
   <div style="margin-top:6px">
@@ -1320,14 +1337,7 @@ linhaStatus.innerHTML = `
     ${fotografia}
   </div>
 
-  <div style="margin-top:4px">
-    <b style="color:#8B008B;font-size:14px;">Praia / Ondas / Piscina</b><br>
-    <b style="color:#8B008B;font-size:14px;">Praia</b>(${praiaTexto}) |
-    <b style="color:#8B008B;font-size:14px;">Ondas</b>(<b id="altura-onda">${
-      possuiPraia ? "..." : `<span style="color:#888;">N/A</span>`
-    }</b>) |
-    <b style="color:#8B008B;font-size:14px;">Piscina</b>${piscina ?? "-"}
-  </div>
+  ${secaoAgua}
 
   <div style="margin-top:4px">
     <b style="color:#8B008B;font-size:14px;">Trânsito / Viagens</b><br>
@@ -1358,7 +1368,7 @@ linhaStatus.innerHTML = `
     <b style="color:#8B008B;font-size:14px;">Fenômeno:</b> ${fenomeno ?? "-"}${impactoTexto ? ` (${impactoTexto})` : ""}
   </div>
 
-  <!-- Botão flutuante com classe para animação -->
+  <!-- Botão flutuante no canto inferior direito -->
   <button id="btnOuvir" class="btnVoz" style="
     position:absolute;
     bottom:10px;
@@ -1791,10 +1801,10 @@ function avaliarMoto(temp, chuvaProb, vento, aqIndex) {
 
 function avaliarAlergias(umidade, vento, estacao) {
   if (umidade >= 50 && vento <= 15)
-    return "Baixa ";
+    return "Baixa";
   if (umidade >= 35 && vento <= 25)
-    return "Moderada ";
-  return "Alta ";
+    return "Moderada";
+  return "Alta";
 }
 
 function avaliarGripeResfriado(umidade, temp) {
