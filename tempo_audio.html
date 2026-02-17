@@ -2051,6 +2051,7 @@ navigator.geolocation?.getCurrentPosition(async p=>{
 });
 
 
+
 /* =========================
    GEOLOCALIZAÇÃO AUTOMÁTICA
 ========================= */
@@ -2101,45 +2102,56 @@ window.addEventListener("load", () => {
   );
 
 /* =========================
-     BOTÃO DE VOZ
-  ========================= */
+   BOTÃO DE VOZ (FUNCIONA MESMO COM innerHTML)
+========================= */
 
-  if (!("speechSynthesis" in window)) return;
-
-  const btnOuvir = document.getElementById("btnOuvir");
-  if (!btnOuvir) return;
+if ("speechSynthesis" in window) {
 
   let falando = false;
 
-  btnOuvir.addEventListener("click", function () {
+  document.addEventListener("click", function (e) {
 
-    if (falando) {
-      window.speechSynthesis.cancel();
-      falando = false;
-      btnOuvir.innerText = "🔊";
-      return;
+    if (e.target && e.target.id === "btnOuvir") {
+
+      const btn = e.target;
+
+      if (falando) {
+        window.speechSynthesis.cancel();
+        falando = false;
+        btn.innerText = "🔊";
+        return;
+      }
+
+      const texto = typeof montarTextoFalado === "function"
+        ? montarTextoFalado()
+        : document.getElementById("linhaStatus")?.innerText;
+
+      if (!texto || texto.trim() === "") {
+        alert("Clima ainda não carregado.");
+        return;
+      }
+
+      const fala = new SpeechSynthesisUtterance(texto);
+      fala.lang = "pt-BR";
+
+      fala.onstart = function () {
+        falando = true;
+        btn.innerText = "🔴";
+      };
+
+      fala.onend = function () {
+        falando = false;
+        btn.innerText = "🔊";
+      };
+
+      window.speechSynthesis.speak(fala);
+
     }
 
-    const texto = "Teste de voz funcionando corretamente.";
-
-    if (!texto) return;
-
-    const fala = new SpeechSynthesisUtterance(texto);
-    fala.lang = "pt-BR";
-
-    fala.onstart = function () {
-      falando = true;
-      btnOuvir.innerText = "🔴";
-    };
-
-    fala.onend = function () {
-      falando = false;
-      btnOuvir.innerText = "🔊";
-    };
-
-    window.speechSynthesis.speak(fala);
-
   });
+
+}
+
 
 }); // ✅ AGORA FECHA TUDO CERTO
 </script>
