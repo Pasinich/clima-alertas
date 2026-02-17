@@ -1307,14 +1307,15 @@ linhaStatus.innerHTML = `
 
   <div style="margin-top:6px">
   <b style="color:#8B008B;font-size:14px;">
-    Atividades ao Ar Livre (<b>Qual. do Ar:</b> ${formatarAQ(usAQI)})
+    Atividades ao Ar Livre (<b>Qualidade do Ar:</b> ${formatarAQ(usAQI)})
   </b><br>
   ${corrida ?? ""} 
   ${caminhada ?? ""} 
   ${ciclismo ?? ""} 
   ${estrelas ?? ""} 
   ${pesca ?? ""} 
-  ${churrascoTexto ? `  Churrasco:${churrascoTexto}` : ""}
+  ${churrascoTexto ? `  Churrasco${churrascoTexto}` : ""}
+  
   ${fotografia}
   
 <!--</div>
@@ -1583,9 +1584,9 @@ function calcularHorarioOuro(dia, duracaoMinutos = 90) {
 }
 
 function avaliarFotografia(temp, nebulosidade, chuvaProb, nascerSol, porSol) {
-  if (chuvaProb > 50 || nebulosidade > 70) return "📷Ruim";
-  if (chuvaProb > 20 || nebulosidade > 40) return "📷Médio";
-  return "📷Bom";
+  if (chuvaProb > 50 || nebulosidade > 70) return "Fotografar(Ruim) ";
+  if (chuvaProb > 20 || nebulosidade > 40) return "Fotografar(Médio) ";
+  return "Fotografar(Bom) ";
 }
 
 /* =========================
@@ -1635,7 +1636,7 @@ function avaliarCaminhada(temp, chuvaProb, vento, uv, vis) {
 
 function avaliaCiclismo(probChuva, vento, pressao) {
   if (probChuva > 50 || vento > 25 || pressao < 1008)
-    return "Ciclismo:Não recomendado, ";
+    return "Ciclismo(Não recomendado) ";
   if (vento <= 10 && probChuva < 20)
     return "Ciclismo(Bom) ";
   return "Ciclismo(Regular) ";
@@ -1755,10 +1756,10 @@ function avaliarMoto(temp, chuvaProb, vento, aqIndex) {
 
 function avaliarAlergias(umidade, vento, estacao) {
   if (umidade >= 50 && vento <= 15)
-    return "(🤧🌾👀👃)Baixa";
+    return "Alergia(Baixa) ";
   if (umidade >= 35 && vento <= 25)
-    return "(🤧🌾👀👃)Moderada";
-  return "(🤧🌾👀👃)Alta";
+    return "Alergia(Moderada) ";
+  return "Alergia(Alta) ";
 }
 
 function avaliarGripeResfriado(umidade, temp) {
