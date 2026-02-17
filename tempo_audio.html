@@ -1762,12 +1762,19 @@ async function buscarAlturaOnda(lat, lon) {
 }
 
 
-function avaliarPiscina(temp, chuvaProb, vento){
-  if (chuvaProb > 60)
-    return "(Não recomendado) ";
-  if (temp >= 22 && chuvaProb < 30 && vento <= 20)
-    return "(Boa) ";
-  return "(Regular) ";
+function avaliarPiscina(temp, chuvaProb, vento) {
+  // Qualquer temperatura negativa ou muito baixa torna a piscina não recomendada
+  if (temp < 18 || chuvaProb > 60) {
+    return "(Não recomendado)";
+  }
+
+  // Condições ideais: temperatura agradável, pouca chuva e vento leve
+  if (temp >= 22 && chuvaProb < 40 && vento <= 20) {
+    return "(Boa)";
+  }
+
+  // Para condições intermediárias
+  return "(Regular)";
 }
 
 
