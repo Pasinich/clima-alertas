@@ -2158,51 +2158,45 @@ function montarTextoFalado() {
 
 if ("speechSynthesis" in window) {
 
+  const btn = document.getElementById("btnOuvir");
+  if (!btn) return;
+
   let falando = false;
-  let utteranceAtual = null;
 
-  document.addEventListener("click", function (e) {
+  btn.addEventListener("click", function () {
 
-    if (e.target.id !== "btnOuvir") return;
-
-    const btn = e.target;
-
-    // 🔁 Se já estiver falando → cancela
-    if (falando) {
+    // Se já estiver falando → cancela
+    if (window.speechSynthesis.speaking) {
       window.speechSynthesis.cancel();
       falando = false;
       btn.innerText = "🔊";
-      utteranceAtual = null;
       return;
     }
 
     const texto = montarTextoFalado();
     if (!texto) return;
 
-    utteranceAtual = new SpeechSynthesisUtterance(texto);
-    utteranceAtual.lang = "pt-BR";
-    utteranceAtual.rate = 0.95;
-    utteranceAtual.pitch = 1.1;
+    const fala = new SpeechSynthesisUtterance(texto);
+    fala.lang = "pt-BR";
+    fala.rate = 0.95;
+    fala.pitch = 1.1;
 
-    utteranceAtual.onstart = () => {
+    fala.onstart = function () {
       falando = true;
-      btn.innerText = "🔴"; // ícone quando está lendo
+      btn.innerText = "🔴";
     };
 
-    utteranceAtual.onend = () => {
-      falando = false;
-      btn.innerText = "🔊"; // volta ao normal
-      utteranceAtual = null;
-    };
-
-    utteranceAtual.onerror = () => {
+    fala.onend = function () {
       falando = false;
       btn.innerText = "🔊";
-      utteranceAtual = null;
     };
 
-    window.speechSynthesis.cancel(); // segurança extra
-    window.speechSynthesis.speak(utteranceAtual);
+    fala.onerror = function () {
+      falando = false;
+      btn.innerText = "🔊";
+    };
+
+    window.speechSynthesis.speak(fala);
 
   });
 
