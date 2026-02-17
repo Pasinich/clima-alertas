@@ -2153,53 +2153,48 @@ function montarTextoFalado() {
 
 
 // =========================
-// BOTÃO DE VOZ
+// BOTÃO DE VOZ FUNCIONANDO
 // =========================
 
 if ("speechSynthesis" in window) {
 
   const btn = document.getElementById("btnOuvir");
-  if (!btn) return;
 
-  let falando = false;
+  if (btn) {
 
-  btn.addEventListener("click", function () {
+    btn.onclick = function () {
 
-    // Se já estiver falando → cancela
-    if (window.speechSynthesis.speaking) {
-      window.speechSynthesis.cancel();
-      falando = false;
-      btn.innerText = "🔊";
-      return;
-    }
+      // Se estiver falando → cancela
+      if (window.speechSynthesis.speaking) {
+        window.speechSynthesis.cancel();
+        btn.innerText = "🔊";
+        return;
+      }
 
-    const texto = montarTextoFalado();
-    if (!texto) return;
+      const texto = montarTextoFalado();
+      if (!texto) return;
 
-    const fala = new SpeechSynthesisUtterance(texto);
-    fala.lang = "pt-BR";
-    fala.rate = 0.95;
-    fala.pitch = 1.1;
+      const fala = new SpeechSynthesisUtterance(texto);
+      fala.lang = "pt-BR";
+      fala.rate = 0.95;
+      fala.pitch = 1.1;
 
-    fala.onstart = function () {
-      falando = true;
-      btn.innerText = "🔴";
+      fala.onstart = function () {
+        btn.innerText = "🔴";
+      };
+
+      fala.onend = function () {
+        btn.innerText = "🔊";
+      };
+
+      fala.onerror = function () {
+        btn.innerText = "🔊";
+      };
+
+      window.speechSynthesis.speak(fala);
     };
 
-    fala.onend = function () {
-      falando = false;
-      btn.innerText = "🔊";
-    };
-
-    fala.onerror = function () {
-      falando = false;
-      btn.innerText = "🔊";
-    };
-
-    window.speechSynthesis.speak(fala);
-
-  });
-
+  }
 }
 
 }); 
