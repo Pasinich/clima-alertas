@@ -1384,8 +1384,14 @@ if ("speechSynthesis" in window) {
 
     btnOuvir.onclick = function () {
 
-      const clone = linhaStatus.cloneNode(true);
+      // 🔁 Se já estiver lendo → cancela
+      if (window.speechSynthesis.speaking) {
+        window.speechSynthesis.cancel();
+        btnOuvir.innerText = "🔊";
+        return;
+      }
 
+      const clone = linhaStatus.cloneNode(true);
       const botao = clone.querySelector("#btnOuvir");
       if (botao) botao.remove();
 
@@ -1396,7 +1402,20 @@ if ("speechSynthesis" in window) {
       fala.lang = "pt-BR";
       fala.rate = 1;
 
-      window.speechSynthesis.cancel();
+      // 🔴 Quando começa a ler
+      fala.onstart = function () {
+        btnOuvir.innerText = "🔴";
+      };
+
+      // 🔊 Quando termina
+      fala.onend = function () {
+        btnOuvir.innerText = "🔊";
+      };
+
+      fala.onerror = function () {
+        btnOuvir.innerText = "🔊";
+      };
+
       window.speechSynthesis.speak(fala);
     };
   }
@@ -2196,7 +2215,6 @@ if ("speechSynthesis" in window) {
 
   }
 }
-
 }); 
 </script>
 </body>
