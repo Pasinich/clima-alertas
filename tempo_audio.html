@@ -2134,22 +2134,19 @@ function montarTextoFalado() {
   const status = document.getElementById("linhaStatus");
   if (!status) return "";
 
-  const clone = status.cloneNode(true);
+  let textos = [];
 
-  // Remove botão
-  const btn = clone.querySelector("#btnOuvir");
-  if (btn) btn.remove();
+  // Pega apenas parágrafos e spans (ignora botão)
+  status.querySelectorAll("p, span, div").forEach(el => {
 
-  let texto = clone.innerText;
-  if (!texto) return "";
+    if (el.id === "btnOuvir") return;        // ignora botão
+    if (el.querySelector("#btnOuvir")) return; // ignora container que tenha botão
 
-  texto = texto
-    .replace(/[\u{1F300}-\u{1F6FF}]/gu, "") // remove emojis
-    .replace(/\n+/g, ". ")
-    .replace(/\s{2,}/g, " ")
-    .trim();
+    const t = el.innerText?.trim();
+    if (t) textos.push(t);
+  });
 
-  return texto;
+  return textos.join(". ");
 }
 
 
