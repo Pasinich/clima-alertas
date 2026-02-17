@@ -1245,7 +1245,7 @@ if (possuiPraia) {
     if (!el) return;
 
     if (valor != null) {
-      el.innerHTML = valor.toFixed(1) + " m";
+      el.innerHTML = valor.toFixed(1) + " metros";
     } else {
       el.innerHTML = "-";
     }
@@ -1329,13 +1329,12 @@ Fotografia</b><br>
   <b style="color:#8B008B;font-size:14px;">
     Praia / Ondas / Piscina
   </b><br>
-
-  Praia:<b>${praiaTexto}</b> |
+  <b>${praiaTexto}</b>
   Ondas:<b id="altura-onda">${
     possuiPraia 
       ? "..." 
       : `<span style="color:#888;">N/A</span>`
-  }</b> |
+  }</b>
   <b>${piscina ?? "-"}</b>
 </div>
 
@@ -1348,7 +1347,7 @@ Fotografia</b><br>
   <div style="margin-top:4px">
     <b style="color:#8B008B;font-size:14px;">Saúde/Bem Estar</b><br>
    </b>${alergiasTexto} 
-    <b style="color:#8B008B;font-size:14px;"> Gripe:</b>${gripeTexto}
+    <b style="color:#8B008B;font-size:14px;"> Gripe(</b>${gripeTexto})
   </div>
 ` : ""}
 
@@ -1746,12 +1745,12 @@ function avaliarMoto(temp, chuvaProb, vento, aqIndex) {
   if(temp == null || chuvaProb == null || vento == null || aqIndex == null) return "";
 
   // Condições para alerta
-  if(chuvaProb > 40) return "🏍️ Muita chuva";
-  if(vento > 40) return "🏍️ Vento forte";
-  if(aqIndex > 150) return "🏍️Ar poluído";
+  if(chuvaProb > 40) return "Motocicleta(Muita chuva) ";
+  if(vento > 40) return "Motocicleta(Vento forte) ";
+  if(aqIndex > 150) return "Motocicleta(Ar poluído)";
 
   // Se todas condições ok
-  return "🏍️ Seguro";
+  return "Motocicleta(Seguro) ";
 }
 
 function avaliarAlergias(umidade, vento, estacao) {
