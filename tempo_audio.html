@@ -1029,7 +1029,7 @@ const estrelas = avaliarEstrelas(
       `${String(t.getMonth()+1).padStart(2,"0")}/` +
       `${t.getFullYear()} - ` +
       `${String(t.getHours()).padStart(2,"0")}:` +
-      `${String(t.getMinutes()).padStart(2,"0")} horas`;
+      `${String(t.getMinutes()).padStart(2,"0")}`  ;
       
 
 const chuvaAtual = Number(atual?.hourly?.precipitation?.[idx] ?? 0);
@@ -1038,7 +1038,7 @@ if (chuvaAtual > 0) {
   chuvaTexto = "";
 } else if (dataHora) {
   chuvaTexto = `<span style="color:#8B008B; font-size:14px;">
-  Prox.Chuva prevista:</span> <b>${dataHora} (${probChuva}%)</b>`;
+  Proxima Chuva prevista:</span> <b>${dataHora} (${probChuva}%)</b>`;
 }
       
     }
@@ -1611,15 +1611,15 @@ function calcularHorarioOuroCompacto(sunrise, sunset){
 
 function avaliarCorrida(temp, chuva, vento, uv){
   if (temp >= 15 && temp <= 28 && chuva < 20 && vento <= 12 && uv <= 7)
-    return "Correr(Boa), ";
+    return "Correr(Boa) ";
   if (temp >= 10 && temp <= 32 && chuva < 40)
-    return "Correr(Regular), ";
-  return "Correr(Não indicada), ";
+    return "Correr(Regular) ";
+  return "Correr(Não indicada) ";
 }
 
 function avaliarCaminhada(temp, chuvaProb, vento, uv, vis) {
   if (chuvaProb > 60 || vento > 30 || vis < 1500 || temp > 35 || temp < 5)
-    return "Andar(Ruim), ";
+    return "Andar(Ruim) ";
   if (
     (temp >= 10 && temp < 15) ||
     (temp > 30 && temp <= 35) ||
@@ -1627,34 +1627,34 @@ function avaliarCaminhada(temp, chuvaProb, vento, uv, vis) {
     vento > 20 ||
     uv > 8
   )
-    return "Andar(Razoável), ";
+    return "Andar(Razoável) ";
   if (temp >= 15 && temp <= 30 && chuvaProb < 30 && vento <= 20 && uv <= 7)
-    return "Andar(Boa), ";
-  return "Andar(Razoável), ";
+    return "Andar(Boa) ";
+  return "Andar(Razoável) ";
 }
 
 function avaliaCiclismo(probChuva, vento, pressao) {
   if (probChuva > 50 || vento > 25 || pressao < 1008)
     return "Ciclismo:Não recomendado, ";
   if (vento <= 10 && probChuva < 20)
-    return "Ciclismo:Bom, ";
-  return "Ciclismo:Regular, ";
+    return "Ciclismo(Bom) ";
+  return "Ciclismo(Regular) ";
 }
 
 function avaliarEstrelas(nebulosidade, chuvaProb, luaIluminacao) {
   if (nebulosidade <= 20 && chuvaProb < 20 && luaIluminacao <= 30)
-    return " 🔭Boa ";
+    return " Observar Estrelas(Boa) ";
   if (nebulosidade <= 50 && chuvaProb < 40)
-    return " 🔭Razoável ";
-  return " 🔭Ruim ";
+    return " Observar Estrela(Razoável) ";
+  return " Observar Estrelas(Ruim) ";
 }
 
 function avaliarPesca(pressao, vento, chuva){
   if (pressao >= 1015 && vento <= 8 && chuva === 0)
-    return "🎣Boa ";
+    return "Pescaria(Boa) ";
   if (pressao >= 1008 && vento <= 12 && chuva < 40)
-    return "🎣Regular ";
-  return "🎣Ruim ";
+    return "Pescaria(Regular) ";
+  return "Pescaria(Ruim) ";
 }
 
 function avaliarChurrasco(temperatura, precipitacao, vento) {
@@ -1662,11 +1662,11 @@ function avaliarChurrasco(temperatura, precipitacao, vento) {
   // pouca chance de chuva (<30%)
   // vento leve (<20 km/h)
   if (temperatura >= 20 && temperatura <= 35 && precipitacao < 30 && vento < 20) {
-    return "Ótimo!";
+    return "(Ótimo) ";
   } else if (temperatura >= 15 && temperatura <= 40 && precipitacao < 50) {
-    return "Fique atento!";
+    return "(Fique atento)";
   } else {
-    return "Melhor adiar";
+    return "(Melhor adiar)";
   }
 }
 
@@ -1675,10 +1675,10 @@ Avaliação da praia
 ========================= */
 function avaliarPraia(temp, probChuva, vento, uv){
   if (temp >= 25 && probChuva < 20 && vento <= 15 && uv <= 8)
-    return "Boa";
+    return "Praia(Boa) ";
   if (temp >= 20 && probChuva < 40)
-    return "Regular";
-  return "Não indicada";
+    return "Praia(Regular) ";
+  return "Praia(Não indicada) ";
 }
 
 
@@ -1718,27 +1718,27 @@ async function buscarAlturaOnda(lat, lon) {
 
 function avaliarPiscina(temp, chuvaProb, vento){
   if (chuvaProb > 60)
-    return "🏊Não recomendado ";
+    return "Piscina(Não recomendado) ";
   if (temp >= 22 && chuvaProb < 30 && vento <= 20)
-    return "🏊Boa ";
-  return "🏊Regular ";
+    return "Piscina(Boa) ";
+  return "Piscina(Regular) ";
 }
 
 
 function avaliarAviao(vento, vis, chuva, tempestade){
   if (tempestade || vento > 35 || vis < 2000)
-    return "✈️Risco elevado ";
+    return "Vôo(Risco elevado) ";
   if (vento > 20 || chuva > 2)
-    return "✈️Atenção! ";
-  return "✈️Vôo tranquilo ";
+    return "Vôo(Atenção) ";
+  return "Vôo(Tranquilo) ";
 }
 
 function avaliarCarro(chuvaProb, vis, vento){
   if (chuvaProb > 70 || vis < 1500)
-    return "🚗Cuidado na estrada! ";
+    return "Dirigir(Cuidado na estrada) ";
   if (chuvaProb > 40 || vento > 30)
-    return "🚗Atenção na estrada! ";
-  return "🚗Boa Dirigibilidade ";
+    return ", Dirigir(Atenção na estrada) ";
+  return "Dirigir(Tranquilo)";
 }
 
 function avaliarMoto(temp, chuvaProb, vento, aqIndex) {
@@ -2176,11 +2176,8 @@ if ("speechSynthesis" in window) {
     }
 
   });
-
 }
-
-
-}); // ✅ AGORA FECHA TUDO CERTO
+}); 
 </script>
 </body>
 </html>
