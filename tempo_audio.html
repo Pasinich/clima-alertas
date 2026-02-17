@@ -571,7 +571,7 @@ function cidadePossuiPraia(pais, lat, lon){
 
   return pontosLitoralBrasil.some(
     ([plLat, plLon]) =>
-      distanciaKm(lat, lon, plLat, plLon) <= 50
+      distanciaKm(lat, lon, plLat, plLon) <= 40
   );
 }
 
@@ -1368,47 +1368,30 @@ linhaStatus.innerHTML = `
     <b style="color:#8B008B;font-size:14px;">Fenômeno:</b> ${fenomeno ?? "-"}${impactoTexto ? ` (${impactoTexto})` : ""}
   </div>
 
-  <!-- Botão flutuante no canto inferior direito -->
-  <button id="btnOuvir" class="btnVoz" style="
-    position:absolute;
-    bottom:10px;
-    right:10px;
-    border:none;
-    background:#ffffffcc;
-    font-size:22px;
-    cursor:pointer;
-    border-radius:50%;
-    width:50px;
-    height:50px;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    box-shadow:0 2px 6px rgba(0,0,0,0.25);
-    transition: transform 0.2s;
-  ">🔊</button>
-`;
+   <!-- Botão flutuante no canto inferior direito -->
+    <button id="btnOuvir" class="btnVoz">🔊</button>
+  `;
 
-// ===== ANIMAÇÃO CSS =====
-const style = document.createElement("style");
-style.innerHTML = `
-  @keyframes pulsar {
-    0% { transform: scale(1); }
-    50% { transform: scale(1.15); }
-    100% { transform: scale(1); }
-  }
-  .pulsando {
-    animation: pulsar 1s infinite;
-  }
-`;
-document.head.appendChild(style);
+  /* ===== ESTILOS DO BOTÃO ===== */
+  const style = document.createElement("style");
+  style.innerHTML = `
+    @keyframes pulsar {0% {transform: scale(1);} 50% {transform: scale(1.15);} 100% {transform: scale(1);}}
+    .pulsando {animation: pulsar 1s infinite;}
 
-// 🔊 Ativa botão de voz
-if ("speechSynthesis" in window) {
-  const btnOuvir = document.getElementById("btnOuvir");
+    #btnOuvir {
+      position:absolute; bottom:10px; right:10px; border:none; background:#ffffffcc;
+      font-size:22px; cursor:pointer; border-radius:50%; width:50px; height:50px;
+      display:flex; align-items:center; justify-content:center; box-shadow:0 2px 6px rgba(0,0,0,0.25);
+      transition: transform 0.2s;
+    }
+  `;
+  document.head.appendChild(style);
 
-  if (btnOuvir) {
-    btnOuvir.onclick = function () {
-      // Se já estiver lendo → cancela
+  /* ===== FUNÇÃO DE VOZ ===== */
+  if ("speechSynthesis" in window) {
+    const btnOuvir = document.getElementById("btnOuvir");
+
+    function falarTexto() {
       if (window.speechSynthesis.speaking) {
         window.speechSynthesis.cancel();
         btnOuvir.innerText = "🔊";
@@ -1416,7 +1399,6 @@ if ("speechSynthesis" in window) {
         return;
       }
 
-      // Clona o painel e remove o botão para pegar só o texto
       const clone = linhaStatus.cloneNode(true);
       const botao = clone.querySelector("#btnOuvir");
       if (botao) botao.remove();
@@ -1428,27 +1410,31 @@ if ("speechSynthesis" in window) {
       fala.lang = "pt-BR";
       fala.rate = 1;
 
-      // Começa a falar → muda ícone e inicia animação
       fala.onstart = () => {
         btnOuvir.innerText = "⏸️";
         btnOuvir.classList.add("pulsando");
       };
-
-      // Termina ou erro → volta ao normal
-      fala.onend = () => {
-        btnOuvir.innerText = "🔊";
-        btnOuvir.classList.remove("pulsando");
-      };
-      fala.onerror = () => {
+      fala.onend = fala.onerror = () => {
         btnOuvir.innerText = "🔊";
         btnOuvir.classList.remove("pulsando");
       };
 
       window.speechSynthesis.speak(fala);
-    };
+    }
+
+    btnOuvir.onclick = falarTexto;
+
+    // Cancela leitura se usuário mudar de aba (iPhone/Safari)
+    document.addEventListener("visibilitychange", () => {
+      if (document.hidden && window.speechSynthesis.speaking) {
+        window.speechSynthesis.cancel();
+        btnOuvir.innerText = "🔊";
+        btnOuvir.classList.remove("pulsando");
+      }
+    });
   }
-}
-}
+
+};
 
  /* =========================
     LINHA DO SOL
