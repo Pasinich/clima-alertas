@@ -2148,29 +2148,20 @@ if ("speechSynthesis" in window) {
       }
 
       const texto = typeof montarTextoFalado === "function"
-        ? montarTextoFalado()
-        : document.getElementById("linhaStatus")?.innerText;
+  ? montarTextoFalado()
+  : document.getElementById("linhaStatus")?.innerText;
 
-      if (!texto || texto.trim() === "") {
-        alert("Clima ainda não carregado.");
-        return;
-      }
+const textoLimpo = texto?.trim();
 
-      const fala = new SpeechSynthesisUtterance(texto);
-      fala.lang = "pt-BR";
+if (!textoLimpo) {
+  return;
+}
 
-      fala.onstart = function () {
-        falando = true;
-        btn.innerText = "🔴";
-      };
+const fala = new SpeechSynthesisUtterance(textoLimpo);
+fala.lang = "pt-BR";
 
-      fala.onend = function () {
-        falando = false;
-        btn.innerText = "🔊";
-      };
-
-      window.speechSynthesis.speak(fala);
-
+window.speechSynthesis.cancel();
+window.speechSynthesis.speak(fala);
     }
 
   });
