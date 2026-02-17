@@ -1375,6 +1375,33 @@ Fotografia</b><br>
     🔊
   </button>
 `;
+
+// 🔊 Ativa botão de voz depois de criar o HTML
+
+if ("speechSynthesis" in window) {
+
+  const btnOuvir = document.getElementById("btnOuvir");
+
+  if (btnOuvir) {
+
+    btnOuvir.onclick = function () {
+
+      const texto = linhaStatus.innerText;
+
+      if (!texto || texto.trim() === "") {
+        alert("Clima ainda não disponível.");
+        return;
+      }
+
+      const fala = new SpeechSynthesisUtterance(texto);
+      fala.lang = "pt-BR";
+      fala.rate = 1;
+
+      window.speechSynthesis.cancel(); // evita sobrepor voz
+      window.speechSynthesis.speak(fala);
+    };
+  }
+}
 }
 
  /* =========================
