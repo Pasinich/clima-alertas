@@ -204,8 +204,6 @@ canvas{
 </head>
 <body>
 
-<body>
-
 <header>
  <h2>🌡️ Clima em: <span id="nome-cidade"></span></h2>
  <button class="toggle" id="toggleModo">🌙</button>
@@ -781,6 +779,8 @@ async function buscar(){
   `&timezone=auto`
  );
  const atual = await rAtual.json();
+ const latitudeAtual = atual.latitude;
+const longitudeAtual = atual.longitude;
 
  /* ===== API QUALIDADE DO AR ===== */
  const rAQ = await fetch(
@@ -1055,6 +1055,39 @@ function calcularHorarioOuroDoDia(lat, lon, data = new Date(), timezone = 'Ameri
   return `${formatar(inicioManha)} às ${formatar(fimManha)} e ${formatar(inicioTarde)} às ${formatar(fimTarde)}`;
 }
 
+let nomeCidadeFinal = nomeCidade.innerText;
+
+try {
+  const rCidade = await fetch(
+    `https://geocoding-api.open-meteo.com/v1/reverse?latitude=${latitudeAtual}&longitude=${longitudeAtual}&language=pt&format=json`
+  );
+
+  const dCidade = await rCidade.json();
+
+  if (dCidade?.results?.length > 0) {
+
+    const c = dCidade.results[0];
+    const nome = c.name ?? "";
+    const estado = c.admin1 ?? "";
+    const pais = c.country ?? "";
+    const paisCode = c.country_code ?? "";
+
+    if (paisCode === "BR" && estado) {
+      nomeCidadeFinal = `${nome} - ${estado}`;
+    } else if (estado) {
+      nomeCidadeFinal = `${nome} - ${estado} - ${pais}`;
+    } else {
+      nomeCidadeFinal = `${nome} - ${pais}`;
+    }
+
+  }
+
+} catch(e){
+  console.log("Erro ao atualizar cidade:", e);
+}
+
+nomeCidade.innerText = nomeCidadeFinal;
+
 
 /* Montar painel climático */
 montarPainelClimatico({
@@ -1065,6 +1098,7 @@ montarPainelClimatico({
   pais: paisSelecionado,   
   estado: estadoSelecionado ,
   cidade: nomeCidade.innerText,
+  cidade: nomeCidadeFinal,
   nebulosidade 
 });
 
