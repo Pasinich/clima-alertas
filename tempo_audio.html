@@ -416,14 +416,14 @@ if (navigator.geolocation) {
 
         } else {
 
-          nomeCidade.innerText = "Clima em: 📍Sua localização";
+          nomeCidade.innerText = "📍Sua localização";
 
         }
 
       } catch (erro) {
 
         console.log("Erro ao obter cidade:", erro);
-        nomeCidade.innerText = "Clima em: 📍Sua localização";
+        nomeCidade.innerText = "📍Sua localização";
 
       }
 
@@ -433,7 +433,7 @@ if (navigator.geolocation) {
 
     },
     (erro) => {
-      nomeCidade.innerText = "Clima em: 📍Permissão negada";
+      nomeCidade.innerText = "📍Permissão negada";
     },
     {
       enableHighAccuracy: true,
