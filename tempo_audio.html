@@ -2215,42 +2215,7 @@ function montarGrafico(h){
  );
 }
 
-/* =========================
-   GEOLOCALIZAÇÃO INICIAL
-========================= */
-navigator.geolocation?.getCurrentPosition(async p => {
-  lat = p.coords.latitude;
-  lon = p.coords.longitude;
 
-  const estadoGeo = await obterEstadoPorLatLon(lat, lon);
-
-  paisSelecionado = "BR";
-  estadoSelecionado = estadoGeo; 
-
-  cidade.value = estadoGeo
-    ? `Localização - ${estadoGeo}`
-    : "Sua Localização";
-
-  let nomeExibir = "Buscando sua localização!";
-  if (paisSelecionado === "BR" && estadoGeo) {
-    const mapaEstados = {
-      "RIO GRANDE DO SUL":"RS","SANTA CATARINA":"SC","PARANA":"PR",
-      "SAO PAULO":"SP","RIO DE JANEIRO":"RJ","MINAS GERAIS":"MG","ESPIRITO SANTO":"ES",
-      "MATO GROSSO":"MT","MATO GROSSO DO SUL":"MS","GOIAS":"GO","DISTRITO FEDERAL":"DF",
-      "BAHIA":"BA","SERGIPE":"SE","ALAGOAS":"AL","PERNAMBUCO":"PE","PARAIBA":"PB",
-      "RIO GRANDE DO NORTE":"RN","CEARA":"CE","PIAUI":"PI","MARANHAO":"MA",
-      "AMAZONAS":"AM","PARA":"PA","ACRE":"AC","RONDONIA":"RO","RORAIMA":"RR",
-      "AMAPA":"AP","TOCANTINS":"TO"
-    };
-
-    const sigla = mapaEstados[estadoGeo] ?? "";
-    nomeExibir = estadoGeo.charAt(0) + estadoGeo.slice(1).toLowerCase() + (sigla ? ` (${sigla})` : "");
-  }
-
-  nomeCidade.innerText = nomeExibir;
-
-  await buscar();
-});
 
 
 // =========================
