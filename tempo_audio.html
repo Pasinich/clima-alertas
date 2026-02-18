@@ -389,13 +389,12 @@ if (navigator.geolocation) {
 
       try {
 
-        const r = await fetch(
+        // 🔥 Reverse geocoding correto
+        const d = await fetch(
           `https://geocoding-api.open-meteo.com/v1/reverse?latitude=${lat}&longitude=${lon}&language=pt&format=json`
-        );
+        ).then(res => res.json());
 
-        const d = await r.json();
-
-        if (d?.results?.length > 0) {
+        if (d && d.results && d.results.length > 0) {
 
           const c = d.results[0];
 
@@ -405,11 +404,11 @@ if (navigator.geolocation) {
           const paisCode = c.country_code ?? "";
 
           if (paisCode === "BR" && estado) {
-            nomeCidade.innerText = `${nome} - ${estado}`;
+            nomeCidade.innerText = `Clima em: ${nome} - ${estado}`;
           } else if (estado) {
-            nomeCidade.innerText = `${nome} - ${estado} - ${pais}`;
+            nomeCidade.innerText = `Clima em: ${nome} - ${estado} - ${pais}`;
           } else {
-            nomeCidade.innerText = `${nome} - ${pais}`;
+            nomeCidade.innerText = `Clima em: ${nome} - ${pais}`;
           }
 
           paisSelecionado = paisCode;
@@ -417,35 +416,24 @@ if (navigator.geolocation) {
 
         } else {
 
-          // 🔥 fallback inteligente usando busca por coordenadas
-          const r2 = await fetch(
-            `https://geocoding-api.open-meteo.com/v1/search?latitude=${lat}&longitude=${lon}&count=1&language=pt`
-          );
-
-          const d2 = await r2.json();
-
-          if (d2?.results?.length > 0) {
-            const c2 = d2.results[0];
-            nomeCidade.innerText = `${c2.name} - ${c2.admin1 ?? c2.country}`;
-          } else {
-            nomeCidade.innerText = "📍Sua localização";
-          }
+          nomeCidade.innerText = "Clima em: 📍Sua localização";
 
         }
 
       } catch (erro) {
 
         console.log("Erro ao obter cidade:", erro);
-        nomeCidade.innerText = "📍Sua localização";
+        nomeCidade.innerText = "Clima em: 📍Sua localização";
 
       }
 
+      // 🔥 Agora chama o clima
       limparTela();
       buscar();
 
     },
     (erro) => {
-      nomeCidade.innerText = "📍Permissão negada";
+      nomeCidade.innerText = "Clima em: 📍Permissão negada";
     },
     {
       enableHighAccuracy: true,
@@ -454,7 +442,12 @@ if (navigator.geolocation) {
     }
   );
 
+} else {
+
+  nomeCidade.innerText = "Clima em: Geolocalização não suportada";
+
 }
+
 /* =========================
    Distância das cidades até a praia 
 ========================= */
@@ -2276,8 +2269,8 @@ window.addEventListener("load", () => {
       try {
         // 🔹 Pega nome da cidade pelo lat/lon
         const r = await fetch(
-          `https://geocoding-api.open-meteo.com/v1/reverse?latitude=${lat}&longitude=${lon}&language=pt`
-        );
+          `https://geocoding-api.open-meteo.com/v1/reverse?latitude=${lat}&longitude=${lon}&language=pt&format=json`
+).then(r=>r.json());
         const d = await r.json();
 
         if (d?.results?.length) {
