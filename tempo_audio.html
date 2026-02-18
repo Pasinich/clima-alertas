@@ -627,12 +627,27 @@ cidade.addEventListener("input", async () => {
   if (!d.results) return;
 
   // 🔥 Prioriza cidades do Brasil
-  d.results.sort((a, b) => {
-    if (a.country_code === "BR" && b.country_code !== "BR") return -1;
-    if (a.country_code !== "BR" && b.country_code === "BR") return 1;
-    return 0;
-  });
+  const busca = cidade.value.trim().toLowerCase();
 
+d.results.sort((a, b) => {
+
+// 3️⃣ Cidades principais (PPLA = capital de estado)
+  if (a.feature_code === "PPLA" && b.feature_code !== "PPLA") return -1;
+  if (a.feature_code !== "PPLA" && b.feature_code === "PPLA") return 1;
+
+// 2️⃣ Capitais primeiro
+  if (a.feature_code === "PPLC" && b.feature_code !== "PPLC") return -1;
+  if (a.feature_code !== "PPLC" && b.feature_code === "PPLC") return 1;
+ 
+
+  // 1️⃣ Brasil primeiro
+  if (a.country_code === "BR" && b.country_code !== "BR") return -1;
+  if (a.country_code !== "BR" && b.country_code === "BR") return 1;
+
+  // 4️⃣ Maior população primeiro
+  return (b.population ?? 0) - (a.population ?? 0);
+
+});
   d.results.forEach(c => {
 
     let local;
@@ -1287,7 +1302,7 @@ const avaliacaoFoto = avaliarFotografia(
 );
 
 // Monta a exibição da fotografia com Horário de Ouro
-const fotografia = `${avaliacaoFoto} <b style="color:#8B008B;font-size:14px;">Hora de Ouro</b>(${horarioOuro})`;
+const fotografia = `${avaliacaoFoto} <b style="color:#696969;font-size:14px;">Hora de Ouro</b>(${horarioOuro})`;
 
 
 
@@ -1312,16 +1327,16 @@ if (possuiPraia) {
   secaoAgua = `
   <div style="margin-top:4px">
     <b style="color:#8B008B;font-size:14px;">Praia / Ondas / Piscina</b><br>
-    <b style="color:#8B008B;font-size:14px;">Praia</b>(${praiaTexto}) |
-    <b style="color:#8B008B;font-size:14px;">Ondas</b>(<b id="altura-onda">...</b>) |
-    <b style="color:#8B008B;font-size:14px;">Piscina</b>${piscina ?? "-"}
+    <b style="color:#696969;font-size:14px;">Praia</b>(${praiaTexto}) |
+    <b style="color:#696969;font-size:14px;">Ondas</b>(<b id="altura-onda">...</b>) |
+    <b style="color:#696969;font-size:14px;">Piscina</b>${piscina ?? "-"}
   </div>`;
 } else {
   // Se não houver praia, mostra somente piscina deslocada à esquerda
   secaoAgua = `
   <div style="margin-top:4px">
   <b style="color:#8B008B;font-size:14px;">Piscina</b><br>
-    <b style="color:#8B008B;font-size:14px;">Piscina</b>${piscina ?? "-"}
+    <b style="color:#696969;font-size:14px;">Piscina</b>${piscina ?? "-"}
   </div>`;
 }
 
@@ -1344,37 +1359,37 @@ linhaStatus.innerHTML = `
   
  
     <b style="color:#8B008B;font-size:14px;">Atividades ao Ar Livre </b><br>
-    <b style="color:#8B008B;font-size:14px;">Qualidade do Ar${formatarAQ(usAQI)}</b>
-    <b style="color:#8B008B;font-size:14px;">Corrida</b>${corrida ?? ""} 
-    <b style="color:#8B008B;font-size:14px;">Caminhada</b>${caminhada ?? ""} 
-    <b style="color:#8B008B;font-size:14px;">Ciclismo</b>${ciclismo ?? ""} 
-    <b style="color:#8B008B;font-size:14px;">Observar Estrelas</b>${estrelas ?? ""} 
-    <b style="color:#8B008B;font-size:14px;">Pescaria</b>${pesca ?? ""} 
-    <b style="color:#8B008B;font-size:14px;">Preparar Churrasco</b>${churrascoTexto ? `  ${churrascoTexto}` : ""}
-    <b style="color:#8B008B;font-size:14px;">Fotografar</b>${fotografia}
+    <b style="color:#696969;font-size:14px;">Qualidade do Ar</b>${formatarAQ(usAQI)}
+    <b style="color:#696969;font-size:14px;">Corrida</b>${corrida ?? ""} 
+    <b style="color:#696969;font-size:14px;">Caminhada</b>${caminhada ?? ""} 
+    <b style="color:#696969;font-size:14px;">Ciclismo</b>${ciclismo ?? ""} 
+    <b style="color:#696969;font-size:14px;">Observar Estrelas</b>${estrelas ?? ""} 
+    <b style="color:#696969;font-size:14px;">Pescaria</b>${pesca ?? ""} 
+    <b style="color:#696969;font-size:14px;">Preparar Churrasco</b>${churrascoTexto ? `  ${churrascoTexto}` : ""}
+    <b style="color:#696969;font-size:14px;">Fotografar</b>${fotografia}
   </div>
 
   ${secaoAgua}
 
   <div style="margin-top:4px">
     <b style="color:#8B008B;font-size:14px;">Trânsito / Viagens</b><br>
-    <b style="color:#8B008B;font-size:14px;">Vôo</b>${aviao ?? ""} |
-    <b style="color:#8B008B;font-size:14px;">Dirigir</b>${carro ?? ""} |
-    <b style="color:#8B008B;font-size:14px;">Motocicleta</b>${moto ?? ""}
+    <b style="color:#696969;font-size:14px;">Vôo</b>${aviao ?? ""} |
+    <b style="color:#696969;font-size:14px;">Dirigir</b>${carro ?? ""} |
+    <b style="color:#696969;font-size:14px;">Motocicleta</b>${moto ?? ""}
   </div>
 
   ${alergiasTexto ? `
     <div style="margin-top:4px">
       <b style="color:#8B008B;font-size:14px;">Saúde/Bem Estar</b><br>
-      <b style="color:#8B008B;font-size:14px;">Alergias</b>(${alergiasTexto}) |
-      <b style="color:#8B008B;font-size:14px;">Gripe</b>(${gripeTexto})
+      <b style="color:#696969;font-size:14px;">Alergias</b>(${alergiasTexto}) |
+      <b style="color:#696969;font-size:14px;">Gripe</b>(${gripeTexto})
     </div>` : ""}
 
   ${mosquitosTexto || pragasTexto ? `
     <div style="margin-top:4px">
       <b style="color:#8B008B;font-size:14px;">Pragas/Insetos</b><br>
-      <b style="color:#8B008B;font-size:14px;">Mosquitos</b>(${mosquitosTexto}) |
-      <b style="color:#8B008B;font-size:14px;">Pragas</b>(${pragasTexto ?? ""})
+      <b style="color:#696969;font-size:14px;">Mosquitos</b>(${mosquitosTexto}) |
+      <b style="color:#696969;font-size:14px;">Pragas</b>(${pragasTexto ?? ""})
     </div>` : ""}
 
   <div style="margin-top:6px">
