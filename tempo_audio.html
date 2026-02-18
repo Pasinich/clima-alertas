@@ -2214,7 +2214,7 @@ function montarGrafico(h){
 /* =========================
    GEOLOCALIZAÇÃO INICIAL
 ========================= */
-navigator.geolocation?.getCurrentPosition(async p=>{
+navigator.geolocation?.getCurrentPosition(async p => {
   lat = p.coords.latitude;
   lon = p.coords.longitude;
 
@@ -2229,18 +2229,18 @@ navigator.geolocation?.getCurrentPosition(async p=>{
 
   let nomeExibir = "Buscando sua localização!";
   if (paisSelecionado === "BR" && estadoGeo) {
-      const mapaEstados = {
-        "RIO GRANDE DO SUL":"RS","SANTA CATARINA":"SC","PARANA":"PR",
-        "SAO PAULO":"SP","RIO DE JANEIRO":"RJ","MINAS GERAIS":"MG","ESPIRITO SANTO":"ES",
-        "MATO GROSSO":"MT","MATO GROSSO DO SUL":"MS","GOIAS":"GO","DISTRITO FEDERAL":"DF",
-        "BAHIA":"BA","SERGIPE":"SE","ALAGOAS":"AL","PERNAMBUCO":"PE","PARAIBA":"PB",
-        "RIO GRANDE DO NORTE":"RN","CEARA":"CE","PIAUI":"PI","MARANHAO":"MA",
-        "AMAZONAS":"AM","PARA":"PA","ACRE":"AC","RONDONIA":"RO","RORAIMA":"RR",
-        "AMAPA":"AP","TOCANTINS":"TO"
-      };
+    const mapaEstados = {
+      "RIO GRANDE DO SUL":"RS","SANTA CATARINA":"SC","PARANA":"PR",
+      "SAO PAULO":"SP","RIO DE JANEIRO":"RJ","MINAS GERAIS":"MG","ESPIRITO SANTO":"ES",
+      "MATO GROSSO":"MT","MATO GROSSO DO SUL":"MS","GOIAS":"GO","DISTRITO FEDERAL":"DF",
+      "BAHIA":"BA","SERGIPE":"SE","ALAGOAS":"AL","PERNAMBUCO":"PE","PARAIBA":"PB",
+      "RIO GRANDE DO NORTE":"RN","CEARA":"CE","PIAUI":"PI","MARANHAO":"MA",
+      "AMAZONAS":"AM","PARA":"PA","ACRE":"AC","RONDONIA":"RO","RORAIMA":"RR",
+      "AMAPA":"AP","TOCANTINS":"TO"
+    };
 
-      const sigla = mapaEstados[estadoGeo] ?? "";
-      nomeExibir = estadoGeo.charAt(0) + estadoGeo.slice(1).toLowerCase() + (sigla ? ` (${sigla})` : "");
+    const sigla = mapaEstados[estadoGeo] ?? "";
+    nomeExibir = estadoGeo.charAt(0) + estadoGeo.slice(1).toLowerCase() + (sigla ? ` (${sigla})` : "");
   }
 
   nomeCidade.innerText = nomeExibir;
@@ -2248,56 +2248,6 @@ navigator.geolocation?.getCurrentPosition(async p=>{
   await buscar();
 });
 
-
-
-/* =========================
-   GEOLOCALIZAÇÃO AUTOMÁTICA
-========================= */
-window.addEventListener("load", () => {
-
-  if (!navigator.geolocation) {
-    nomeCidade.innerText = "Geolocalização não suportada";
-    return;
-  }
-
-  navigator.geolocation.getCurrentPosition(
-    async (pos) => {
-
-      lat = pos.coords.latitude;
-      lon = pos.coords.longitude;
-
-      try {
-        // 🔹 Pega nome da cidade pelo lat/lon
-        const r = await fetch(
-          `https://geocoding-api.open-meteo.com/v1/reverse?latitude=${lat}&longitude=${lon}&language=pt&format=json`
-).then(r=>r.json());
-        const d = await r.json();
-
-        if (d?.results?.length) {
-          const c = d.results[0];
-
-          const local = c.country_code === "BR" && c.admin1
-            ? `${c.name} - ${c.admin1}`
-            : `${c.name} - ${c.country}`;
-
-          nomeCidade.innerText = local;
-          paisSelecionado = c.country_code;
-          estadoSelecionado = c.admin1 ?? null;
-
-        } else {
-          nomeCidade.innerText = "Localização atual";
-        }
-
-      } catch {
-        nomeCidade.innerText = "Localização atual";
-      }
-
-      
-    },
-    () => {
-      nomeCidade.innerText = "Permissão negada";
-    }
-  );
 
 // =========================
 // FUNÇÃO QUE MONTA TEXTO LIMPO PARA VOZ
@@ -2309,11 +2259,10 @@ function montarTextoFalado() {
 
   let textos = [];
 
-  // Pega apenas parágrafos e spans (ignora botão)
   status.querySelectorAll("p, span, div").forEach(el => {
 
-    if (el.id === "btnOuvir") return;        // ignora botão
-    if (el.querySelector("#btnOuvir")) return; // ignora container que tenha botão
+    if (el.id === "btnOuvir") return;
+    if (el.querySelector("#btnOuvir")) return;
 
     const t = el.innerText?.trim();
     if (t) textos.push(t);
@@ -2321,7 +2270,6 @@ function montarTextoFalado() {
 
   return textos.join(". ");
 }
-
 
 
 // =========================
@@ -2336,7 +2284,6 @@ if ("speechSynthesis" in window) {
 
     btn.onclick = function () {
 
-      // Se estiver falando → cancela
       if (window.speechSynthesis.speaking) {
         window.speechSynthesis.cancel();
         btn.innerText = "🔊";
@@ -2368,7 +2315,6 @@ if ("speechSynthesis" in window) {
 
   }
 }
-}); 
 </script>
 </body>
 </html>
