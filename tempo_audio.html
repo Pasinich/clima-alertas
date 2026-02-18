@@ -375,82 +375,123 @@ if (btnMic && ('webkitSpeechRecognition' in window || 'SpeechRecognition' in win
 }
 
 /* =========================
-   GEOLOCALIZAÇÃO INICIAL
+   AUTOCOMPLETE DE CIDADES
 ========================= */
-if (navigator.geolocation) {
+cidade.addEventListener("input", async () => {
 
-  nomeCidade.innerText = "📍Buscando sua localização...";
+  const termo = cidade.value.trim();
+  lista.innerHTML = "";
 
-  navigator.geolocation.getCurrentPosition(
-    async (pos) => {
+  if (termo.length < 2) return;
 
-      lat = pos.coords.latitude;
-      lon = pos.coords.longitude;
+  // 🔥 Função para remover acentos
+  const normalizar = (texto) =>
+    texto
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "");
 
-      try {
-        // 🔹 Reverse geocoding confiável via Nominatim
-        const resposta = await fetch(
-          `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&accept-language=pt`
-        );
-        const dados = await resposta.json();
+  try {
 
-        console.log("RETORNO NOMINATIM:", dados); // para debug
+    const resp = await fetch(
+      `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(termo)}&count=10&language=pt&format=json`
+    );
 
-        if (dados && dados.address) {
+    const d = await resp.json();
+    if (!d.results) return;
 
-          const cidadeNome =
-            dados.address.city ||
-            dados.address.town ||
-            dados.address.village ||
-            dados.address.municipality ||
-            "";
-          const estadoNome = dados.address.state || "";
-          const paisNome = dados.address.country || "";
-          const paisCode = dados.address.country_code?.toUpperCase() || "";
+    const busca = normalizar(termo);
 
-          if (cidadeNome) {
-            nomeCidade.innerText =
-              paisCode === "BR"
-                ? `${cidadeNome} - ${estadoNome}`
-                : `${cidadeNome} - ${paisNome}`;
-          } else if (estadoNome) {
-            nomeCidade.innerText = `${estadoNome}`;
-          } else {
-            nomeCidade.innerText = "📍Sua localização";
-          }
+    // 1️⃣ Apenas cidades + remove duplicados
+    let resultados = d.results
+      .filter(c => c.feature_code?.startsWith("P"))
+      .filter((c, index, self) =>
+        index === self.findIndex(t =>
+          t.name.toLowerCase() === c.name.toLowerCase() &&
+          t.admin1?.toLowerCase() === c.admin1?.toLowerCase() &&
+          t.country_code === c.country_code
+        )
+      );
 
-          paisSelecionado = paisCode;
-          estadoSelecionado = estadoNome;
+    // 2️⃣ Sistema de pontuação inteligente
+    resultados = resultados.map(c => {
 
-        } else {
-          nomeCidade.innerText = "📍Sua localização";
-        }
+      let score = 0;
 
-      } catch (erro) {
-        console.log("Erro ao obter cidade:", erro);
-        nomeCidade.innerText = "📍Sua localização";
+      const nomeOriginal = c.name;
+      const nome = normalizar(c.name);
+      const palavras = nome.split(" ");
+
+// 🎯 Nome EXATAMENTE igual
+  if (nome === busca) score += 3000;
+
+      // 🎯 Nome começa exatamente
+      if (nome.startsWith(busca)) score += 4000;
+
+      // 🎯 Alguma palavra começa
+      if (palavras.some(p => p.startsWith(busca))) score += 2500;
+
+      // 🎯 Apenas contém
+      if (nome.includes(busca)) score += 1000;
+
+      // 🏛 Capital nacional
+      if (c.feature_code === "PPLC") score += 2500;
+
+      // 🏢 Capital estadual
+      if (c.feature_code === "PPLA") score += 1900;
+
+      // 🇧🇷 Brasil
+      if (c.country_code === "BR") score += 3600;
+
+      // 👥 População
+      if (c.population) {
+        score += Math.min(c.population / 3000, 3000);
       }
 
-      // 🔥 Agora chama o clima
-      limparTela();
-      buscar();
+      return { ...c, score };
+    });
 
-    },
-    (erro) => {
-      nomeCidade.innerText = "📍Permissão negada";
-    },
-    {
-      enableHighAccuracy: true,
-      timeout: 15000,
-      maximumAge: 0
-    }
-  );
+    // 3️⃣ Ordena pela pontuação
+    resultados.sort((a, b) => b.score - a.score);
 
-} else {
+    // 4️⃣ Mostra os 5 melhores
+    resultados.slice(0, 5).forEach(c => {
 
-  nomeCidade.innerText = "Clima em: Geolocalização não suportada";
+      let local;
 
-}
+      if (c.country_code === "BR" && c.admin1) {
+        local = `${c.name} - ${c.admin1}`;
+      } else if (c.admin1) {
+        local = `${c.name} - ${c.admin1} - ${c.country}`;
+      } else {
+        local = `${c.name} - ${c.country}`;
+      }
+
+      const div = document.createElement("div");
+      div.innerText = local;
+
+      div.onclick = () => {
+        cidade.value = local;
+        nomeCidade.innerText = local;
+        lat = c.latitude;
+        lon = c.longitude;
+        paisSelecionado = c.country_code;
+        estadoSelecionado = c.admin1 ?? null;
+
+        lista.innerHTML = "";
+        limparTela();
+        buscar();
+      };
+
+      lista.appendChild(div);
+    });
+
+  } catch (err) {
+    console.error("Erro no autocomplete:", err);
+  }
+
+});
+
 
 /* =========================
    Distância das cidades até a praia 
