@@ -1302,7 +1302,7 @@ const avaliacaoFoto = avaliarFotografia(
 );
 
 // Monta a exibição da fotografia com Horário de Ouro
-const fotografia = `${avaliacaoFoto} <b style="color:#696969;font-size:14px;">Hora de Ouro</b>(${horarioOuro})`;
+const fotografia = `${avaliacaoFoto} <b style="color:#696969;font-size:14px;">| Hora de Ouro</b>(${horarioOuro})`;
 
 
 
@@ -1366,7 +1366,7 @@ linhaStatus.innerHTML = `
     <b style="color:#696969;font-size:14px;">Observar Estrelas</b>${estrelas ?? ""} |
     <b style="color:#696969;font-size:14px;">Pescaria</b>${pesca ?? ""} |
     <b style="color:#696969;font-size:14px;">Churrasquear</b>${churrascoTexto ? `  ${churrascoTexto}` : ""} |
-    <b style="color:#696969;font-size:14px;">Fotografar</b>${fotografia} |
+    <b style="color:#696969;font-size:14px;">Fotografar</b>${fotografia}
   </div>
 
   ${secaoAgua}
