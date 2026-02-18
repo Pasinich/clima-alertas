@@ -611,75 +611,121 @@ cidade.addEventListener("focus",()=>{
  cidade.value="";
  lista.innerHTML="";
 });
+
 /* =========================
    AUTOCOMPLETE DE CIDADES
 ========================= */
 cidade.addEventListener("input", async () => {
+
+  const termo = cidade.value.trim();
   lista.innerHTML = "";
 
-  if (cidade.value.length < 2) return;
+  if (termo.length < 2) return;
 
-  const r = await fetch(
-    `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(cidade.value)}&count=10&language=pt`
-  );
+  // 🔥 Função para remover acentos
+  const normalizar = (texto) =>
+    texto
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "");
 
-  const d = await r.json();
-  if (!d.results) return;
+  try {
 
-  // 🔥 Prioriza cidades do Brasil
-  const busca = cidade.value.trim().toLowerCase();
+    const resp = await fetch(
+      `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(termo)}&count=10&language=pt&format=json`
+    );
 
-d.results.sort((a, b) => {
+    const d = await resp.json();
+    if (!d.results) return;
 
-// 3️⃣ Cidades principais (PPLA = capital de estado)
-  if (a.feature_code === "PPLA" && b.feature_code !== "PPLA") return -1;
-  if (a.feature_code !== "PPLA" && b.feature_code === "PPLA") return 1;
+    const busca = normalizar(termo);
 
-// 2️⃣ Capitais primeiro
-  if (a.feature_code === "PPLC" && b.feature_code !== "PPLC") return -1;
-  if (a.feature_code !== "PPLC" && b.feature_code === "PPLC") return 1;
- 
+    // 1️⃣ Apenas cidades + remove duplicados
+    let resultados = d.results
+      .filter(c => c.feature_code?.startsWith("P"))
+      .filter((c, index, self) =>
+        index === self.findIndex(t =>
+          t.name.toLowerCase() === c.name.toLowerCase() &&
+          t.admin1?.toLowerCase() === c.admin1?.toLowerCase() &&
+          t.country_code === c.country_code
+        )
+      );
 
-  // 1️⃣ Brasil primeiro
-  if (a.country_code === "BR" && b.country_code !== "BR") return -1;
-  if (a.country_code !== "BR" && b.country_code === "BR") return 1;
+    // 2️⃣ Sistema de pontuação inteligente
+    resultados = resultados.map(c => {
 
-  // 4️⃣ Maior população primeiro
-  return (b.population ?? 0) - (a.population ?? 0);
+      let score = 0;
+
+      const nomeOriginal = c.name;
+      const nome = normalizar(c.name);
+      const palavras = nome.split(" ");
+
+      // 🎯 Nome começa exatamente
+      if (nome.startsWith(busca)) score += 4000;
+
+      // 🎯 Alguma palavra começa
+      if (palavras.some(p => p.startsWith(busca))) score += 2500;
+
+      // 🎯 Apenas contém
+      if (nome.includes(busca)) score += 1000;
+
+      // 🏛 Capital nacional
+      if (c.feature_code === "PPLC") score += 2500;
+
+      // 🏢 Capital estadual
+      if (c.feature_code === "PPLA") score += 1200;
+
+      // 🇧🇷 Brasil
+      if (c.country_code === "BR") score += 600;
+
+      // 👥 População
+      if (c.population) {
+        score += Math.min(c.population / 10000, 800);
+      }
+
+      return { ...c, score };
+    });
+
+    // 3️⃣ Ordena pela pontuação
+    resultados.sort((a, b) => b.score - a.score);
+
+    // 4️⃣ Mostra os 5 melhores
+    resultados.slice(0, 5).forEach(c => {
+
+      let local;
+
+      if (c.country_code === "BR" && c.admin1) {
+        local = `${c.name} - ${c.admin1}`;
+      } else if (c.admin1) {
+        local = `${c.name} - ${c.admin1} - ${c.country}`;
+      } else {
+        local = `${c.name} - ${c.country}`;
+      }
+
+      const div = document.createElement("div");
+      div.innerText = local;
+
+      div.onclick = () => {
+        cidade.value = local;
+        nomeCidade.innerText = local;
+        lat = c.latitude;
+        lon = c.longitude;
+        paisSelecionado = c.country_code;
+        estadoSelecionado = c.admin1 ?? null;
+
+        lista.innerHTML = "";
+        limparTela();
+        buscar();
+      };
+
+      lista.appendChild(div);
+    });
+
+  } catch (err) {
+    console.error("Erro no autocomplete:", err);
+  }
 
 });
-  d.results.forEach(c => {
-
-    let local;
-
-    if (c.country_code === "BR" && c.admin1) {
-      local = `${c.name} - ${c.admin1}`;
-    } else if (c.admin1) {
-      local = `${c.name} - ${c.admin1} - ${c.country}`;
-    } else {
-      local = `${c.name} - ${c.country}`;
-    }
-
-    const div = document.createElement("div");
-    div.innerText = local;
-
-    div.onclick = () => {
-      cidade.value = local;
-      nomeCidade.innerText = local;
-      lat = c.latitude;
-      lon = c.longitude;
-      paisSelecionado = c.country_code;
-      estadoSelecionado = c.admin1 ?? null;
-
-      lista.innerHTML = "";
-      limparTela();
-      buscar();
-    };
-
-    lista.appendChild(div);
-  });
-});
-
 /* =========================
    ENTER SELECIONA PRIMEIRO
 ========================= */
@@ -1054,7 +1100,7 @@ if (chuvaAtual > 0) {
   chuvaTexto = "";
 } else if (dataHora) {
   chuvaTexto = `<span style="color:#8B008B; font-size:14px;">
-  <b>Proxima Chuva prevista:</span></b> <b>${dataHora} (${probChuva}%)</b>`;
+  <b>Próxima Chuva prevista:</span></b> <b>${dataHora} (${probChuva}%)</b>`;
 }
       
     }
@@ -1302,7 +1348,7 @@ const avaliacaoFoto = avaliarFotografia(
 );
 
 // Monta a exibição da fotografia com Horário de Ouro
-const fotografia = `${avaliacaoFoto} <b style="color:#696969;font-size:14px;">| Hora de Ouro</b>(${horarioOuro})`;
+const fotografia = `${avaliacaoFoto} <b style="color:#696969;font-size:14px;"> | Hora de Ouro</b>(${horarioOuro})`;
 
 
 
