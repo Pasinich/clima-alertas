@@ -695,14 +695,14 @@ cidade.addEventListener("input", async () => {
       if (c.feature_code === "PPLC") score += 2500;
 
       // 🏢 Capital estadual
-      if (c.feature_code === "PPLA") score += 1900;
+      if (c.feature_code === "PPLA") score += 2000;
 
       // 🇧🇷 Brasil
-      if (c.country_code === "BR") score += 3600;
+      if (c.country_code === "BR") score += 5000;
 
       // 👥 População
       if (c.population) {
-        score += Math.min(c.population / 3000, 3000);
+        score += Math.min(c.population / 5000, 5000);
       }
 
       return { ...c, score };
@@ -1247,7 +1247,8 @@ const tempAtual = tempCidade; // temperatura atual
 const chuvaProbAtual = atual.hourly?.precipitation_probability[idx] ?? 0;
 const ventoAtual = atual.current_weather?.windspeed ?? 0;
 const aqAtual = usAQI; // qualidade do ar
-
+// Acrescenta recomendação de roupas
+const tempAtual_roupas = atual.current_weather.temperature;
 // Avaliar moto
 const moto = avaliarMoto(tempAtual, chuvaProbAtual, ventoAtual, aqAtual);
 
@@ -1267,6 +1268,7 @@ const gripeTexto = avaliarGripeResfriado(
   atual.hourly.relativehumidity_2m?.[idx] ?? 50,
   atual.current_weather.temperature
 );
+
 
 const mosquitosTexto = avaliarMosquitos(
   atual.hourly.relativehumidity_2m?.[idx] ?? 50,
@@ -1319,7 +1321,7 @@ const pragasTexto = avaliarPragas(
     const impacto = {
       Sul:{
         "El Niño":"Chuvas acima da média e temporais",
-        "La Niña":"Frio intenso e tempo mais seco",
+        "La Niña":"Tempo mais seco. No Inverno,frio intenso!",
         "Neutro":"Clima próximo do normal"
       },
       Sudeste:{
@@ -1346,7 +1348,7 @@ const pragasTexto = avaliarPragas(
 
     const regiao = regiaoPorEstado[est];
     if (regiao && impacto[regiao]?.[fenomeno]) {
-      impactoTexto = `Impacto no ${regiao}:${impacto[regiao][fenomeno]}`;
+      impactoTexto = `${regiao}:${impacto[regiao][fenomeno]}`;
     }
   }
 
@@ -1431,16 +1433,16 @@ if (possuiPraia) {
   secaoAgua = `
   <div style="margin-top:4px">
     <b style="color:#8B008B;font-size:14px;">Praia / Ondas / Piscina</b><br>
-    <b style="color:#696969;font-size:14px;">Praia</b>(${praiaTexto}) |
-    <b style="color:#696969;font-size:14px;">Ondas</b>(<b id="altura-onda">...</b>) |
-    <b style="color:#696969;font-size:14px;">Piscina</b>${piscina ?? "-"}
+    <b style="color:#696969;font-size:13px;">Praia</b>(${praiaTexto}) |
+    <b style="color:#696969;font-size:13px;">Ondas</b>(<b id="altura-onda">...</b>) |
+    <b style="color:#696969;font-size:13px;">Piscina</b>${piscina ?? "-"}
   </div>`;
 } else {
   // Se não houver praia, mostra somente piscina deslocada à esquerda
   secaoAgua = `
   <div style="margin-top:4px">
   <b style="color:#8B008B;font-size:14px;">Piscina</b><br>
-    <b style="color:#696969;font-size:14px;">Piscina</b>${piscina ?? "-"}
+    <b style="color:#696969;font-size:13px;">Piscina</b>${piscina ?? "-"}
   </div>`;
 }
 
@@ -1463,37 +1465,38 @@ linhaStatus.innerHTML = `
   
  
     <b style="color:#8B008B;font-size:14px;">Atividades ao Ar Livre </b><br>
-    <b style="color:#696969;font-size:14px;">Qualidade do Ar</b>${formatarAQ(usAQI)} |
-    <b style="color:#696969;font-size:14px;">Corrida</b>${corrida ?? ""} |
-    <b style="color:#696969;font-size:14px;">Caminhada</b>${caminhada ?? ""} |
-    <b style="color:#696969;font-size:14px;">Ciclismo</b>${ciclismo ?? ""} |
-    <b style="color:#696969;font-size:14px;">Observar Estrelas</b>${estrelas ?? ""} |
-    <b style="color:#696969;font-size:14px;">Pescaria</b>${pesca ?? ""} |
-    <b style="color:#696969;font-size:14px;">Refeições ao ar livre</b>${churrascoTexto ? `  ${churrascoTexto}` : ""} |
-    <b style="color:#696969;font-size:14px;">Fotografar</b>${fotografia}
+    <b style="color:#696969;font-size:13px;">Qualidade do Ar</b>${formatarAQ(usAQI)} |
+    <b style="color:#696969;font-size:13px;">Corrida</b>${corrida ?? ""} |
+    <b style="color:#696969;font-size:13px;">Caminhada</b>${caminhada ?? ""} |
+    <b style="color:#696969;font-size:13px;">Ciclismo</b>${ciclismo ?? ""} |
+    <b style="color:#696969;font-size:13px;">Observar Estrelas</b>${estrelas ?? ""} |
+    <b style="color:#696969;font-size:13px;">Pescaria</b>${pesca ?? ""} |
+    <b style="color:#696969;font-size:13px;">Refeições ao ar livre</b>${churrascoTexto ? `  ${churrascoTexto}` : ""} |
+    <b style="color:#696969;font-size:13px;">Fotografar</b>${fotografia}
   </div>
 
   ${secaoAgua}
 
   <div style="margin-top:4px">
     <b style="color:#8B008B;font-size:14px;">Trânsito / Viagens</b><br>
-    <b style="color:#696969;font-size:14px;">Vôo</b>${aviao ?? ""} |
-    <b style="color:#696969;font-size:14px;">Dirigir</b>${carro ?? ""} |
-    <b style="color:#696969;font-size:14px;">Motocicleta</b>${moto ?? ""}
+    <b style="color:#696969;font-size:13px;">Dirigir</b>${carro ?? ""} |
+    <b style="color:#696969;font-size:13px;">Motocicleta</b>${moto ?? ""} |
+    <b style="color:#696969;font-size:13px;">Vôo</b>${aviao ?? ""} 
   </div>
 
   ${alergiasTexto ? `
     <div style="margin-top:4px">
       <b style="color:#8B008B;font-size:14px;">Saúde/Bem Estar</b><br>
-      <b style="color:#696969;font-size:14px;">Alergias</b>(${alergiasTexto}) |
-      <b style="color:#696969;font-size:14px;">Gripe</b>(${gripeTexto})
+      <b style="color:#696969;font-size:13px;">Alergias</b>(${alergiasTexto}) |
+      <b style="color:#696969;font-size:13px;">Gripe</b>(${gripeTexto}) |
+      <b style="color:#696969;font-size:13px;">Roupas</b>${recomendarRoupas(tempAtual_roupas)}
     </div>` : ""}
 
   ${mosquitosTexto || pragasTexto ? `
     <div style="margin-top:4px">
       <b style="color:#8B008B;font-size:14px;">Pragas/Insetos</b><br>
-      <b style="color:#696969;font-size:14px;">Mosquitos</b>(${mosquitosTexto}) |
-      <b style="color:#696969;font-size:14px;">Pragas</b>(${pragasTexto ?? ""})
+      <b style="color:#696969;font-size:13px;">Mosquitos</b>(${mosquitosTexto}) |
+      <b style="color:#696969;font-size:13px;">Pragas</b>(${pragasTexto ?? ""})
     </div>` : ""}
 
   <div style="margin-top:6px">
@@ -1943,6 +1946,16 @@ function avaliarGripeResfriado(umidade, temp) {
   return "Baixo risco";
 }
 
+/* =========================
+   RECOMENDAÇÃO DE ROUPAS
+========================= */
+function recomendarRoupas(temp) {
+  if (temp <= 10) return "( Use roupas bem quentes)";
+  if (temp <= 20) return "(Use casaco ou suéter)";
+  if (temp <= 25) return "(Leves, mas leve um agasalho)";
+  return "(Bem leves e confortáveis)";
+}
+
 function avaliarMosquitos(umidade, chuvaProb, temp) {
   if (umidade == null || chuvaProb == null || temp == null)
     return "";
@@ -2214,8 +2227,6 @@ function montarGrafico(h){
   }
  );
 }
-
-
 
 
 // =========================
