@@ -390,49 +390,73 @@ if (navigator.geolocation) {
       lon = pos.coords.longitude;
 
       try {
+
         const r = await fetch(
-          `https://geocoding-api.open-meteo.com/v1/reverse?latitude=${lat}&longitude=${lon}&language=pt`
+          `https://geocoding-api.open-meteo.com/v1/reverse?latitude=${lat}&longitude=${lon}&language=pt&format=json`
         );
+
         const d = await r.json();
 
-        if (d?.results?.length) {
+        if (d?.results?.length > 0) {
+
           const c = d.results[0];
 
-          let local;
+          const nome = c.name ?? "Cidade";
+          const estado = c.admin1 ?? "";
+          const pais = c.country ?? "";
+          const paisCode = c.country_code ?? "";
 
-          if (c.country_code === "BR" && c.admin1) {
-            local = `${c.name} - ${c.admin1}`;
-          } else if (c.admin1) {
-            local = `${c.name} - ${c.admin1} - ${c.country}`;
+          if (paisCode === "BR" && estado) {
+            nomeCidade.innerText = `${nome} - ${estado}`;
+          } else if (estado) {
+            nomeCidade.innerText = `${nome} - ${estado} - ${pais}`;
           } else {
-            local = `${c.name} - ${c.country}`;
+            nomeCidade.innerText = `${nome} - ${pais}`;
           }
 
-          nomeCidade.innerText = local;
-
-          paisSelecionado = c.country_code;
-          estadoSelecionado = c.admin1 ?? null;
+          paisSelecionado = paisCode;
+          estadoSelecionado = estado;
 
         } else {
-          nomeCidade.innerText = "📍Localização atual";
+
+          // 🔥 fallback inteligente usando busca por coordenadas
+          const r2 = await fetch(
+            `https://geocoding-api.open-meteo.com/v1/search?latitude=${lat}&longitude=${lon}&count=1&language=pt`
+          );
+
+          const d2 = await r2.json();
+
+          if (d2?.results?.length > 0) {
+            const c2 = d2.results[0];
+            nomeCidade.innerText = `${c2.name} - ${c2.admin1 ?? c2.country}`;
+          } else {
+            nomeCidade.innerText = "📍Sua localização";
+          }
+
         }
 
       } catch (erro) {
-        nomeCidade.innerText = "📍Localização atual";
+
+        console.log("Erro ao obter cidade:", erro);
+        nomeCidade.innerText = "📍Sua localização";
+
       }
 
       limparTela();
       buscar();
+
     },
-    () => {
+    (erro) => {
       nomeCidade.innerText = "📍Permissão negada";
+    },
+    {
+      enableHighAccuracy: true,
+      timeout: 15000,
+      maximumAge: 0
     }
   );
 
 }
-
-
-
 /* =========================
    Distância das cidades até a praia 
 ========================= */
@@ -660,6 +684,9 @@ cidade.addEventListener("input", async () => {
       const nome = normalizar(c.name);
       const palavras = nome.split(" ");
 
+// 🎯 Nome EXATAMENTE igual
+  if (nome === busca) score += 3000;
+
       // 🎯 Nome começa exatamente
       if (nome.startsWith(busca)) score += 4000;
 
@@ -673,14 +700,14 @@ cidade.addEventListener("input", async () => {
       if (c.feature_code === "PPLC") score += 2500;
 
       // 🏢 Capital estadual
-      if (c.feature_code === "PPLA") score += 1200;
+      if (c.feature_code === "PPLA") score += 1900;
 
       // 🇧🇷 Brasil
-      if (c.country_code === "BR") score += 600;
+      if (c.country_code === "BR") score += 3600;
 
       // 👥 População
       if (c.population) {
-        score += Math.min(c.population / 10000, 800);
+        score += Math.min(c.population / 3000, 3000);
       }
 
       return { ...c, score };
