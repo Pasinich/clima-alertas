@@ -388,43 +388,47 @@ if (navigator.geolocation) {
       lon = pos.coords.longitude;
 
       try {
+        // 🔹 Reverse geocoding confiável via Nominatim
+        const resposta = await fetch(
+          `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&accept-language=pt`
+        );
+        const dados = await resposta.json();
 
-        // 🔥 Reverse geocoding correto
-        const d = await fetch(
-          `https://geocoding-api.open-meteo.com/v1/reverse?latitude=${lat}&longitude=${lon}&language=pt&format=json`
-        ).then(res => res.json());
+        console.log("RETORNO NOMINATIM:", dados); // para debug
 
-        if (d && d.results && d.results.length > 0) {
+        if (dados && dados.address) {
 
-          const c = d.results[0];
+          const cidadeNome =
+            dados.address.city ||
+            dados.address.town ||
+            dados.address.village ||
+            dados.address.municipality ||
+            "";
+          const estadoNome = dados.address.state || "";
+          const paisNome = dados.address.country || "";
+          const paisCode = dados.address.country_code?.toUpperCase() || "";
 
-          const nome = c.name ?? "Cidade";
-          const estado = c.admin1 ?? "";
-          const pais = c.country ?? "";
-          const paisCode = c.country_code ?? "";
-
-          if (paisCode === "BR" && estado) {
-            nomeCidade.innerText = `Clima em: ${nome} - ${estado}`;
-          } else if (estado) {
-            nomeCidade.innerText = `Clima em: ${nome} - ${estado} - ${pais}`;
+          if (cidadeNome) {
+            nomeCidade.innerText =
+              paisCode === "BR"
+                ? `Clima em: ${cidadeNome} - ${estadoNome}`
+                : `Clima em: ${cidadeNome} - ${paisNome}`;
+          } else if (estadoNome) {
+            nomeCidade.innerText = `Clima em: ${estadoNome}`;
           } else {
-            nomeCidade.innerText = `Clima em: ${nome} - ${pais}`;
+            nomeCidade.innerText = "📍Sua localização";
           }
 
           paisSelecionado = paisCode;
-          estadoSelecionado = estado;
+          estadoSelecionado = estadoNome;
 
         } else {
-
           nomeCidade.innerText = "📍Sua localização";
-
         }
 
       } catch (erro) {
-
         console.log("Erro ao obter cidade:", erro);
         nomeCidade.innerText = "📍Sua localização";
-
       }
 
       // 🔥 Agora chama o clima
