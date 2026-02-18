@@ -319,6 +319,8 @@ previsao5=document.getElementById("previsao-5dias"),
 btnModo=document.getElementById("toggleModo");
 btnMic = document.getElementById("btnMic");
 
+
+
 /* =========================
    MICROFONE PROFISSIONAL
 ========================= */
@@ -428,6 +430,7 @@ if (navigator.geolocation) {
   );
 
 }
+
 
 
 /* =========================
@@ -1284,14 +1287,19 @@ const avaliacaoFoto = avaliarFotografia(
 );
 
 // Monta a exibição da fotografia com Horário de Ouro
-const fotografia = `${avaliacaoFoto} (Hora de Ouro: ${horarioOuro})`;
+const fotografia = `${avaliacaoFoto} <b style="color:#8B008B;font-size:14px;">Hora de Ouro</b>(${horarioOuro})`;
+
 
 
 
 /* ===== MONTA LINHA STATUS FINAL ===== */
-
 const mobileView = true; // true = Android / false = desktop
 const alertaTexto = "";
+
+const nomeCidadePainel = cidade ?? "-";
+const estadoPainel = estado ? " - " + estado : "";
+
+
 
 // Painel relativo para posicionar o botão flutuante
 linhaStatus.style.position = "relative";
@@ -1320,21 +1328,30 @@ if (possuiPraia) {
 linhaStatus.innerHTML = `
   ${!mobileView ? `<div>🕒 Data e Hora da Coleta: <b>${dataHoraLocal ?? ""}</b></div>` : ""}
 
+
+
+<div style="margin-top:4px">
+    <b style="color:#8B008B;font-size:14px;">
+      Previsão do Tempo Em</b>(${nomeCidadePainel})<br><br>
+  </div>
+  
+
   ${chuvaTexto ? `<div>${chuvaTexto}</div>` : ""}
   ${pressaoTexto && !mobileView ? `<div>📉 ${pressaoTexto}</div>` : ""}
   ${alertaTexto ? `<div class="alerta">⚠️ ${alertaTexto}</div>` : ""}
 
   <div style="margin-top:6px">
-    <b style="color:#8B008B;font-size:14px;">
-      Atividades ao Ar Livre <b>  - Qualidade do Ar</b>${formatarAQ(usAQI)}
-    </b><br>
-    ${corrida ?? ""} 
-    ${caminhada ?? ""} 
-    ${ciclismo ?? ""} 
-    ${estrelas ?? ""} 
-    ${pesca ?? ""} 
-    ${churrascoTexto ? `  Churrasco${churrascoTexto}` : ""}
-    ${fotografia}
+  
+ 
+    <b style="color:#8B008B;font-size:14px;">Atividades ao Ar Livre </b><br>
+    <b style="color:#8B008B;font-size:14px;">Qualidade do Ar${formatarAQ(usAQI)}</b>
+    <b style="color:#8B008B;font-size:14px;">Corrida</b>${corrida ?? ""} 
+    <b style="color:#8B008B;font-size:14px;">Caminhada</b>${caminhada ?? ""} 
+    <b style="color:#8B008B;font-size:14px;">Ciclismo</b>${ciclismo ?? ""} 
+    <b style="color:#8B008B;font-size:14px;">Observar Estrelas</b>${estrelas ?? ""} 
+    <b style="color:#8B008B;font-size:14px;">Pescaria</b>${pesca ?? ""} 
+    <b style="color:#8B008B;font-size:14px;">Preparar Churrasco</b>${churrascoTexto ? `  ${churrascoTexto}` : ""}
+    <b style="color:#8B008B;font-size:14px;">Fotografar</b>${fotografia}
   </div>
 
   ${secaoAgua}
@@ -1615,9 +1632,9 @@ function calcularHorarioOuro(dia, duracaoMinutos = 90) {
 }
 
 function avaliarFotografia(temp, nebulosidade, chuvaProb, nascerSol, porSol) {
-  if (chuvaProb > 50 || nebulosidade > 70) return "Fotografar(Ruim) ";
-  if (chuvaProb > 20 || nebulosidade > 40) return "Fotografar(Médio) ";
-  return "Fotografar(Bom) ";
+  if (chuvaProb > 50 || nebulosidade > 70) return "(Ruim) ";
+  if (chuvaProb > 20 || nebulosidade > 40) return "(Médio) ";
+  return "(Bom) ";
 }
 
 /* =========================
@@ -1643,15 +1660,15 @@ function calcularHorarioOuroCompacto(sunrise, sunset){
 
 function avaliarCorrida(temp, chuva, vento, uv){
   if (temp >= 15 && temp <= 28 && chuva < 20 && vento <= 12 && uv <= 7)
-    return "Correr(Boa) ";
+    return "(Boa) ";
   if (temp >= 10 && temp <= 32 && chuva < 40)
-    return "Correr(Regular) ";
-  return "Correr(Não indicada) ";
+    return "(Regular) ";
+  return "(Não indicada) ";
 }
 
 function avaliarCaminhada(temp, chuvaProb, vento, uv, vis) {
   if (chuvaProb > 60 || vento > 30 || vis < 1500 || temp > 35 || temp < 5)
-    return "Andar(Ruim) ";
+    return "(Ruim) ";
   if (
     (temp >= 10 && temp < 15) ||
     (temp > 30 && temp <= 35) ||
@@ -1661,32 +1678,32 @@ function avaliarCaminhada(temp, chuvaProb, vento, uv, vis) {
   )
     return "Andar(Razoável) ";
   if (temp >= 15 && temp <= 30 && chuvaProb < 30 && vento <= 20 && uv <= 7)
-    return "Andar(Boa) ";
-  return "Andar(Razoável) ";
+    return "(Boa) ";
+  return "(Razoável) ";
 }
 
 function avaliaCiclismo(probChuva, vento, pressao) {
   if (probChuva > 50 || vento > 25 || pressao < 1008)
-    return "Ciclismo(Não recomendado) ";
+    return "(Não recomendado) ";
   if (vento <= 10 && probChuva < 20)
-    return "Ciclismo(Bom) ";
-  return "Ciclismo(Regular) ";
+    return "(Bom) ";
+  return "(Regular) ";
 }
 
 function avaliarEstrelas(nebulosidade, chuvaProb, luaIluminacao) {
   if (nebulosidade <= 20 && chuvaProb < 20 && luaIluminacao <= 30)
-    return " Observar Estrelas(Boa) ";
+    return "(Boa) ";
   if (nebulosidade <= 50 && chuvaProb < 40)
-    return " Observar Estrela(Razoável) ";
-  return " Observar Estrelas(Ruim) ";
+    return "(Razoável) ";
+  return "(Ruim) ";
 }
 
 function avaliarPesca(pressao, vento, chuva){
   if (pressao >= 1015 && vento <= 8 && chuva === 0)
-    return "Pescaria(Boa) ";
+    return "(Boa) ";
   if (pressao >= 1008 && vento <= 12 && chuva < 40)
-    return "Pescaria(Regular) ";
-  return "Pescaria(Ruim) ";
+    return "(Regular) ";
+  return "(Ruim) ";
 }
 
 function avaliarChurrasco(temperatura, precipitacao, vento) {
