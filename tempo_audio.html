@@ -384,14 +384,12 @@ cidade.addEventListener("input", async () => {
 
   if (termo.length < 2) return;
 
-  // 🔥 Função para remover acentos e apóstrofes
+  // 🔥 Função para remover acentos
   const normalizar = (texto) =>
     texto
       .toLowerCase()
       .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "")
-      .replace(/['’]/g, "")
-      .replace(/-/g, " "); // também substitui hífen por espaço
+      .replace(/[\u0300-\u036f]/g, "");
 
   try {
 
@@ -424,17 +422,17 @@ cidade.addEventListener("input", async () => {
       const nome = normalizar(c.name);
       const palavras = nome.split(" ");
 
-      // 🎯 Nome EXATAMENTE igual
-      if (nome === busca) score += 5000;
+// 🎯 Nome EXATAMENTE igual
+  if (nome === busca) score += 3000;
 
-      // 🎯 Nome começa exatamente (mais importante)
-      if (nome.startsWith(busca)) score += 4500;
+      // 🎯 Nome começa exatamente
+      if (nome.startsWith(busca)) score += 4000;
 
       // 🎯 Alguma palavra começa
-      if (palavras.some(p => p.startsWith(busca))) score += 3000;
+      if (palavras.some(p => p.startsWith(busca))) score += 2500;
 
       // 🎯 Apenas contém
-      if (nome.includes(busca)) score += 1500;
+      if (nome.includes(busca)) score += 1000;
 
       // 🏛 Capital nacional
       if (c.feature_code === "PPLC") score += 2500;
@@ -493,6 +491,7 @@ cidade.addEventListener("input", async () => {
   }
 
 });
+
 
 /* =========================
    Distância das cidades até a praia 
