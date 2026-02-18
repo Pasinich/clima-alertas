@@ -411,8 +411,8 @@ if (navigator.geolocation) {
           if (cidadeNome) {
             nomeCidade.innerText =
               paisCode === "BR"
-                ? `Clima em: ${cidadeNome} - ${estadoNome}`
-                : `Clima em: ${cidadeNome} - ${paisNome}`;
+                ? `${cidadeNome} - ${estadoNome}`
+                : `${cidadeNome} - ${paisNome}`;
           } else if (estadoNome) {
             nomeCidade.innerText = `${estadoNome}`;
           } else {
