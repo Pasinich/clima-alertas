@@ -1802,12 +1802,12 @@ function verificarChuvaDiaria(atual) {
       const prob = atual.hourly.precipitation_probability[i] ?? 0;
 
       if (chuva > 0 || prob >= 20) {
-        return "(Próx.5hs-Leve um)";
+        return "(Próxima 5hs-Leve um)";
       }
     }
   }
 
-  return "(Próx.5hs-Não necessita)";
+  return "(Próximas 5hs-Não necessita)";
 }
 
 
