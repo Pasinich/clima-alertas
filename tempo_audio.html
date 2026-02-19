@@ -1801,8 +1801,8 @@ function verificarChuvaDiaria(atual) {
       const chuva = atual.hourly.precipitation[i] ?? 0;
       const prob = atual.hourly.precipitation_probability[i] ?? 0;
 
-      if (chuva > 0 || prob >= 20) {
-        return "(Próxima 5 horas-Leve um)";
+      if (chuva > 0 || prob >= 30) {
+        return "(Próximas 5 horas-Leve um)";
       }
     }
   }
