@@ -1789,25 +1789,25 @@ function avaliarChurrasco(temperatura, precipitacao, vento) {
 function verificarChuvaDiaria(atual) {
 
   const agora = new Date();
-  const limite = new Date(agora.getTime() + 3 * 60 * 60 * 1000); // +3 horas
+  const limite = new Date(agora.getTime() + 5 * 60 * 60 * 1000); // +3 horas
 
   for (let i = 0; i < atual.hourly.time.length; i++) {
 
     const dataHoraAPI = new Date(atual.hourly.time[i]);
 
-    // Verifica apenas entre agora e +3 horas
+    // Verifica apenas entre agora e +5 horas
     if (dataHoraAPI >= agora && dataHoraAPI <= limite) {
 
       const chuva = atual.hourly.precipitation[i] ?? 0;
       const prob = atual.hourly.precipitation_probability[i] ?? 0;
 
       if (chuva > 0 || prob >= 20) {
-        return "(Leve um)";
+        return "(Próx.5hs-Leve um)";
       }
     }
   }
 
-  return "(Não necessita)";
+  return "(Próx.5hs-Não necessita)";
 }
 
 
