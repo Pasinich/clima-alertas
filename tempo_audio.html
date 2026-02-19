@@ -871,12 +871,7 @@ else if (typeof atual?.hourly?.pressure_msl?.[idx] === "number") {
 }
 let pressaoExibir_masc = atual.hourly.pressure_msl[idx];
 
-// Índice do dia
-const diaDoIdx = Math.floor(idx / 24);
-const horarioOuro = calcularHorarioOuroDoDiaCompacto(
-  atual.daily.sunrise[diaDoIdx],
-  atual.daily.sunset[diaDoIdx]
-);
+
 
 linhaPressao.innerHTML = `
   🎈Pressão: <b>${(atual.hourly.pressure_msl[idx] ).toFixed(1)} hPa</b>
@@ -1016,41 +1011,6 @@ linhaNevoeiro.innerHTML =
   return "Primavera";
 }
 
-// =========================
-// FUNÇÃO HORÁRIO DE OURO COMPACTA
-// =========================
-function calcularHorarioOuroDoDiaCompacto(lat, lon, data = new Date()) {
-  const t = SunCalc.getTimes(data, lat, lon);
-  const pad = n => String(n).padStart(2, "0");
-
-  // Golden hour: 1 hora após nascer do sol até 1 hora antes do pôr do sol
-  const inicio = new Date(t.sunrise.getTime() + 0*60*60*1000);
-  const fim = new Date(t.sunset.getTime() - 0*60*60*1000);
-
-  return `${pad(inicio.getHours())}:${pad(inicio.getMinutes())} - ${pad(fim.getHours())}:${pad(fim.getMinutes())}`;
-}
-const fotografia = calcularHorarioOuroDoDiaCompacto(lat, lon, new Date());
-
-function calcularHorarioOuroDoDia(lat, lon, data = new Date(), timezone = 'America/Sao_Paulo') {
-  const t = SunCalc.getTimes(data, lat, lon);
-
-  // Horário de ouro: manhã e tarde
-  const inicioManha = new Date(t.sunrise.getTime() + 1*60*60*1000);
-  const fimManha    = new Date(t.sunrise.getTime() + 2.5*60*60*1000);
-  const inicioTarde = new Date(t.sunset.getTime() - 2.5*60*60*1000);
-  const fimTarde    = new Date(t.sunset.getTime() - 0.5*60*60*1000);
-
-  // Formatar hora no fuso da cidade
-  const formatar = d => new Intl.DateTimeFormat('pt-BR', {
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-    timeZone: timezone
-  }).format(d);
-
-  // Monta a string com “às” e “e”
-  return `${formatar(inicioManha)} às ${formatar(fimManha)} e ${formatar(inicioTarde)} às ${formatar(fimTarde)}`;
-}
 
 let nomeCidadeFinal = nomeCidade.innerText;
 
@@ -1251,6 +1211,7 @@ const aqAtual = usAQI; // qualidade do ar
 const tempAtual_roupas = atual.current_weather.temperature;
 // Avaliar moto
 const moto = avaliarMoto(tempAtual, chuvaProbAtual, ventoAtual, aqAtual);
+const chuvas = verificarChuvaDiaria(atual);
 
 const piscina = avaliarPiscina(
   atual.current_weather.temperature,
@@ -1407,10 +1368,9 @@ const avaliacaoFoto = avaliarFotografia(
   atual.daily.sunset[0]
 );
 
-// Monta a exibição da fotografia com Horário de Ouro
-const fotografia = `${avaliacaoFoto} <b style="color:#696969;font-size:14px;"> | Hora de Ouro</b>(${horarioOuro})`;
-
-
+// Monta a exibição da fotografia com Horário de Ouro 
+const fotografia = `${avaliacaoFoto} <b style="color:#696969;font-size:14px;"></b>`;
+//const fotografia = `${avaliacaoFoto} <b style="color:#696969;font-size:14px;"> | Hora de Ouro</b>(${horarioOuro})`;
 
 
 /* ===== MONTA LINHA STATUS FINAL ===== */
@@ -1472,6 +1432,7 @@ linhaStatus.innerHTML = `
     <b style="color:#696969;font-size:13px;">Observar Estrelas</b>${estrelas ?? ""} |
     <b style="color:#696969;font-size:13px;">Pescaria</b>${pesca ?? ""} |
     <b style="color:#696969;font-size:13px;">Refeições ao ar livre</b>${churrascoTexto ? `  ${churrascoTexto}` : ""} |
+    <b style="color:#696969;font-size:13px;">Guarda-chuva</b>${chuvas ?? ""} |
     <b style="color:#696969;font-size:13px;">Fotografar</b>${fotografia}
   </div>
 
@@ -1731,27 +1692,8 @@ function montarGraficoMensal(labels, min, med, max){
 }
 
 
-/* =========================
-   HORÁRIO DE OURO (Fotografia)
-========================= */
-function calcularHorarioOuro(dia, duracaoMinutos = 90) {
-  if (!dia?.sunrise?.[0] || !dia?.sunset?.[0]) return "-";
 
-  const nascer = new Date(dia.sunrise[0]);
-  const porDoSol = new Date(dia.sunset[0]);
 
-  const manhaInicio = nascer;
-  const manhaFim = new Date(nascer.getTime() + duracaoMinutos * 60000);
-
-  const tardeFim = porDoSol;
-  const tardeInicio = new Date(porDoSol.getTime() - duracaoMinutos * 60000);
-
-  function formatHHMM(dt){
-    return `${String(dt.getHours()).padStart(2,"0")}:${String(dt.getMinutes()).padStart(2,"0")}`;
-  }
-
-  return `📸 Hora de ouro: ${formatHHMM(manhaInicio)}hs–${formatHHMM(manhaFim)}hs / ${formatHHMM(tardeInicio)}hs –${formatHHMM(tardeFim)}hs;`
-}
 
 function avaliarFotografia(temp, nebulosidade, chuvaProb, nascerSol, porSol) {
   if (chuvaProb > 50 || nebulosidade > 70) return "(Ruim) ";
@@ -1840,6 +1782,35 @@ function avaliarChurrasco(temperatura, precipitacao, vento) {
     return "(Melhor adiar)";
   }
 }
+
+/* =========================
+   LEVAR GUARDA-CHUVA
+========================= */
+function verificarChuvaDiaria(atual) {
+
+  const agora = new Date();
+  const limite = new Date(agora.getTime() + 3 * 60 * 60 * 1000); // +3 horas
+
+  for (let i = 0; i < atual.hourly.time.length; i++) {
+
+    const dataHoraAPI = new Date(atual.hourly.time[i]);
+
+    // Verifica apenas entre agora e +3 horas
+    if (dataHoraAPI >= agora && dataHoraAPI <= limite) {
+
+      const chuva = atual.hourly.precipitation[i] ?? 0;
+      const prob = atual.hourly.precipitation_probability[i] ?? 0;
+
+      if (chuva > 0 || prob >= 20) {
+        return "(Leve um)";
+      }
+    }
+  }
+
+  return "(Não necessita)";
+}
+
+
 
 /* =======================
 Avaliação da praia 
