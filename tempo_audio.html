@@ -641,23 +641,36 @@ cidade.addEventListener("input", async () => {
 
   if (termo.length < 2) return;
 
-  // 🔥 Função para remover acentos
+  // 🔥 NORMALIZAÇÃO FORTE (remove tudo que atrapalha busca)
   const normalizar = (texto) =>
     texto
       .toLowerCase()
       .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "");
+      .replace(/[\u0300-\u036f]/g, "") // remove acentos
+      .replace(/['’`´-]/g, "")        // remove apóstrofos e hífens
+      .replace(/\s+/g, "")            // remove espaços
+      .trim();
 
   try {
 
-    const resp = await fetch(
-      `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(termo)}&count=10&language=pt&format=json`
-    );
+    // 🔥 Corrige termos problemáticos antes da busca
+let termoBusca = termo
+  .replace(/\bdo oeste\b/i, "d'oeste")
+  .replace(/\bda\b/i, "d'a");
+
+// remove acentos apenas para envio
+termoBusca = termoBusca
+  .normalize("NFD")
+  .replace(/[\u0300-\u036f]/g, "");
+
+const resp = await fetch(
+  `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(termoBusca)}&count=10&language=pt&format=json`
+);
 
     const d = await resp.json();
     if (!d.results) return;
 
-    const busca = normalizar(termo);
+    const buscaNormal = normalizar(termo);
 
     // 1️⃣ Apenas cidades + remove duplicados
     let resultados = d.results
@@ -675,32 +688,21 @@ cidade.addEventListener("input", async () => {
 
       let score = 0;
 
-      const nomeOriginal = c.name;
-      const nome = normalizar(c.name);
-      const palavras = nome.split(" ");
+      const nomeNormal = normalizar(c.name);
 
-// 🎯 Nome EXATAMENTE igual
-  if (nome === busca) score += 3000;
+      // 🔥 Comparação inteligente
+      if (nomeNormal === buscaNormal) score += 6000;
+      if (nomeNormal.startsWith(buscaNormal)) score += 5000;
+      if (nomeNormal.includes(buscaNormal)) score += 3000;
 
-      // 🎯 Nome começa exatamente
-      if (nome.startsWith(busca)) score += 4000;
+      // 🔹 Capitais recebem prioridade
+      if (c.feature_code === "PPLC") score += 3000; // capital nacional
+      if (c.feature_code === "PPLA") score += 2000; // capital estadual
 
-      // 🎯 Alguma palavra começa
-      if (palavras.some(p => p.startsWith(busca))) score += 2500;
-
-      // 🎯 Apenas contém
-      if (nome.includes(busca)) score += 1000;
-
-      // 🏛 Capital nacional
-      if (c.feature_code === "PPLC") score += 2500;
-
-      // 🏢 Capital estadual
-      if (c.feature_code === "PPLA") score += 2000;
-
-      // 🇧🇷 Brasil
+      // 🔹 Prioriza Brasil
       if (c.country_code === "BR") score += 5000;
 
-      // 👥 População
+      // 🔹 População influencia
       if (c.population) {
         score += Math.min(c.population / 5000, 5000);
       }
@@ -708,20 +710,23 @@ cidade.addEventListener("input", async () => {
       return { ...c, score };
     });
 
-    // 3️⃣ Ordena pela pontuação
+    // 3️⃣ Ordena por score
     resultados.sort((a, b) => b.score - a.score);
 
-    // 4️⃣ Mostra os 5 melhores
+    // 4️⃣ Mostra os 7 melhores
     resultados.slice(0, 7).forEach(c => {
 
       let local;
 
+      // Ajuste de exibição (mantém seu padrão)
+      let nomeExibicao = ajustarNomeExibicao(c.name, c.country_code);
+
       if (c.country_code === "BR" && c.admin1) {
-        local = `${c.name} - ${c.admin1}`;
+        local = `${nomeExibicao} - ${c.admin1}`;
       } else if (c.admin1) {
-        local = `${c.name} - ${c.admin1} - ${c.country}`;
+        local = `${nomeExibicao} - ${c.admin1} - ${c.country}`;
       } else {
-        local = `${c.name} - ${c.country}`;
+        local = `${nomeExibicao} - ${c.country}`;
       }
 
       const div = document.createElement("div");
@@ -748,6 +753,7 @@ cidade.addEventListener("input", async () => {
   }
 
 });
+
 /* =========================
    ENTER SELECIONA PRIMEIRO
 ========================= */
@@ -870,8 +876,6 @@ else if (typeof atual?.hourly?.pressure_msl?.[idx] === "number") {
   pressaoExibir = atual.hourly.pressure_msl[idx];
 }
 let pressaoExibir_masc = atual.hourly.pressure_msl[idx];
-
-
 
 linhaPressao.innerHTML = `
   🎈Pressão: <b>${(atual.hourly.pressure_msl[idx] ).toFixed(1)} hPa</b>
@@ -1693,7 +1697,15 @@ function montarGraficoMensal(labels, min, med, max){
 }
 
 
-
+function normalizarTexto(str) {
+  return str
+    .toLowerCase()
+    .normalize("NFD") // separa acentos
+    .replace(/[\u0300-\u036f]/g, "") // remove acentos
+    .replace(/['’`´-]/g, "") // remove apóstrofo e hífen
+    .replace(/\s+/g, "") // remove espaços
+    .trim();
+}
 
 
 function avaliarFotografia(temp, nebulosidade, chuvaProb, nascerSol, porSol) {
@@ -1971,6 +1983,40 @@ function avaliarPragas(temp, chuva, umidade) {
   }
 }
 
+function ajustarNomeExibicao(nome, countryCode) {
+
+  // 🔒 Só aplica para Brasil
+  if (countryCode !== "BR") return nome;
+
+  return nome.replace(/d['’]([A-Za-zÀ-ÿ]+)/gi, (match, palavra) => {
+
+    // Capitaliza corretamente a palavra
+    const palavraFormatada =
+      palavra.charAt(0).toUpperCase() + palavra.slice(1).toLowerCase();
+
+    // Lista de palavras conhecidas masculinas
+    const masculinas = [
+      "Oeste", "Ouro", "Sul", "Norte", "Leste", "Cedro", "Campo"
+    ];
+
+    // Lista de palavras conhecidas femininas
+    const femininas = [
+      "Ávila", "Ilha", "Serra", "Lagoa"
+    ];
+
+    if (masculinas.includes(palavraFormatada))
+      return "do " + palavraFormatada;
+
+    if (femininas.includes(palavraFormatada))
+      return "da " + palavraFormatada;
+
+    // Se não souber, usa "de"
+    return "de " + palavraFormatada;
+
+  });
+
+}
+
 /* =========================
    FUNÇÕES UTILITÁRIAS
 ========================= */
@@ -1993,7 +2039,7 @@ function normalizarEstadoParaSigla(estado){
 }
 
 /* =========================
-   FORMATADORES
+    Qualidade do Ar - FORMATADORES
 ========================= */
 function formatarAQ(v){
  if(v<=50) return `<span class="aq-bom">(Boa (${v}))</span>`;
