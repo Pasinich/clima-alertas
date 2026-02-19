@@ -838,7 +838,7 @@ for(let i = idx; i < atual.hourly.time.length; i++){
  ========================= */
  const uvIndex = atual.daily.uv_index_max?.[0] ?? 0;
  const {classe, descricao} = formatarUV(uvIndex);
-
+const vitaminaD = avaliarVitaminaD(uvIndex);
  info.innerHTML = `
   <span style="font-size:13px">
    🌡️<b>${atual.current_weather.temperature}°C </b>(
@@ -1430,8 +1430,8 @@ linhaStatus.innerHTML = `
     <b style="color:#696969;font-size:13px;">Caminhada</b>${caminhada ?? ""} |
     <b style="color:#696969;font-size:13px;">Ciclismo</b>${ciclismo ?? ""} |
     <b style="color:#696969;font-size:13px;">Observar Estrelas</b>${estrelas ?? ""} |
-    <b style="color:#696969;font-size:13px;">Pescaria</b>${pesca ?? ""} |
-    <b style="color:#696969;font-size:13px;">Refeições ao Ar Livre</b>${churrascoTexto ? ` ${churrascoTexto}` : ""} |
+    <b style="color:#696969;font-size:13px;">Pescaria</b>${pesca ?? ""} | 
+    <b style="color:#696969;font-size:13px;">Refeições ao Ar Livre</b>${churrascoTexto ? `  ${churrascoTexto}` : ""} |
     <b style="color:#696969;font-size:13px;">Guarda-chuva</b>${chuvas ?? ""} |
     <b style="color:#696969;font-size:13px;">Fotografar</b>${fotografia}
   </div>
@@ -1450,6 +1450,7 @@ linhaStatus.innerHTML = `
       <b style="color:#8B008B;font-size:14px;">Saúde/Bem Estar</b><br>
       <b style="color:#696969;font-size:13px;">Alergias</b>(${alergiasTexto}) |
       <b style="color:#696969;font-size:13px;">Gripe</b>(${gripeTexto}) |
+      <b style="color:#696969;font-size:13px;">Vitamina D</b>${vitaminaD} |
       <b style="color:#696969;font-size:13px;">Roupas</b>${recomendarRoupas(tempAtual_roupas)}
     </div>` : ""}
 
@@ -1789,25 +1790,25 @@ function avaliarChurrasco(temperatura, precipitacao, vento) {
 function verificarChuvaDiaria(atual) {
 
   const agora = new Date();
-  const limite = new Date(agora.getTime() + 5 * 60 * 60 * 1000); // +3 horas
+  const limite = new Date(agora.getTime() + 3 * 60 * 60 * 1000); // +3 horas
 
   for (let i = 0; i < atual.hourly.time.length; i++) {
 
     const dataHoraAPI = new Date(atual.hourly.time[i]);
 
-    // Verifica apenas entre agora e +5 horas
+    // Verifica apenas entre agora e +3 horas
     if (dataHoraAPI >= agora && dataHoraAPI <= limite) {
 
       const chuva = atual.hourly.precipitation[i] ?? 0;
       const prob = atual.hourly.precipitation_probability[i] ?? 0;
 
-      if (chuva > 0 || prob >= 30) {
-        return "(Próximas 5 horas-Leve um)";
+      if (chuva > 0 || prob >= 20) {
+        return "(Leve um)";
       }
     }
   }
 
-  return "(Próximas 5 horas-Não necessita)";
+  return "(Não necessita)";
 }
 
 
@@ -1915,6 +1916,26 @@ function avaliarGripeResfriado(umidade, temp) {
   if (temp <= 18 && umidade <= 40) return "Alto risco";
   if (temp <= 22 && umidade <= 50) return "Médio risco";
   return "Baixo risco";
+}
+
+/* =======================
+   VITAMINA D
+========================= */
+function avaliarVitaminaD(uv) {
+
+  if (uv >= 8)
+    return "(Alta - 10–20 minutos já são suficientes)";
+  
+  if (uv >= 5)
+    return "(Boa - 20–30 minutos ao sol)";
+  
+  if (uv >= 3)
+    return "(Moderada - 30–40 minutos ao sol)";
+  
+  if (uv > 0)
+    return "(Baixa - exposição limitada)";
+  
+  return "(Indisponível no momento)";
 }
 
 /* =========================
