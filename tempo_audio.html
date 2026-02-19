@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+7<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
@@ -1431,7 +1431,7 @@ linhaStatus.innerHTML = `
     <b style="color:#696969;font-size:13px;">Ciclismo</b>${ciclismo ?? ""} |
     <b style="color:#696969;font-size:13px;">Observar Estrelas</b>${estrelas ?? ""} |
     <b style="color:#696969;font-size:13px;">Pescaria</b>${pesca ?? ""} |
-    <b style="color:#696969;font-size:13px;">Refeições ao ar livre</b>${churrascoTexto ? `  ${churrascoTexto}` : ""} |
+    <b style="color:#696969;font-size:13px;">Refeições ao Ar Livre</b>${churrascoTexto ? ` ${churrascoTexto}` : ""} |
     <b style="color:#696969;font-size:13px;">Guarda-chuva</b>${chuvas ?? ""} |
     <b style="color:#696969;font-size:13px;">Fotografar</b>${fotografia}
   </div>
@@ -1775,7 +1775,7 @@ function avaliarChurrasco(temperatura, precipitacao, vento) {
   // pouca chance de chuva (<30%)
   // vento leve (<20 km/h)
   if (temperatura >= 20 && temperatura <= 35 && precipitacao < 30 && vento < 20) {
-    return "(Ótimo) ";
+    return "(Ótimo)";
   } else if (temperatura >= 15 && temperatura <= 40 && precipitacao < 50) {
     return "(Fique atento)";
   } else {
