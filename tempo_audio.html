@@ -1923,11 +1923,14 @@ function avaliarGripeResfriado(umidade, temp) {
 ========================= */
 function avaliarVitaminaD(uv) {
 
+if (uv >= 11)
+    return "(Extremo - Risco de queimadura.)";
+
   if (uv >= 8)
-    return "(Alta - 10–20 minutos já são suficientes)";
+    return "(Muito Alta - 10–20 minutos já são suficientes)";
   
-  if (uv >= 5)
-    return "(Boa - 20–30 minutos ao sol)";
+  if (uv >= 6)
+    return "(Alta - 15–25 minutos já são suficientes)";
   
   if (uv >= 3)
     return "(Moderada - 30–40 minutos ao sol)";
