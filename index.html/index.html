@@ -839,17 +839,42 @@ for(let i = idx; i < atual.hourly.time.length; i++){
   }
 }
 
- /* =========================
-    UV
- ========================= */
- const uvIndex = atual.daily.uv_index_max?.[0] ?? 0;
- const {classe, descricao} = formatarUV(uvIndex);
-const vitaminaD = avaliarVitaminaD(uvIndex);
- info.innerHTML = `
+ /*=========================
+     PAINEL TEMPERATURA E UV FINAL USANDO HORA LOCAL
+=========================*/
+
+// Obter hora local da cidade direto do current_weather
+let horaLocal = 0;
+if (atual.current_weather?.time) {
+  const dt = new Date(atual.current_weather.time);
+  horaLocal = dt.getHours(); // 0-23
+}
+
+// Temperatura e sensação
+const temperaturaAtual = atual.current_weather?.temperature ?? "N/A";
+const sensacaoAtual = atual.current_weather?.apparent_temperature ?? temperaturaAtual; // fallback se hourly não existir
+
+// UV diário (não existe UV horário)
+let uvIndex = (horaLocal >= 6 && horaLocal < 19)
+              ? Array.isArray(atual.daily?.uv_index_max) ? atual.daily.uv_index_max[0] : "N/A"
+              : 0; // noite = 0
+
+// Formata classe e descrição
+let classe="", descricao="";
+if (typeof uvIndex === "number") {
+  const uvInfo = formatarUV(uvIndex);
+  classe = uvInfo.classe;
+  descricao = uvInfo.descricao;
+}
+
+// Vitamina D
+const vitaminaD = (typeof uvIndex === "number") ? avaliarVitaminaD(uvIndex) : "N/A";
+
+// Atualiza painel
+info.innerHTML = `
   <span style="font-size:13px">
-   🌡️<b>${atual.current_weather.temperature}°C </b>(
-   Sensação: ${atual.hourly.apparent_temperature[idx]}°C) 
-   • ☀️UV: <b class="${classe}">${uvIndex}</b> (${descricao})
+    🌡️<b>${temperaturaAtual}°C</b> (Sensação: ${sensacaoAtual}°C)
+    • ☀️UV: <b class="${classe}">${uvIndex}</b> ${descricao ? "(" + descricao + ")" : ""}
   </span>`;
   
   /* =========================
