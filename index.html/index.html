@@ -189,6 +189,80 @@ body.dark .sol-dia{background:#0b3c5d;}
   100% { transform: scale(1); }
 }
 
+/* =========================
+   TELA INICIAL ANIMADA
+========================= */
+#tela-inicial{
+  position: fixed;
+  inset: 0;
+  background:
+    linear-gradient(rgba(0,0,0,.55), rgba(0,0,0,.55)),
+    url("https://images.unsplash.com/photo-1501973801540-537f08ccae7b");
+  background-size: cover;
+  background-position: center;
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 999;
+  transition: opacity .8s ease, transform .8s ease;
+}
+
+/* Conteúdo central */
+.intro-conteudo{
+  text-align: center;
+  color: white;
+  animation: fadeUp 1.2s ease forwards;
+}
+
+.icone-clima{
+  font-size: 60px;
+  margin-bottom: 15px;
+  animation: pulse 2s infinite;
+}
+
+.intro-conteudo h1{
+  font-size: 28px;
+  margin-bottom: 8px;
+}
+
+.intro-conteudo p{
+  opacity: .85;
+  font-size: 15px;
+}
+
+/* Fade de saída */
+#tela-inicial.oculta{
+  opacity: 0;
+  transform: scale(1.05);
+  pointer-events: none;
+}
+
+/* Animações */
+@keyframes fadeUp{
+  from{ opacity:0; transform:translateY(20px); }
+  to{ opacity:1; transform:translateY(0); }
+}
+
+@keyframes pulse{
+  0%,100%{ transform: scale(1); }
+  50%{ transform: scale(1.1); }
+}
+
+/* =========================
+   LOADER GLOBO GIRANDO
+========================= */
+.loader-globo{
+  font-size: 40px;
+  margin-top: 15px;
+  display: inline-block;
+  animation: girarGlobo 2s linear infinite;
+}
+
+@keyframes girarGlobo{
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
 
 
 /* =========================
@@ -243,6 +317,16 @@ canvas{
   <canvas id="graficoMensal"></canvas>
 </div>
 
+<div id="tela-inicial">
+  <div class="intro-conteudo">
+    <div class="icone-clima">🌤️</div>
+    <h1>Previsão do Tempo</h1>
+    <p>Aguarde localização atual...</p>
+    <div class="loader-globo">🌍</div>
+  </div>
+</div>
+
+
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/suncalc/1.9.0/suncalc.min.js"></script>
 <script>
@@ -269,6 +353,15 @@ function limparTela(){
   chartPrevisao = null;
   chartMensal = null;
 }
+
+function esconderTelaInicial(){
+  const tela = document.getElementById("tela-inicial");
+  if(tela){
+    tela.classList.add("oculta");
+    setTimeout(()=> tela.remove(), 800);
+  }
+}
+
 
 /* =========================
    VARIÁVEIS GLOBAIS
@@ -1215,6 +1308,8 @@ montarPainelClimatico({
   cidade: nomeCidadeFinal,
   nebulosidade 
 });
+
+esconderTelaInicial();
 
 async function montarPainelClimatico(
 { atual, idx, idxChuva, probChuva, pais, estado,cidade, nebulosidade }) {
