@@ -595,7 +595,7 @@ function cidadePossuiPraia(pais, lat, lon){
 
   return pontosLitoralBrasil.some(
     ([plLat, plLon]) =>
-      distanciaKm(lat, lon, plLat, plLon) <= 40
+      distanciaKm(lat, lon, plLat, plLon) <= 30
   );
 }
 
@@ -1097,7 +1097,7 @@ else nivelRad = "Muito forte";
  
  linhaVisibilidade.innerHTML = `
 <span style="font-size:14px">
-  👁️Visibilidade:<b>${visibilidade} ) km</b> • 
+  👁️Visibilidade:<b>${visibilidade} km</b> • 
   💨Veloc.Vento:<b>${atual.current_weather.windspeed} km/h</b> 
   (<b>${direcaoVento}</b>) • 
   🌪️Rajadas:<b>${rajadas} km/h</b> • 
@@ -2196,16 +2196,41 @@ function normalizarEstadoParaSigla(estado){
 }
 
 /* =========================
-    Qualidade do Ar - FORMATADORES
+   Qualidade do Ar - FORMATADORES
 ========================= */
 function formatarAQ(v){
- if(v<=50) return `<span class="aq-bom">(Boa (${v}))</span>`;
- if(v<=100) return `<span class="aq-mod">(Moderada (${v}))</span>`;
- if(v<=150) return `<span class="aq-ruim">(Insalubre (${v}))</span>`;
- if(v<=200) return `<span class="aq-muito">(Muito Insalub. (${v}))</span>`;
- if(v<=300) return `<span class="aq-severo">(Severo (${v}))</span>`;
- return `<span class="aq-extremo">(Extrema (${v}))</span>`;
+
+ let classe = "";
+ let texto = "";
+
+ if (v <= 50) {
+   classe = "aq-bom";
+   texto = "(Boa)";
+ }
+ else if (v <= 100) {
+   classe = "aq-mod";
+   texto = "(Moderada)";
+ }
+ else if (v <= 150) {
+   classe = "aq-ruim";
+   texto = "(Insalubre)";
+ }
+ else if (v <= 200) {
+   classe = "aq-muito";
+   texto = "(Muito Insalubre)";
+ }
+ else if (v <= 300) {
+   classe = "aq-severo";
+   texto = "(Severo)";
+ }
+ else {
+   classe = "aq-extremo";
+   texto = "(Extrema)";
+ }
+
+ return `<span class="${classe}" data-aqi="${v}">${texto}</span>`;
 }
+
 
 /* =========================
    UV
@@ -2496,4 +2521,4 @@ if ("speechSynthesis" in window) {
 }
 </script>
 </body>
-</html>.
+</html>
