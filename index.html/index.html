@@ -283,6 +283,8 @@ let oni = -0.6;
 let estadoSelecionado = null;
 let tempCidade = null;
 let dadosCidade = null;
+let chuvaMM;
+
 
 async function obterEstadoPorLatLon(lat, lon){
   try{
@@ -314,7 +316,7 @@ linhaStatus=document.getElementById("linha-status"),
 linhaAviso=document.getElementById("linha-aviso"),
 linhaSol=document.getElementById("linha-sol"),
 previsao5=document.getElementById("previsao-5dias"),
-btnModo=document.getElementById("toggleModo");
+btnModo=document.getElementById("toggleModo"),
 btnMic = document.getElementById("btnMic");
 
 
@@ -634,46 +636,75 @@ cidade.addEventListener("focus",()=>{
 /* =========================
    AUTOCOMPLETE DE CIDADES
 ========================= */
-cidade.addEventListener("input", async () => {
+
+let debounceTimer;
+let controller;
+
+cidade.addEventListener("input", () => {
+
+  clearTimeout(debounceTimer);
+
+  debounceTimer = setTimeout(() => {
+    buscarAutocomplete();
+  }, 350);
+
+});
+
+
+async function buscarAutocomplete() {
 
   const termo = cidade.value.trim();
   lista.innerHTML = "";
 
-  if (termo.length < 2) return;
+  if (termo.length < 3) return;
 
-  // 🔥 NORMALIZAÇÃO FORTE (remove tudo que atrapalha busca)
+  if (controller) controller.abort();
+  controller = new AbortController();
+
   const normalizar = (texto) =>
     texto
       .toLowerCase()
       .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "") // remove acentos
-      .replace(/['’`´-]/g, "")        // remove apóstrofos e hífens
-      .replace(/\s+/g, "")            // remove espaços
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/['’`´-]/g, "")
+      .replace(/\s+/g, "")
       .trim();
 
   try {
 
-    // 🔥 Corrige termos problemáticos antes da busca
-let termoBusca = termo
-  .replace(/\bdo oeste\b/i, "d'oeste")
-  .replace(/\bda\b/i, "d'a");
+    async function consultar(nomeBusca) {
+      const resp = await fetch(
+        `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(nomeBusca)}&count=10&language=pt&format=json`,
+        { signal: controller.signal }
+      );
+      return await resp.json();
+    }
 
-// remove acentos apenas para envio
-termoBusca = termoBusca
-  .normalize("NFD")
-  .replace(/[\u0300-\u036f]/g, "");
+    let resultadosAPI = [];
 
-const resp = await fetch(
-  `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(termoBusca)}&count=10&language=pt&format=json`
-);
+    // 🔹 1️⃣ Busca termo original
+    const original = await consultar(termo);
+    if (original.results) resultadosAPI.push(...original.results);
 
-    const d = await resp.json();
-    if (!d.results) return;
+    // 🔹 2️⃣ Se tiver "do oeste", buscar também "d'oeste"
+    if (/do oeste/i.test(termo)) {
+      const alterado = termo.replace(/do oeste/i, "d'oeste");
+      const alt = await consultar(alterado);
+      if (alt.results) resultadosAPI.push(...alt.results);
+    }
+
+    // 🔹 3️⃣ Se tiver "d'oeste", buscar também "do oeste"
+    if (/d['’]?oeste/i.test(termo)) {
+      const alterado = termo.replace(/d['’]?oeste/i, "do oeste");
+      const alt = await consultar(alterado);
+      if (alt.results) resultadosAPI.push(...alt.results);
+    }
+
+    if (resultadosAPI.length === 0) return;
 
     const buscaNormal = normalizar(termo);
 
-    // 1️⃣ Apenas cidades + remove duplicados
-    let resultados = d.results
+    let resultados = resultadosAPI
       .filter(c => c.feature_code?.startsWith("P"))
       .filter((c, index, self) =>
         index === self.findIndex(t =>
@@ -683,26 +714,20 @@ const resp = await fetch(
         )
       );
 
-    // 2️⃣ Sistema de pontuação inteligente
     resultados = resultados.map(c => {
 
       let score = 0;
-
       const nomeNormal = normalizar(c.name);
 
-      // 🔥 Comparação inteligente
       if (nomeNormal === buscaNormal) score += 6000;
       if (nomeNormal.startsWith(buscaNormal)) score += 5000;
       if (nomeNormal.includes(buscaNormal)) score += 3000;
 
-      // 🔹 Capitais recebem prioridade
-      if (c.feature_code === "PPLC") score += 3000; // capital nacional
-      if (c.feature_code === "PPLA") score += 2000; // capital estadual
+      if (c.feature_code === "PPLC") score += 3000;
+      if (c.feature_code === "PPLA") score += 2000;
 
-      // 🔹 Prioriza Brasil
       if (c.country_code === "BR") score += 5000;
 
-      // 🔹 População influencia
       if (c.population) {
         score += Math.min(c.population / 5000, 5000);
       }
@@ -710,22 +735,20 @@ const resp = await fetch(
       return { ...c, score };
     });
 
-    // 3️⃣ Ordena por score
     resultados.sort((a, b) => b.score - a.score);
 
-    // 4️⃣ Mostra os 7 melhores
     resultados.slice(0, 7).forEach(c => {
 
       let local;
-
-      // Ajuste de exibição (mantém seu padrão)
       let nomeExibicao = ajustarNomeExibicao(c.name, c.country_code);
 
       if (c.country_code === "BR" && c.admin1) {
         local = `${nomeExibicao} - ${c.admin1}`;
-      } else if (c.admin1) {
+      } 
+      else if (c.admin1) {
         local = `${nomeExibicao} - ${c.admin1} - ${c.country}`;
-      } else {
+      } 
+      else {
         local = `${nomeExibicao} - ${c.country}`;
       }
 
@@ -749,10 +772,11 @@ const resp = await fetch(
     });
 
   } catch (err) {
-    console.error("Erro no autocomplete:", err);
+    if (err.name !== "AbortError") {
+      console.error("Erro no autocomplete:", err);
+    }
   }
-
-});
+}
 
 /* =========================
    ENTER SELECIONA PRIMEIRO
@@ -777,7 +801,7 @@ async function buscar(){
  const rAtual = await fetch(
   `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}` +
   `&current_weather=true` +
-  `&hourly=apparent_temperature,relativehumidity_2m,pressure_msl,precipitation,precipitation_probability,visibility,cloudcover,windspeed_10m` +
+  `&hourly=windgusts_10m,shortwave_radiation,apparent_temperature,relativehumidity_2m,pressure_msl,precipitation,precipitation_probability,visibility,cloudcover,windspeed_10m` +
   `&daily=sunrise,sunset,temperature_2m_min,temperature_2m_max,precipitation_sum,precipitation_probability_max,uv_index_max` +
   `&timezone=auto`
  );
@@ -785,7 +809,7 @@ async function buscar(){
  const latitudeAtual = atual.latitude;
 const longitudeAtual = atual.longitude;
 
- /* ===== API QUALIDADE DO AR ===== */
+/* ===== API QUALIDADE DO AR ===== */
  const rAQ = await fetch(
   `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lon}&hourly=pm2_5,pm10,european_aqi&timezone=auto`
  );
@@ -820,6 +844,50 @@ function mostrarCidade(nome, pais) {
   }
 }
 
+
+
+/* =========================
+   PRÓXIMA CHUVA AGORA
+========================= */
+const chuvaMM = atual.hourly?.precipitation?.[idx] ?? 0;
+
+function avaliarChuva(chuvaMM, chuvaHora) {
+  chuvaMM = Number(chuvaMM) || 0;
+  chuvaHora = Number(chuvaHora) || 0;
+
+  if (chuvaMM > 0) {
+
+    if (chuvaMM < 2) {
+      return "🌦️ Garoa leve no momento";
+    }
+    else if (chuvaMM < 10) {
+      return "🌧️ Chuva moderada agora";
+    }
+    else {
+      return "⛈️ Chuva forte em andamento";
+    }
+
+  } else {
+
+    if (chuvaHora >= 90) {
+      return "🚨 Chuva quase certa nas próximas horas";
+    }
+    else if (chuvaHora >= 70) {
+      return "⚠️ Alta chance de chuva";
+    }
+    else if (chuvaHora >= 40) {
+      return "🌦️ Possível chuva";
+    }
+    else if (chuvaHora >= 20) {
+      return "☁️ Pequena chance de chuva";
+    }
+    else {
+      return "☀️ Sem previsão de chuva";
+    }
+
+  }
+}
+
 /* =========================
    PRÓXIMA CHUVA
 ========================= */
@@ -832,14 +900,14 @@ for(let i = idx; i < atual.hourly.time.length; i++){
   const prob = atual.hourly.precipitation_probability?.[i] ?? 0;
 
   if(mm > 0 || prob >= 20){
-    proximaChuva = atual.hourly.time[i].slice(11,16); // ainda mantemos hora para compatibilidade
+    proximaChuva = atual.hourly.time[i].slice(11,16); 
     probChuva = prob;
-    idxChuva = i; // guarda o índice
+    idxChuva = i; 
     break;
   }
 }
 
- /*=========================
+/*=========================
      PAINEL TEMPERATURA E UV FINAL USANDO HORA LOCAL
 =========================*/
 
@@ -852,7 +920,9 @@ if (atual.current_weather?.time) {
 
 // Temperatura e sensação
 const temperaturaAtual = atual.current_weather?.temperature ?? "N/A";
-const sensacaoAtual = atual.current_weather?.apparent_temperature ?? temperaturaAtual; // fallback se hourly não existir
+const sensacaoAtual =
+  atual.hourly?.apparent_temperature?.[idx] ??
+  temperaturaAtual;
 
 // UV diário (não existe UV horário)
 let uvIndex = (horaLocal >= 6 && horaLocal < 19)
@@ -872,10 +942,11 @@ const vitaminaD = (typeof uvIndex === "number") ? avaliarVitaminaD(uvIndex) : "N
 
 // Atualiza painel
 info.innerHTML = `
-  <span style="font-size:13px">
-    🌡️<b>${temperaturaAtual}°C</b> (Sensação: ${sensacaoAtual}°C)
+  <span style="font-size:14px">
+    🌡️ Temp.:<b>${temperaturaAtual}°C</b> (Sensação: ${sensacaoAtual}°C)
     • ☀️UV: <b class="${classe}">${uvIndex}</b> ${descricao ? "(" + descricao + ")" : ""}
   </span>`;
+  
   
   /* =========================
    QUALIDADE DO AR (AQI)
@@ -887,26 +958,69 @@ if (aq?.hourly?.pm2_5?.length && typeof idxAQ === "number") {
   usAQI = pm25ToUSAQI(pm25);
 }
   
-/* =========================
-   PRESSÃO ATMOSFÉRICA (ATUAL REAL)
-========================= */
-let pressaoExibir = "—";
 
-// prioridade máxima: valor atual real
-if (typeof atual?.current_weather?.pressure_msl === "number") {
-  pressaoExibir = atual.current_weather.pressure_msl;
+/* =========================
+   UMIDADE / CHUVA / NEBULOSIDADE - CORRIGIDO
+========================= */
+const agora_chuva = new Date();
+let idx_chuva = 0;
+let menorDif = Infinity;
+
+// Encontra o índice da hora mais próxima da hora atual
+atual.hourly.time.forEach((t, i) => {
+  const horaAPI = new Date(t);
+  const dif = Math.abs(horaAPI.getTime() - agora_chuva.getTime());
+  if (dif < menorDif) {
+    menorDif = dif;
+    idx_chuva = i;
+  }
+});
+
+// Probabilidade de chuva: busca nos próximos 2 horários
+let chuvaHora = 0;
+for (let i = idx_chuva; i < idx_chuva + 2 && i < atual.hourly.precipitation_probability.length; i++) {
+  const v = atual.hourly.precipitation_probability[i];
+  if (v != null) {
+    chuvaHora = v;
+    break;
+  }
 }
-// fallback apenas se não existir
-else if (typeof atual?.hourly?.pressure_msl?.[idx] === "number") {
-  pressaoExibir = atual.hourly.pressure_msl[idx];
+
+// Nebulosidade: procura o valor mais próximo do horário atual
+let neb = null;
+
+// Primeiro procura do índice atual para frente
+for (let i = idx_chuva; i < atual.hourly.cloudcover.length; i++) {
+  const v = atual.hourly.cloudcover[i];
+  if (v != null && v >= 0 && v <= 100) {
+    neb = v;
+    break;
+  }
 }
-let pressaoExibir_masc = atual.hourly.pressure_msl[idx];
+
+// Se não encontrar, procura para trás
+if (neb === null) {
+  for (let i = idx_chuva - 1; i >= 0; i--) {
+    const v = atual.hourly.cloudcover[i];
+    if (v != null && v >= 0 && v <= 100) {
+      neb = v;
+      break;
+    }
+  }
+}
+
+const nebulosidade = neb !== null ? neb : "—";
+
+
+const pressaoAtual = atual.hourly?.pressure_msl?.[idx] ?? null;
+const chuvaMMAtual = chuvaMM ?? 0;
+const probChuvaAtual = chuvaHora ?? 0;
 
 linhaPressao.innerHTML = `
-  🎈Pressão: <b>${(atual.hourly.pressure_msl[idx] ).toFixed(1)} hPa</b>
-  ${/*pressaoTexto ? ` | <span style="font-size:13px; opacity:0.9">${pressaoTexto}</span>` :*/ ""}
+  🎈Pressão:<b>${pressaoAtual != null ? pressaoAtual.toFixed(1) : "—"} hPa</b> •
+  🌧️Chuva (${chuvaMMAtual}mm) •
+  🌧️Prob.Chuva:<b class="${formatarChuvaClasse(probChuvaAtual)}">${probChuvaAtual}%</b>
 `;
- 
  
  /* =========================
     VISIBILIDADE (VALOR VÁLIDO)
@@ -929,7 +1043,7 @@ linhaPressao.innerHTML = `
  /* =========================
     DIREÇÃO DO VENTO
  ========================= */
- const deg = atual.current_weather.winddirection ?? null;
+ const deg = atual.current_weather?.winddirection ?? null;
 
  function degParaDirecao(d){
   if(d==null) return "—";
@@ -942,72 +1056,87 @@ linhaPressao.innerHTML = `
   return dirs[Math.round(d/22.5) % 16];
  }
 
+/* =========================
+   RADIAÇÃO SOLAR - 100% CORRETO
+========================= */
+
+// Hora da cidade retornada pela API
+const agora_rad = atual.current_weather?.time
+  ? new Date(atual.current_weather.time).getTime()
+  : Date.now();
+
+let idxRad = 0;
+let menorDifRad = Infinity;
+
+// Procura a hora mais próxima da hora da cidade
+atual.hourly.time.forEach((t, i) => {
+  const dif = Math.abs(new Date(t).getTime() - agora_rad);
+  if (dif < menorDifRad) {
+    menorDifRad = dif;
+    idxRad = i;
+  }
+});
+
+// Pega a radiação correspondente
+let radiacaoAtual = atual.hourly.shortwave_radiation?.[idxRad] ?? 0;
+
+// Classificação
+let nivelRad = "";
+if (radiacaoAtual === 0) nivelRad = "Nulo";
+else if (radiacaoAtual < 200) nivelRad = "Fraca";
+else if (radiacaoAtual < 600) nivelRad = "Moderada";
+else if (radiacaoAtual < 900) nivelRad = "Forte";
+else nivelRad = "Muito forte";
+
  const direcaoVento = degParaDirecao(deg);
-
- linhaVisibilidade.innerHTML =
-  `👁️Visibil.:<b>${visibilidade} km</b> • ` +
-  `💨Vento:<b>${atual.current_weather.windspeed} km/h</b> ` +
-  `(<b>${direcaoVento}</b>)`;
-
 /* =========================
     RAJADAS DE VENTO
  ========================= */
- let rajadas = "—";
- if(atual.hourly.windspeed_10m?.[idx] != null){
-  rajadas = (atual.hourly.windspeed_10m[idx] * 1.6).toFixed(1);
- }
+ let rajadas = atual.hourly?.windgusts_10m?.[idx] ?? "—";
+ 
+ 
+ linhaVisibilidade.innerHTML = `
+<span style="font-size:14px">
+  👁️Visibilidade:<b>${visibilidade} ) km</b> • 
+  💨Veloc.Vento:<b>${atual.current_weather.windspeed} km/h</b> 
+  (<b>${direcaoVento}</b>) • 
+  🌪️Rajadas:<b>${rajadas} km/h</b> • 
+  ☀️Radiação Solar:<b>${
+    typeof radiacaoAtual === "number"
+      ? `${radiacaoAtual.toFixed(0)} W/m² (${nivelRad})`
+      : "0 W/m²"
+  }</b>
+</span>`;
 
 /* =========================
-    NEVOEIRO + RAJADAS 
+    NEVOEIRO
  ========================= */
-let nevoeiro = "Ausente🌤️";
+let nevoeiro = "Ausente";
 
 // nevoeiro pela visibilidade (em METROS)
 if(vis !== null){
   if(vis <= 1000){
-    nevoeiro = "Nevoeiro Denso ";
+    nevoeiro = "Denso ";
   }
   else if(vis <= 2000){
-    nevoeiro = "Nevoeiro Fraco ";
+    nevoeiro = "Fraco ";
   }
 }
 
 // confirmação por umidade + vento
-const umid = atual.hourly.relativehumidity_2m[idx];
+const umid = atual.hourly?.relativehumidity_2m?.[idx] ?? 0;
 const vento = atual.current_weather.windspeed;
 
 if(vis !== null && umid >= 84 && vento <= 4){
-  nevoeiro = "Nevoeiros Esparsos ";
+  nevoeiro = "Esparsos ";
 }
 
-linhaNevoeiro.innerHTML =
- `🌫️ Nevoeiro: <b>${nevoeiro}</b> • 🌬️Rajadas: <b>${rajadas} km/h</b>`;
-
- /* =========================
-    UMIDADE / CHUVA / NEBULOSIDADE
- ========================= */
- const chuvaHora = atual.hourly.precipitation_probability?.[idx] ?? 0;
-
- let neb = null;
- for(let i = idx; i < atual.hourly.cloudcover.length; i++){
-  const v = atual.hourly.cloudcover[i];
-  if(v != null && v >= 0 && v <= 100){ neb = v; break; }
- }
- if(neb === null){
-  for(let i = idx-1; i >= 0; i--){
-   const v = atual.hourly.cloudcover[i];
-   if(v != null && v >= 0 && v <= 100){ neb = v; break; }
-  }
- }
-
- const nebulosidade = neb !== null ? neb : "—";
-
- linhaUmidade.innerHTML =
-  `💧Umidade:<b>${atual.hourly.relativehumidity_2m[idx]}%</b> • ` +
-  `🌧️Chuva:<b class="${formatarChuvaClasse(chuvaHora)}">${chuvaHora}%</b> • ` +
-  `☁️Nebulosidade:<b>${nebulosidade}%</b>`;
- 
- 
+linhaUmidade.innerHTML =
+  `💧Umidade:<b>${umid}%</b> •
+   ☁️Nuvens:<b>${nebulosidade}%</b> • 
+   🌁Nevoeiro:<b>${nevoeiro}</b>`;
+  
+  
  function estacaoDoAno(data = new Date(), lat = -30) {
   const d = data.getDate();
   const m = data.getMonth() + 1;
@@ -1083,15 +1212,14 @@ montarPainelClimatico({
   probChuva,
   pais: paisSelecionado,   
   estado: estadoSelecionado ,
-  cidade: nomeCidade.innerText,
   cidade: nomeCidadeFinal,
   nebulosidade 
 });
 
 async function montarPainelClimatico(
 { atual, idx, idxChuva, probChuva, pais, estado,cidade, nebulosidade }) {
-const lat = atual.latitude ?? latitudeSelecionada ?? -30;
-const estacao = estacaoDoAno(new Date(), lat);
+const latPainel = atual.latitude ?? -30;
+const estacao = estacaoDoAno(new Date(), latPainel);
 const lua = calcularLua(new Date());
 const iluminacaoLua = Number(lua.iluminacao);
 
@@ -1406,7 +1534,7 @@ const fotografia = `${avaliacaoFoto} <b style="color:#696969;font-size:14px;"></
 const mobileView = true; // true = Android / false = desktop
 const alertaTexto = "";
 
-const nomeCidadePainel = cidade ?? "-";
+const nomeCidadePainel = nomeCidadeFinal ?? "-";
 const estadoPainel = estado ? " - " + estado : "";
 
 
@@ -1434,7 +1562,7 @@ if (possuiPraia) {
     <b style="color:#696969;font-size:13px;">Piscina</b>${piscina ?? "-"}
   </div>`;
 }
-
+let dataHoraLocal = atual.current_weather?.time ?? "";
 linhaStatus.innerHTML = `
   ${!mobileView ? `<div>🕒 Data e Hora da Coleta: <b>${dataHoraLocal ?? ""}</b></div>` : ""}
 
@@ -1593,6 +1721,7 @@ linhaStatus.innerHTML = `
  montarGrafico(hist.hourly);
  buscarTemperaturasMensais();
 }
+
 
 /* =========================
    PM2.5 → US AQI
@@ -1871,11 +2000,12 @@ async function buscarAlturaOnda(lat, lon) {
       `https://marine-api.open-meteo.com/v1/marine?latitude=${lat}&longitude=${lon}&hourly=wave_height&timezone=auto`
     );
 
+    if (!r.ok) return null;
+
     const d = await r.json();
 
-    if (!d.hourly?.wave_height) return null;
+    if (!d.hourly?.wave_height || !d.hourly?.time) return null;
 
-    // pega a onda mais próxima da hora atual
     const agora = Date.now();
     let idx = 0;
     let menorDif = Infinity;
@@ -1888,9 +2018,11 @@ async function buscarAlturaOnda(lat, lon) {
       }
     });
 
-    return d.hourly.wave_height[idx];
+    const valor = d.hourly.wave_height[idx];
 
-  } catch {
+    return valor != null ? Number(valor) : null;
+
+  } catch (e) {
     return null;
   }
 }
@@ -2364,4 +2496,4 @@ if ("speechSynthesis" in window) {
 }
 </script>
 </body>
-</html>
+</html>.
