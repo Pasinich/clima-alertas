@@ -783,36 +783,6 @@ function aplicarModo(m) {
   // Atualiza background do body
   document.body.style.backgroundColor = corFundo;
 
-  // Atualiza todos os gráficos
-  [chart, chartPrevisao, chartMensal].forEach(c => {
-    if (c) {
-      // Eixos
-      if(c.options.scales){
-        for(const axis of Object.values(c.options.scales)){
-          if(axis.ticks) axis.ticks.color = corTexto;
-          if(axis.grid) axis.grid.color = corGrid;
-        }
-      }
-
-      // Títulos e legendas
-      if(c.options.plugins){
-        if(c.options.plugins.title) c.options.plugins.title.color = corTexto;
-        if(c.options.plugins.legend && c.options.plugins.legend.labels){
-          c.options.plugins.legend.labels.color = corTexto;
-        }
-      }
-
-      // Atualiza o gráfico
-      c.update();
-    }
-  });
-}
-
-aplicarModo(localStorage.getItem("modo") || modoAuto());
-
-btnModo.onclick = () =>
- aplicarModo(document.body.classList.contains("dark") ? "light" : "dark");
-
 /* =========================
    LIMPAR INPUT
 ========================= */
