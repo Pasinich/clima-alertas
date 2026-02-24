@@ -570,114 +570,180 @@ function distanciaKm(lat1, lon1, lat2, lon2){
 ========================= */
 const pontosLitoralBrasil = [
   // RS
-  [-33.3, -53.4], // Torres
-  [-31.4, -51.2], // Tramandaí
-  [-30.0, -50.2], // Capão da Canoa
-  [-29.2, -49.7], // Imbé
-  [-29.0, -49.7], // Xangri-lá
-  [-29.0, -50.0], // Osório
-  [-30.3, -50.2], // Palmares do Sul
+  [-29.3167, -49.7344], // Torres
+  [-29.2447, -49.7444], // Arroio do Sal
+  [-29.5500, -49.8897], // Três Cachoeiras
+  [-29.3356, -49.7306], // Dom Pedro de Alcântara
+  [-29.9670, -50.1267], // Imbé
+  [-29.9844, -50.1356], // Xangri-lá
+  [-29.6508, -50.1206], // Tramandaí
+  [-30.0033, -50.1356], // Capão da Canoa
+  [-30.1806, -50.2336], // Cidreira
+  [-30.2617, -50.5108], // Palmares do Sul
+  [-30.4208, -50.4119], // Mostardas
+  [-32.5667, -52.5333], // Rio Grande
+  [-31.7667, -52.3500], // São José do Norte
+  [-31.7364, -52.3336], // Tavares
+  [-33.6892, -53.4586], // Santa Vitória do Palmar
+
 
   // SC
-  [-26.7, -48.6], // Barra Velha
-  [-26.8, -48.6], // Balneário Piçarras
-  [-27.0, -48.6], // Itajaí
-  [-27.1, -48.6], // Navegantes
-  [-27.1, -48.6], // Porto Belo
-  [-27.1, -48.6], // Bombinhas
-  [-27.6, -48.6], // Balneário Camboriú
-  [-27.6, -48.6], // Itapema
-  [-27.7, -48.5], // Tijucas
-  [-27.5, -48.5], // Florianópolis
-  [-27.6, -48.5], // São José
-  [-28.0, -48.7], // Palhoça
-  [-28.1, -48.7], // Imbituba
-  [-28.5, -49.0], // Garopaba
-  [-28.5, -49.0], // Laguna
-  [-28.7, -49.0], // Pescaria Brava
-  [-28.8, -48.7], // Bombinhas (parte sul)
-  [-27.3, -48.5], // Brusque (próximo ao litoral)
-  
+  [-26.6322, -48.6847], // Barra Velha
+  [-26.7639, -48.6730], // Balneário Piçarras
+  [-26.9101, -48.6705], // Itajaí
+  [-26.8946, -48.6546], // Navegantes
+  [-27.1424, -48.5530], // Bombinhas
+  [-27.1564, -48.5532], // Porto Belo
+  [-27.0983, -48.6177], // Itapema
+  [-26.9926, -48.6350], // Balneário Camboriú
+  [-27.5954, -48.5480], // Florianópolis
+  [-27.6455, -48.6697], // Palhoça
+  [-28.2400, -48.6700], // Imbituba
+  [-28.0278, -48.6178], // Garopaba
+  [-28.4825, -48.7808], // Laguna
+  [-25.5683, -48.6167], // São Francisco do Sul
+  [-26.0731, -48.6170], // Itapoá
+  [-26.3044, -48.8487], // Joinville (área costeira/baía)
+
   // PR
-  [-25.5, -48.5], // Matinhos
-  [-25.6, -48.5], // Caiobá
-  [-25.7, -48.5], // Guaratuba
-  [-25.9, -48.6], // Pontal do Paraná
-  [-26.0, -48.5], // Paranaguá
-  [-25.5, -48.7], // Ilha do Mel
+  // ===== PARANÁ =====
+  [-25.8833, -48.6000], // Matinhos
+  [-25.8167, -48.5333], // Pontal do Paraná
+  [-25.9833, -48.8833], // Guaratuba
+  [-25.5167, -48.5000], // Paranaguá
+  [-25.5333, -48.3333], // Ilha do Mel
+  [-25.4500, -48.7000], // Morretes (baía de Paranaguá)
 
   // SP
-  [-23.5, -45.4], // Santos
-  [-23.9, -45.4], // Guarujá
-  [-24.0, -45.5], // Bertioga
-  [-23.8, -45.5], // Ilhabela
-  [-24.6, -46.7], // Ubatuba
-  [-23.6, -45.4], // São Sebastião
-  [-24.3, -46.6], // Caraguatatuba
-  [-24.1, -46.6], // Praia das Toninhas
+  [-23.9608, -46.3336], // Santos
+  [-23.9940, -46.2560], // Guarujá
+  [-23.8544, -46.1386], // Bertioga
+  [-24.0058, -46.4028], // Praia Grande
+  [-24.1908, -46.7889], // Itanhaém
+  [-24.3208, -47.0008], // Peruíbe
+  [-23.7781, -45.3581], // Ilhabela
+  [-23.4336, -45.0831], // Ubatuba
+  [-23.7600, -45.4090], // São Sebastião
+  [-23.6200, -45.4120], // Caraguatatuba
+  [-24.7200, -47.5550], // Cananéia
+  [-25.0167, -47.9333], // Ilha Comprida
+  [-24.7081, -47.5553], // Iguape
 
   // RJ
-  [-22.8, -43.2], // Rio de Janeiro
-  [-23.0, -43.1], // Niterói
-  [-22.6, -41.8], // Arraial do Cabo
-  [-22.9, -42.0], // Búzios
-  [-22.7, -42.0], // Cabo Frio
-  [-22.5, -41.7], // São Pedro da Aldeia
-  [-22.5, -42.0], // Araruama
-  [-22.4, -42.0], // Iguaba Grande
-  [-22.3, -42.0], // Saquarema
+  [-22.9068, -43.1729], // Rio de Janeiro
+  [-22.8832, -43.1034], // Niterói
+  [-22.8700, -43.7800], // Maricá
+  [-22.7561, -42.8644], // Saquarema
+  [-22.9300, -42.5100], // Araruama
+  [-22.8789, -42.0189], // Cabo Frio
+  [-22.9670, -41.9900], // Arraial do Cabo
+  [-22.7856, -41.9117], // Armação dos Búzios
+  [-22.3749, -41.7829], // Rio das Ostras
+  [-22.3734, -41.7816], // Macaé
+  [-21.7622, -41.3185], // Campos dos Goytacazes
+  [-21.6403, -41.0519], // São João da Barra
+  [-22.4120, -44.6550], // Angra dos Reis
+  [-23.2196, -44.7176], // Paraty
+  [-23.0064, -44.3180], // Mangaratiba
 
   // ES
-  [-20.3, -40.3], // Vitória
-  [-20.4, -40.3], // Vila Velha
-  [-19.0, -40.3], // Guarapari
-  [-18.9, -39.9], // Anchieta
-  [-19.2, -40.1], // Piúma
-  [-18.8, -39.8], // Itapemirim
-  [-18.7, -39.7], // Marataízes
+  [-20.3155, -40.3128], // Vitória
+  [-20.3556, -40.2928], // Vila Velha
+  [-20.6710, -40.4950], // Guarapari
+  [-20.8190, -40.6170], // Anchieta
+  [-20.8370, -40.7310], // Piúma
+  [-21.0430, -40.8330], // Itapemirim
+  [-21.0083, -40.8333], // Marataízes
+  [-19.5360, -40.6270], // Linhares
+  [-18.7160, -39.8580], // São Mateus
+  [-18.5920, -39.7330], // Conceição da Barra
+  
+  // ===== BAHIA =====
+  [-12.9714, -38.5014], // Salvador
+  [-12.8860, -38.6780], // Camaçari
+  [-12.6180, -38.0500], // Mata de São João (Praia do Forte)
+  [-13.0080, -38.5320], // Lauro de Freitas
+  [-14.7880, -39.0460], // Itacaré
+  [-16.4498, -39.0646], // Porto Seguro
+  [-16.3770, -39.5800], // Santa Cruz Cabrália
+  [-17.5390, -39.7400], // Prado
+  [-15.7930, -38.8820], // Ilhéus
+  [-11.1810, -37.8030], // Conde
+  [-12.1450, -38.4200], // Itaparica
 
-  // BA
-  [-17.9, -39.0], // Porto Seguro
-  [-16.5, -39.1], // Ilhéus
-  [-14.8, -39.0], // Itacaré
-  [-13.0, -38.5], // Salvador
-  [-12.9, -38.5], // Lauro de Freitas
-  [-12.6, -38.0], // Praia do Forte
-  [-12.5, -38.0], // Imbassaí
-  [-11.5, -37.5], // Santo André
-  [-11.3, -37.5], // Cumuruxatiba
+  // ===== SERGIPE =====
+  [-10.9472, -37.0731], // Aracaju
+  [-11.3710, -37.4320], // Estância
+  [-10.7380, -36.8690], // Barra dos Coqueiros
 
-  // AL
-  [-9.0, -35.7], // Maceió
-  [-9.4, -35.7], // Maragogi
-  [-9.3, -35.8], // Japaratinga
+  // ===== ALAGOAS =====
+  [-9.6658, -35.7350], // Maceió
+  [-9.0122, -35.2225], // Maragogi
+  [-9.4720, -35.8390], // São Miguel dos Milagres
+  [-9.7810, -35.5480], // Barra de São Miguel
+  [-10.4060, -36.4340], // Piaçabuçu
 
-  // PE
-  [-8.0, -34.9], // Recife
-  [-8.1, -34.9], // Olinda
-  [-8.4, -35.0], // Porto de Galinhas
-  [-7.9, -35.1], // Ipojuca
+  // ===== PERNAMBUCO =====
+  [-8.0476, -34.8770], // Recife
+  [-8.0540, -34.8710], // Olinda
+  [-8.3990, -35.0630], // Ipojuca (Porto de Galinhas)
+  [-7.5630, -35.0020], // Goiana
+  [-8.3780, -34.9600], // Jaboatão dos Guararapes
+  [-8.1530, -35.3120], // Tamandaré
 
-  // RN
-  [-5.8, -35.2], // Natal
-  [-5.9, -35.1], // Pipa
-  [-5.8, -35.0], // Tibau do Sul
+  // ===== PARAÍBA =====
+  [-7.1150, -34.8610], // João Pessoa
+  [-7.0420, -34.8480], // Cabedelo
+  [-6.7750, -34.8270], // Baía da Traição
+  [-7.4700, -34.8350], // Conde-PB
 
-  // CE
-  [-3.7, -38.5], // Fortaleza
-  [-3.8, -38.5], // Aquiraz
-  [-3.5, -38.6], // Canoa Quebrada
-  [-3.6, -38.7], // Aracati
+  // ===== RIO GRANDE DO NORTE =====
+  [-5.7945, -35.2110], // Natal
+  [-6.2281, -35.0450], // Tibau do Sul (Pipa)
+  [-5.0830, -36.2760], // Mossoró (região costeira)
+  [-4.8360, -37.2560], // Tibau-RN
+  [-4.9460, -37.1580], // Areia Branca
 
-  // MA
-  [-2.5, -44.3], // São Luís
-  [-2.7, -44.3], // Alcântara
-  [-2.8, -44.2], // Raposa
+  // ===== CEARÁ =====
+  [-3.7172, -38.5433], // Fortaleza
+  [-4.5550, -37.7690], // Aracati (Canoa Quebrada)
+  [-2.8890, -40.1190], // Jijoca de Jericoacoara
+  [-2.9220, -39.9160], // Camocim
+  [-3.4940, -39.5770], // Itapipoca
+  [-3.2200, -40.6940], // Acaraú
 
-  // PA
-  [-0.7, -48.5], // Belém
-  [-0.8, -48.5], // Barcarena
-  [-0.9, -48.6], // Maracanã
+  // ===== PIAUÍ =====
+  [-2.9050, -41.7740], // Parnaíba
+  [-2.8850, -41.6660], // Luís Correia
+  [-2.9020, -41.4170], // Cajueiro da Praia
+
+  // ===== MARANHÃO =====
+  [-2.5307, -44.3068], // São Luís
+  [-2.5020, -44.1960], // São José de Ribamar
+  [-2.4150, -44.4170], // Raposa
+  [-2.8760, -42.8220], // Barreirinhas
+  [-2.7619, -42.2747], // Tutóia
+
+// ===== PARÁ =====
+  [-0.6250, -47.3550], // Salinópolis
+  [-0.8610, -47.9180], // Bragança
+  [-0.6010, -47.6380], // Marapanim
+  [-0.7720, -47.7210], // Curuçá
+  [-0.9390, -48.2800], // São Caetano de Odivelas
+  [-0.6180, -46.9100], // Augusto Corrêa
+  [-0.7330, -48.5120], // Colares
+  [-1.1520, -47.7440], // Quatipuru
+  [-1.1950, -46.8190], // Viseu
+
+  // ===== AMAPÁ =====
+  [1.4140, -50.0980],  // Oiapoque
+  [0.7120, -49.7100],  // Calçoene
+  [0.8570, -50.0230],  // Amapá
+  [0.9020, -50.3460],  // Pracuúba
+  [0.9500, -50.8000],  // Tartarugalzinho
+  [0.0340, -51.0600],  // Cutias
+  [-0.0340, -51.0690], // Macapá (zona costeira)
+  [-0.3930, -51.1730], // Itaubal
 ];
 
 /* =======================
@@ -688,7 +754,7 @@ function cidadePossuiPraia(pais, lat, lon){
 
   return pontosLitoralBrasil.some(
     ([plLat, plLon]) =>
-      distanciaKm(lat, lon, plLat, plLon) <= 30
+      distanciaKm(lat, lon, plLat, plLon) <= 20
   );
 }
 
