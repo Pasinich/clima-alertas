@@ -300,6 +300,9 @@ canvas{
  <div id="linha-status" class="linha-status"></div>
  <div id="linha-aviso" class="linha-info"></div>
 
+<!-- ===== PAINEL CLIMÁTICO ===== -->
+<div id="painelClima"></div>
+
  <!-- ===== SOL E PREVISÃO ===== -->
  <div id="linha-sol"></div>
  <div id="previsao-5dias"></div>
@@ -783,7 +786,8 @@ aplicarModo(localStorage.getItem("modo") || modoAuto());
 
 btnModo.onclick = () =>
  aplicarModo(document.body.classList.contains("dark") ? "light" : "dark");
-
+ 
+ 
 /* =========================
    LIMPAR INPUT
 ========================= */
@@ -1008,7 +1012,7 @@ function mostrarCidade(nome, pais) {
 /* =========================
    PRÓXIMA CHUVA AGORA
 ========================= */
-const chuvaMM = atual.hourly?.precipitation?.[idx] ?? 0;
+const chuvaMM = atual?.hourly?.precipitation?.[idx ?? 0] ?? 0;
 
 function avaliarChuva(chuvaMM, chuvaHora) {
   chuvaMM = Number(chuvaMM) || 0;
@@ -1016,34 +1020,19 @@ function avaliarChuva(chuvaMM, chuvaHora) {
 
   if (chuvaMM > 0) {
 
-    if (chuvaMM < 2) {
-      return "🌦️ Garoa leve no momento";
-    }
-    else if (chuvaMM < 10) {
-      return "🌧️ Chuva moderada agora";
-    }
-    else {
-      return "⛈️ Chuva forte em andamento";
-    }
+    if (chuvaMM < 2) return "🌦️ Garoa leve no momento";
+    if (chuvaMM < 10) return "🌧️ Chuva moderada agora";
+
+    return "⛈️ Chuva forte em andamento";
 
   } else {
 
-    if (chuvaHora >= 90) {
-      return "🚨 Chuva quase certa nas próximas horas";
-    }
-    else if (chuvaHora >= 70) {
-      return "⚠️ Alta chance de chuva";
-    }
-    else if (chuvaHora >= 40) {
-      return "🌦️ Possível chuva";
-    }
-    else if (chuvaHora >= 20) {
-      return "☁️ Pequena chance de chuva";
-    }
-    else {
-      return "☀️ Sem previsão de chuva";
-    }
+    if (chuvaHora >= 90) return "🚨 Chuva quase certa nas próximas horas";
+    if (chuvaHora >= 70) return "⚠️ Alta chance de chuva";
+    if (chuvaHora >= 40) return "🌦️ Possível chuva";
+    if (chuvaHora >= 20) return "☁️ Pequena chance de chuva";
 
+    return "☀️ Sem previsão de chuva";
   }
 }
 
@@ -1052,16 +1041,20 @@ function avaliarChuva(chuvaMM, chuvaHora) {
 ========================= */
 let proximaChuva = "—";
 let probChuva = 0;
-let idxChuva = -1; // índice da próxima chuva
+let idxChuva = -1;
 
-for(let i = idx; i < atual.hourly.time.length; i++){
-  const mm = atual.hourly.precipitation?.[i] ?? 0;
-  const prob = atual.hourly.precipitation_probability?.[i] ?? 0;
+const horas = atual?.hourly?.time ?? [];
+const mmArray = atual?.hourly?.precipitation ?? [];
+const probArray = atual?.hourly?.precipitation_probability ?? [];
 
-  if(mm > 0 || prob >= 20){
-    proximaChuva = atual.hourly.time[i].slice(11,16); 
+for (let i = (idx ?? 0); i < horas.length; i++) {
+  const mm = Number(mmArray[i]) || 0;
+  const prob = Number(probArray[i]) || 0;
+
+  if (mm > 0 || prob >= 20) {
+    proximaChuva = horas[i]?.slice(11,16) ?? "—";
     probChuva = prob;
-    idxChuva = i; 
+    idxChuva = i;
     break;
   }
 }
@@ -1099,12 +1092,15 @@ if (typeof uvIndex === "number") {
 // Vitamina D
 const vitaminaD = (typeof uvIndex === "number") ? avaliarVitaminaD(uvIndex) : "N/A";
 
+
 // Atualiza painel
 info.innerHTML = `
   <span style="font-size:14px">
-    🌡️ Temp.:<b>${temperaturaAtual}°C</b> (Sensação: ${sensacaoAtual}°C)
-    • ☀️UV: <b class="${classe}">${uvIndex}</b> ${descricao ? "(" + descricao + ")" : ""}
-  </span>`;
+  🌡️Temp.: <b>${temperaturaAtual}°C</b>
+  (Sensação: <b>${sensacaoAtual}°C)</b>
+  • ☀️UV: <b>${uvIndex}
+  ${descricao ? "(" + descricao + ")" : ""}</b>
+</span>`;
   
   
   /* =========================
@@ -1135,9 +1131,28 @@ atual.hourly.time.forEach((t, i) => {
   }
 });
 
-// Probabilidade de chuva: busca nos próximos 2 horários
+// =============================
+// CHUVA ACUMULADA DO DIA (mm)
+// =============================
+let chuvaMMAtual = 0;
+
+if (atual.daily?.precipitation_sum) {
+  const valorDia = atual.daily.precipitation_sum[0]; // hoje
+  if (valorDia != null && !isNaN(valorDia)) {
+    chuvaMMAtual = Number(valorDia);
+  }
+}
+
+// =============================
+// PROBABILIDADE DE CHUVA
+// =============================
 let chuvaHora = 0;
-for (let i = idx_chuva; i < idx_chuva + 2 && i < atual.hourly.precipitation_probability.length; i++) {
+
+for (
+  let i = idx_chuva; 
+  i < idx_chuva + 2 && i < atual.hourly.precipitation_probability.length; 
+  i++
+) {
   const v = atual.hourly.precipitation_probability[i];
   if (v != null) {
     chuvaHora = v;
@@ -1145,10 +1160,11 @@ for (let i = idx_chuva; i < idx_chuva + 2 && i < atual.hourly.precipitation_prob
   }
 }
 
-// Nebulosidade: procura o valor mais próximo do horário atual
+// =============================
+// NEBULOSIDADE
+// =============================
 let neb = null;
 
-// Primeiro procura do índice atual para frente
 for (let i = idx_chuva; i < atual.hourly.cloudcover.length; i++) {
   const v = atual.hourly.cloudcover[i];
   if (v != null && v >= 0 && v <= 100) {
@@ -1157,7 +1173,6 @@ for (let i = idx_chuva; i < atual.hourly.cloudcover.length; i++) {
   }
 }
 
-// Se não encontrar, procura para trás
 if (neb === null) {
   for (let i = idx_chuva - 1; i >= 0; i--) {
     const v = atual.hourly.cloudcover[i];
@@ -1170,15 +1185,64 @@ if (neb === null) {
 
 const nebulosidade = neb !== null ? neb : "—";
 
-
-const pressaoAtual = atual.hourly?.pressure_msl?.[idx] ?? null;
-const chuvaMMAtual = chuvaMM ?? 0;
+const pressaoAtual = atual.hourly?.pressure_msl?.[idx_chuva] ?? null;
 const probChuvaAtual = chuvaHora ?? 0;
 
+/* =========================
+   RADIAÇÃO SOLAR - 100% CORRETO
+========================= */
+
+// Hora da cidade retornada pela API
+const agora_rad = atual.current_weather?.time
+  ? new Date(atual.current_weather.time).getTime()
+  : Date.now();
+
+let idxRad = 0;
+let menorDifRad = Infinity;
+
+// Procura a hora mais próxima da hora da cidade
+atual.hourly.time.forEach((t, i) => {
+  const dif = Math.abs(new Date(t).getTime() - agora_rad);
+  if (dif < menorDifRad) {
+    menorDifRad = dif;
+    idxRad = i;
+  }
+});
+
+// Pega a radiação correspondente
+let radiacaoAtual = atual.hourly.shortwave_radiation?.[idxRad] ?? 0;
+
+// Classificação
+let nivelRad = "";
+if (radiacaoAtual === 0) nivelRad = "Nulo";
+else if (radiacaoAtual < 200) nivelRad = "Fraca";
+else if (radiacaoAtual < 600) nivelRad = "Moder.";
+else if (radiacaoAtual < 900) nivelRad = "Forte";
+else nivelRad = "Muito forte";
+
 linhaPressao.innerHTML = `
-  🎈Pressão:<b>${pressaoAtual != null ? pressaoAtual.toFixed(1) : "—"} hPa</b> •
-  🌧️Chuva (${chuvaMMAtual}mm) •
-  🌧️Prob.Chuva:<b class="${formatarChuvaClasse(probChuvaAtual)}">${probChuvaAtual}%</b>
+  <div style="display:flex; flex-direction:column; gap:6px; font-size:14px">
+
+    <div>
+      🎈Pressão:
+      <b>${pressaoAtual != null ? pressaoAtual.toFixed(1) : "—"} hPa</b>
+      ☀️ Radiação Solar:
+      <b>${
+        typeof radiacaoAtual === "number"
+          ? `${radiacaoAtual.toFixed(0)} W/m² (${nivelRad})`
+          : "0 W/m²"
+      }
+              </b>
+    </div>
+<div>
+      🌧️Chuva acumulada hoje:
+       <b>${Number(chuvaMMAtual).toFixed(1)} mm</b>
+    </div>
+
+    <div>
+      🌧️Probabilidade próximas horas:<b>${probChuvaAtual}%</b>
+    </div>
+
 `;
  
  /* =========================
@@ -1215,37 +1279,7 @@ linhaPressao.innerHTML = `
   return dirs[Math.round(d/22.5) % 16];
  }
 
-/* =========================
-   RADIAÇÃO SOLAR - 100% CORRETO
-========================= */
 
-// Hora da cidade retornada pela API
-const agora_rad = atual.current_weather?.time
-  ? new Date(atual.current_weather.time).getTime()
-  : Date.now();
-
-let idxRad = 0;
-let menorDifRad = Infinity;
-
-// Procura a hora mais próxima da hora da cidade
-atual.hourly.time.forEach((t, i) => {
-  const dif = Math.abs(new Date(t).getTime() - agora_rad);
-  if (dif < menorDifRad) {
-    menorDifRad = dif;
-    idxRad = i;
-  }
-});
-
-// Pega a radiação correspondente
-let radiacaoAtual = atual.hourly.shortwave_radiation?.[idxRad] ?? 0;
-
-// Classificação
-let nivelRad = "";
-if (radiacaoAtual === 0) nivelRad = "Nulo";
-else if (radiacaoAtual < 200) nivelRad = "Fraca";
-else if (radiacaoAtual < 600) nivelRad = "Moderada";
-else if (radiacaoAtual < 900) nivelRad = "Forte";
-else nivelRad = "Muito forte";
 
  const direcaoVento = degParaDirecao(deg);
 /* =========================
@@ -1255,17 +1289,20 @@ else nivelRad = "Muito forte";
  
  
  linhaVisibilidade.innerHTML = `
-<span style="font-size:14px">
-  👁️Visibilidade:<b>${visibilidade} km</b> • 
-  💨Veloc.Vento:<b>${atual.current_weather.windspeed} km/h</b> 
-  (<b>${direcaoVento}</b>) • 
-  🌪️Rajadas:<b>${rajadas} km/h</b> • 
-  ☀️Radiação Solar:<b>${
-    typeof radiacaoAtual === "number"
-      ? `${radiacaoAtual.toFixed(0)} W/m² (${nivelRad})`
-      : "0 W/m²"
-  }</b>
-</span>`;
+  <div style="display:flex; flex-direction:column; gap:6px; font-size:14px">
+
+    <div>
+      💨Veloc. Vento:
+        <b>${atual.current_weather.windspeed} km/h 
+      (${direcaoVento}</b>)
+    </div>
+
+    <div>
+      🌪️Rajadas:
+        <b>${rajadas} km/h</b> 
+    </div>
+  </div>
+`;
 
 /* =========================
     NEVOEIRO
@@ -1290,12 +1327,15 @@ if(vis !== null && umid >= 84 && vento <= 4){
   nevoeiro = "Esparsos ";
 }
 
-linhaUmidade.innerHTML =
-  `💧Umidade:<b>${umid}%</b> •
+linhaUmidade.innerHTML =`
+  <div style="display:flex; flex-direction:column; gap:6px; font-size:14px">
+   <div>💧Umidade:<b>${umid}%</b> •
    ☁️Nuvens:<b>${nebulosidade}%</b> • 
-   🌁Nevoeiro:<b>${nevoeiro}</b>`;
-  
-  
+   🌁Nevoeiro:<b>${nevoeiro}</b></div>
+     <div>👁️Visibilidade:<b>${visibilidade} km</div></b>`;
+
+
+
  function estacaoDoAno(data = new Date(), lat = -30) {
   const d = data.getDate();
   const m = data.getMonth() + 1;
@@ -1398,7 +1438,8 @@ const estrelas = avaliarEstrelas(
   /* ===== LUA ===== */
   
   linhaLua.innerHTML =
-    `🌙Lua: <b>${lua.fase}</b> • Luar: <b>${lua.iluminacao}%</b> • Idade: <b>${lua.idade} dias</b>`;
+    `🌙Lua:<b>${lua.fase}</b> • Luar:<b>${lua.iluminacao}%</b> • Idade: <b>${lua.idade} dias</b>`;
+
 
   /* ===== STATUS BASE (COLORIDO) ===== */
   let statusTexto = "";
@@ -2680,6 +2721,7 @@ if ("speechSynthesis" in window) {
 
   }
 }
+
 </script>
 </body>
 </html>
