@@ -118,7 +118,7 @@ input{
 /* =========================
    SOL
 ========================= */
-#linha-sol{display:flex;gap:7px;margin-top:12px;}
+#linha-sol{display:flex;gap:6px;margin-top:12px;}
 .sol-dia{
  flex:1;
  background:#1a237e;
@@ -321,7 +321,7 @@ canvas{
 </div>
 
 
-//TELA ABERTURA//
+ <!-- ===== TELA ABERTURA -->
 <div id="tela-inicial">
   <div class="intro-conteudo">
     <!-- Globo girando -->
@@ -1243,11 +1243,11 @@ const divData = document.getElementById("relogioCidade");
 // ATUALIZA PAINEL UMA ÚNICA VEZ
 // ===============================
 info.innerHTML = `
-  <div style="font-size:14px; margin-bottom:4px;">
+  <div style="font-size:13px; margin-bottom:4px;">
     <span id="relogioCidade">Carregando horário da cidade...</span>
   </div>
   
-  <span style="font-size:14px">
+  <span style="font-size:13px">
     🌡️Temp.:<b>${temperaturaAtual}°C</b>
     (Sensação: <b>${sensacaoAtual}°C</b>)
     • ☀️UV:<b>${uvIndexHora}${descricao ? "(" + descricao + ")" : ""}</b>
@@ -1429,19 +1429,19 @@ const mostrarTempestadeSolar = false; // coloque true para mostrar
           : "0 W/m²"
       }</b>
     </div>
-
+<div style="display:flex; flex-direction:column; gap:3px; font-size:13px">
     ${mostrarTempestadeSolar ? `
     <div>
       ⚡ Tempestade Solar:
       <b>${kpAtual != null && kpAtual !== "—" ? kpAtual.toFixed(1) : "—"} (${nivelTempestade})</b>
     </div>
     ` : ""}
-
+<div style="display:flex; flex-direction:column; gap:3px; font-size:13px">
     <div>
       🌧️Chuva acumulada hoje:
       <b>${Number(chuvaMMAtual).toFixed(1)} mm</b>
     </div>
-
+<div style="display:flex; flex-direction:column; gap:3px; font-size:13px">
     <div>
       🌧️Probabilidade de chuva nas próximas horas:<b>${probChuvaAtual}%</b>
     </div>
@@ -1507,6 +1507,7 @@ atualizarPainelSolar();
         <b>${atual.current_weather.windspeed} km/h 
       (${direcaoVento}</b>)
     </div>
+    <div style="display:flex; flex-direction:column; gap:3px; font-size:13px">
     <div>
       🌪️ Velocidade das Rajadas dos ventos:
         <b>${rajadas} km/h</b> 
@@ -1687,7 +1688,7 @@ const chuvaAtual = Number(atual?.hourly?.precipitation?.[idx] ?? 0);
 if (chuvaAtual > 0) {
   chuvaTexto = "";
 } else if (dataHora) {
-  chuvaTexto = `<span style="color:#8B008B; font-size:14px;">
+  chuvaTexto = `<span style="color:#8B008B; font-size:13px;">
   <b>Próxima Chuva prevista:</span></b> <b>${dataHora} (${probChuva}%)</b>`;
 }
       
@@ -1939,8 +1940,8 @@ const avaliacaoFoto = avaliarFotografia(
 );
 
 // Monta a exibição da fotografia com Horário de Ouro 
-const fotografia = `${avaliacaoFoto} <b style="color:#696969;font-size:14px;"></b>`;
-//const fotografia = `${avaliacaoFoto} <b style="color:#696969;font-size:14px;"> | Hora de Ouro</b>(${horarioOuro})`;
+const fotografia = `${avaliacaoFoto} <b style="color:#696969;font-size:13px;"></b>`;
+//const fotografia = `${avaliacaoFoto} <b style="color:#696969;font-size:13px;"> | Hora de Ouro</b>(${horarioOuro})`;
 
 
 /* ===== MONTA LINHA STATUS FINAL ===== */
@@ -2725,14 +2726,19 @@ function definirStatus(p,c){
 ========================= */
 function montarLinhaSol(d){
  if(!d?.time) return;
- const diasSemana=["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"];
- linhaSol.innerHTML="";
+ const diasSemana = ["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"];
+ linhaSol.innerHTML = "";
  for(let i=0;i<4;i++){
-  const p=d.time[i].split("-");
-  const data=new Date(p[0],p[1]-1,p[2]);
-  linhaSol.innerHTML+=`
+  const p = d.time[i].split("-"); // [ano, mes, dia]
+  const data = new Date(p[0], p[1]-1, p[2]);
+
+  const dia = String(p[2]).padStart(2, "0");
+  const mes = String(p[1]).padStart(2, "0");
+  const ano = String(p[0]); // ano completo
+
+  linhaSol.innerHTML += `
    <div class="sol-dia">
-    ${p[2]}/${p[1]}<br>
+    ${dia}/${mes}/${ano}<br>
     ${diasSemana[data.getDay()]}<br>
     🌅 ${d.sunrise[i].slice(11,16)}<br>
     🌇 ${d.sunset[i].slice(11,16)}
@@ -2740,19 +2746,25 @@ function montarLinhaSol(d){
  }
 }
 
+
 /* =========================
    PREVISÃO 5 DIAS
 ========================= */
 function montarPrevisao5Dias(d){
  if(!d?.time) return;
- const diasSemana=["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"];
- previsao5.innerHTML="";
- for(let i=0;i<5;i++){
-  const p=d.time[i].split("-");
-  const data=new Date(p[0],p[1]-1,p[2]);
-  previsao5.innerHTML+=`
+ const diasSemana = ["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"];
+ previsao5.innerHTML = "";
+ for(let i=0; i<5; i++){
+  const p = d.time[i].split("-"); // [ano, mes, dia]
+  const data = new Date(p[0], p[1]-1, p[2]);
+
+  const dia = String(p[2]).padStart(2, "0");
+  const mes = String(p[1]).padStart(2, "0");
+  const ano = String(p[0]); // ano completo
+
+  previsao5.innerHTML += `
    <div class="previsao-dia">
-    ${p[2]}/${p[1]}<br>
+    ${dia}/${mes}/${ano}<br>
     ${diasSemana[data.getDay()]}<br>
     🌧️ ${d.precipitation_sum[i]}mm (${d.precipitation_probability_max[i]}%)<br>
     ${d.temperature_2m_min[i]}° / ${d.temperature_2m_max[i]}°
