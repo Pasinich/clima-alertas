@@ -25,7 +25,6 @@ body.dark{
  --grafico:#0d1117;
 }
 
-
 /* =========================
    ESTILO GLOBAL
 ========================= */
@@ -119,7 +118,7 @@ input{
 /* =========================
    SOL
 ========================= */
-#linha-sol{display:flex;gap:8px;margin-top:12px;}
+#linha-sol{display:flex;gap:7px;margin-top:12px;}
 .sol-dia{
  flex:1;
  background:#1a237e;
@@ -140,7 +139,7 @@ body.dark .sol-dia{background:#0b3c5d;}
 ========================= */
 #previsao-5dias{
  display:flex;
- gap:6px;
+ gap:5px;
  margin-top:4px;
  overflow-x:auto;
  margin-bottom:4px;
@@ -280,11 +279,11 @@ canvas{
 <body>
 
 <header>
- <h2>🌡️ Clima em: <span id="nome-cidade"></span></h2>
+ <h2>🌡️Clima em: <span id="nome-cidade"></span></h2>
  <button class="toggle" id="toggleModo">🌙</button>
 </header>
 
-<div class="card" style="display:flex; gap:6px; align-items:center;">
+<div class="card" style="display:flex; gap:3px; align-items:center;">
   <input id="cidade" placeholder="Digite a cidade!" style="flex:1;">
   <button id="btnMic" style="padding:6px 10px; cursor:pointer;">🎤</button>
 </div>
@@ -321,14 +320,81 @@ canvas{
   <canvas id="graficoMensal"></canvas>
 </div>
 
+
+//TELA ABERTURA//
 <div id="tela-inicial">
   <div class="intro-conteudo">
-    <div class="icone-clima">🌤️</div>
+    <!-- Globo girando -->
+    <div class="icone-clima">🌎</div>
+
     <h1>Previsão do Tempo</h1>
     <p>Aguarde localização atual...</p>
-    <div class="loader-globo">🌎</div>
+
+    <!-- Contador circular -->
+    <div id="contador-circulo">
+      <span id="contador-num">9</span>
+    </div>
   </div>
 </div>
+
+<style>
+  /* ================= GLOBO ================= */
+  .icone-clima {
+    font-size: 140px;            /* Globo maior */
+    text-align: center;
+    margin-bottom: 20px;
+
+    /* animação de rotação */
+    animation: girar 4s linear infinite;
+  }
+
+  @keyframes girar {
+    from { transform: rotate(0deg); }
+    to   { transform: rotate(360deg); }
+  }
+
+  /* ================= CONTADOR CIRCULAR ================= */
+  #contador-circulo {
+    width: 140px;
+    height: 140px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #4facfe, #00f2fe);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 20px auto 0 auto;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.35);
+  }
+
+  #contador-num {
+    font-size: 54px;
+    font-weight: bold;
+    color: white;
+    font-family: 'Arial', sans-serif;
+  }
+
+  /* centraliza conteúdo */
+  .intro-conteudo {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+</style>
+
+<script>
+  let cont = 9;
+  const divContador = document.getElementById("contador-num");
+
+  const intervalo = setInterval(() => {
+    divContador.textContent = cont;
+    cont--;
+
+    if (cont < 0) {
+      clearInterval(intervalo);
+      divContador.textContent = "✔️"; // ou outro símbolo
+    }
+  }, 1000);
+</script>
 
 
 
@@ -473,9 +539,22 @@ if (btnMic && ('webkitSpeechRecognition' in window || 'SpeechRecognition' in win
   btnMic.style.display = "none";
 }
 
+// ===============================
+// CONTROLE GLOBAL
+// ===============================
+let intervaloRelogio = null;
+
+function pararRelogio() {
+  if (intervaloRelogio) {
+    clearInterval(intervaloRelogio);
+    intervaloRelogio = null;
+  }
+}
+
 /* =========================
    GEOLOCALIZAÇÃO INICIAL
 ========================= */
+
 if (navigator.geolocation) {
 
   nomeCidade.innerText = "📍Buscando sua localização...";
@@ -486,10 +565,9 @@ if (navigator.geolocation) {
       lat = pos.coords.latitude;
       lon = pos.coords.longitude;
 
-      console.log("LAT:", lat);
-      console.log("LON:", lon);
-
       // 🔥 1️⃣ CHAMA O CLIMA IMEDIATAMENTE
+        // Para relógio 
+      pararRelogio();
       limparTela();
       buscar_cidade();  
 
@@ -562,6 +640,7 @@ async function buscarNomeCidade(lat, lon) {
     nomeCidade.innerText = "📍Sua localização";
   }
 }
+
 
 /* =========================
    Distância das cidades até a praia 
@@ -1108,14 +1187,71 @@ const vitaminaD = (typeof uvIndex === "number") ? avaliarVitaminaD(uvIndex) : "N
 
 
 // Atualiza painel
+// Data e hora REAL da cidade retornada pela API
+
+// ===============================
+// RELÓGIO DINÂMICO (APENAS HORA DA CIDADE)
+// ===============================
+function iniciarRelogio(timezone) {
+  pararRelogio();
+  if (!timezone) return;
+
+  const formatador = new Intl.DateTimeFormat("pt-BR", {
+    timeZone: timezone,
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false
+  });
+
+  function atualizarHora() {
+  const partes = formatador.formatToParts(new Date());
+  const pegar = (tipo) => partes.find(p => p.type === tipo)?.value ?? "";
+
+  const texto =
+    `📅 Data local:<b>${pegar("day")}/${pegar("month")}/${pegar("year")}</b> - ` +
+    `⏰ Hora local:<b>${pegar("hour")}:${pegar("minute")}:${pegar("second")}</b>`;
+
+  // só atualiza, não redeclara
+  divData.innerHTML = texto;
+}
+
+// antes da função, declare divData apenas uma vez
+const divData = document.getElementById("relogioCidade");
+
+
+  // Atualiza imediatamente
+  atualizarHora();
+
+  // Atualiza a cada segundo
+  intervaloRelogio = setInterval(atualizarHora, 1000);
+}
+
+// ===============================
+// ATUALIZA PAINEL UMA ÚNICA VEZ
+// ===============================
 info.innerHTML = `
-  <span style="font-size:14px">
-  🌡️Temp.: <b>${temperaturaAtual}°C</b>
-  (Sensação: <b>${sensacaoAtual}°C)</b>
-  • ☀️UV: <b>${uvIndex}
-  ${descricao ? "(" + descricao + ")" : ""}</b>
-</span>`;
+  <div style="font-size:14px; margin-bottom:4px;">
+    <span id="relogioCidade">Carregando horário da cidade...</span>
+  </div>
   
+  <span style="font-size:14px">
+    🌡️Temp.:<b>${temperaturaAtual}°C</b>
+    (Sensação: <b>${sensacaoAtual}°C</b>)
+    • ☀️UV:<b>${uvIndex}${descricao ? "(" + descricao + ")" : ""}</b>
+  </span>
+`;
+
+// ===============================
+// INICIA RELÓGIO COM FUSO DA CIDADE
+// ===============================
+if (atual?.timezone) {
+  iniciarRelogio(atual.timezone);
+}
+
   
   /* =========================
    QUALIDADE DO AR (AQI)
@@ -1275,13 +1411,10 @@ async function atualizarPainelSolar() {
 const mostrarTempestadeSolar = false; // coloque true para mostrar
 
   linhaPressao.innerHTML = `
-  <div style="display:flex; flex-direction:column; gap:6px; font-size:14px">
-
+  <div style="display:flex; flex-direction:column; gap:3px; font-size:13px">
     <div>
-      🎈Pressão:
-      <b>${pressaoAtual != null ? pressaoAtual.toFixed(1) : "—"} hPa</b>
-      ☀️ Radiação Solar:
-      <b>${
+      🎈Pressão:<b>${pressaoAtual != null ? pressaoAtual.toFixed(1) : "—"} hPa</b>
+      ☀️Radiação Solar:<b>${
         typeof radiacaoAtual === "number"
           ? `${radiacaoAtual.toFixed(0)} W/m² (${nivelRad})`
           : "0 W/m²"
@@ -1359,14 +1492,12 @@ atualizarPainelSolar();
  
  
  linhaVisibilidade.innerHTML = `
-  <div style="display:flex; flex-direction:column; gap:6px; font-size:14px">
-
+  <div style="display:flex; flex-direction:column; gap:3px; font-size:13px">
     <div>
       💨Velocidade do vento:
         <b>${atual.current_weather.windspeed} km/h 
       (${direcaoVento}</b>)
     </div>
-
     <div>
       🌪️ Velocidade das Rajadas dos ventos:
         <b>${rajadas} km/h</b> 
@@ -1398,12 +1529,12 @@ if(vis !== null && umid >= 84 && vento <= 4){
 }
 
 linhaUmidade.innerHTML =`
-  <div style="display:flex; flex-direction:column; gap:6px; font-size:14px">
+  <div style="display:flex; flex-direction:column; gap:1px; font-size:13px">
    <div>💧Umidade:<b>${umid}%</b> •
    ☁️Nuvens:<b>${nebulosidade}%</b> • 
    🌁Nevoeiro:<b>${nevoeiro}</b></div>
+   <div style="display:flex; flex-direction:column; gap:3px; font-size:13px"></div>
      <div>👁️Visibilidade:<b>${visibilidade} km</div></b>`;
-
 
 
  function estacaoDoAno(data = new Date(), lat = -30) {
@@ -1507,8 +1638,9 @@ const estrelas = avaliarEstrelas(
 
   /* ===== LUA ===== */
   
-  linhaLua.innerHTML =
-    `🌙Lua:<b>${lua.fase}</b> • Luar:<b>${lua.iluminacao}%</b> • Idade: <b>${lua.idade} dias</b>`;
+  linhaLua.innerHTML =`
+  <div style="display:flex; flex-direction:column; gap:1px; font-size:13px">
+ <div>   🌙Lua:<b>${lua.fase}</b> • Luar:<b>${lua.iluminacao}%</b> • Idade: <b>${lua.idade} dias</div></b>`;
 
 
   /* ===== STATUS BASE (COLORIDO) ===== */
