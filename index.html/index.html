@@ -485,57 +485,20 @@ if (navigator.geolocation) {
       lat = pos.coords.latitude;
       lon = pos.coords.longitude;
 
-      try {
-        // 🔹 Reverse geocoding confiável via Nominatim
-        const resposta = await fetch(
-          `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&accept-language=pt`
-        );
-        const dados = await resposta.json();
+      console.log("LAT:", lat);
+      console.log("LON:", lon);
 
-        console.log("RETORNO NOMINATIM:", dados); // para debug
-
-        if (dados && dados.address) {
-
-          const cidadeNome =
-            dados.address.city ||
-            dados.address.town ||
-            dados.address.village ||
-            dados.address.municipality ||
-            "";
-          const estadoNome = dados.address.state || "";
-          const paisNome = dados.address.country || "";
-          const paisCode = dados.address.country_code?.toUpperCase() || "";
-
-          if (cidadeNome) {
-            nomeCidade.innerText =
-              paisCode === "BR"
-                ? `${cidadeNome} - ${estadoNome}`
-                : `${cidadeNome} - ${paisNome}`;
-          } else if (estadoNome) {
-            nomeCidade.innerText = `${estadoNome}`;
-          } else {
-            nomeCidade.innerText = "📍Sua localização";
-          }
-
-          paisSelecionado = paisCode;
-          estadoSelecionado = estadoNome;
-
-        } else {
-          nomeCidade.innerText = "📍Sua localização";
-        }
-
-      } catch (erro) {
-        console.log("Erro ao obter cidade:", erro);
-        nomeCidade.innerText = "📍Sua localização";
-      }
-
-      // 🔥 Agora chama o clima
+      // 🔥 1️⃣ CHAMA O CLIMA IMEDIATAMENTE
       limparTela();
-      buscar_cidade();
+      buscar_cidade();  
+
+      // 🔹 2️⃣ BUSCA O NOME DA CIDADE EM PARALELO
+      buscarNomeCidade(lat, lon);
 
     },
     (erro) => {
       nomeCidade.innerText = "📍Permissão negada";
+      console.log("Erro geolocalização:", erro);
     },
     {
       enableHighAccuracy: true,
@@ -545,9 +508,58 @@ if (navigator.geolocation) {
   );
 
 } else {
-
   nomeCidade.innerText = "Clima em: Geolocalização não suportada";
+}
 
+
+/* =========================
+   FUNÇÃO PARA BUSCAR NOME
+========================= */
+async function buscarNomeCidade(lat, lon) {
+
+  try {
+
+    const resposta = await fetch(
+      `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&accept-language=pt`
+    );
+
+    const dados = await resposta.json();
+
+    console.log("RETORNO NOMINATIM:", dados);
+
+    if (dados?.address) {
+
+      const cidadeNome =
+        dados.address.city ||
+        dados.address.town ||
+        dados.address.village ||
+        dados.address.municipality ||
+        "";
+
+      const estadoNome = dados.address.state || "";
+      const paisNome = dados.address.country || "";
+      const paisCode = dados.address.country_code?.toUpperCase() || "";
+
+      if (cidadeNome) {
+        nomeCidade.innerText =
+          paisCode === "BR"
+            ? `${cidadeNome} - ${estadoNome}`
+            : `${cidadeNome} - ${paisNome}`;
+      } else if (estadoNome) {
+        nomeCidade.innerText = estadoNome;
+      } else {
+        nomeCidade.innerText = "📍Sua localização";
+      }
+
+      paisSelecionado = paisCode;
+      estadoSelecionado = estadoNome;
+
+    }
+
+  } catch (erro) {
+    console.log("Erro ao obter cidade:", erro);
+    nomeCidade.innerText = "📍Sua localização";
+  }
 }
 
 /* =========================
