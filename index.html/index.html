@@ -531,7 +531,7 @@ if (navigator.geolocation) {
 
       // 🔥 Agora chama o clima
       limparTela();
-      buscar();
+      buscar_cidade();
 
     },
     (erro) => {
@@ -600,6 +600,7 @@ const pontosLitoralBrasil = [
   [-27.0983, -48.6177], // Itapema
   [-26.9926, -48.6350], // Balneário Camboriú
   [-27.5954, -48.5480], // Florianópolis
+  [-27.42726,-48.46222],//Canasvieiras 
   [-27.6455, -48.6697], // Palhoça
   [-28.2400, -48.6700], // Imbituba
   [-28.0278, -48.6178], // Garopaba
@@ -928,7 +929,7 @@ async function buscarAutocomplete() {
 
         lista.innerHTML = "";
         limparTela();
-        buscar();
+        buscar_cidade();
       };
 
       lista.appendChild(div);
@@ -954,7 +955,7 @@ cidade.addEventListener("keydown",e=>{
 /* =========================
    BUSCA PRINCIPAL
 ========================= */
-async function buscar(){
+async function buscar_cidade(){
  if(lat===null || lon===null){
   info.innerHTML="📍Selecione a cidade na lista";
   return;
@@ -1220,7 +1221,47 @@ else if (radiacaoAtual < 600) nivelRad = "Moder.";
 else if (radiacaoAtual < 900) nivelRad = "Forte";
 else nivelRad = "Muito forte";
 
-linhaPressao.innerHTML = `
+
+/* =========================
+   TEMPESTADE SOLAR
+========================= */
+const urlKp = "https://services.swpc.noaa.gov/json/planetary_k_index_1m.json";
+
+let kpAtual = "—";
+let nivelTempestade = "Carregando...";
+
+// Função que busca o Kp e define nível
+async function atualizarTempestadeSolar() {
+  try {
+    const res = await fetch(urlKp);
+    const dados = await res.json();
+
+    const ultimo = dados[dados.length - 1];
+    kpAtual = parseFloat(ultimo.kp_index);
+
+    if (kpAtual >= 9) nivelTempestade = "G5 (Extrema)";
+    else if (kpAtual >= 8) nivelTempestade = "G4 (Muito Forte)";
+    else if (kpAtual >= 7) nivelTempestade = "G3 (Forte)";
+    else if (kpAtual >= 6) nivelTempestade = "G2 (Moderada)";
+    else if (kpAtual >= 5) nivelTempestade = "G1 (Fraca)";
+    else nivelTempestade = "Tranquilo";
+
+  } catch (e) {
+    console.error("Erro ao atualizar tempestade solar:", e);
+    kpAtual = "—";
+    nivelTempestade = "Erro ao buscar";
+  }
+}
+
+// Função que atualiza o painel completo
+async function atualizarPainelSolar() {
+  if (!linhaPressao) return; // Garante que o elemento existe
+
+  await atualizarTempestadeSolar(); // Espera os dados do Kp
+// Flag para ativar/desativar a exibição da tempestade solar
+const mostrarTempestadeSolar = false; // coloque true para mostrar
+
+  linhaPressao.innerHTML = `
   <div style="display:flex; flex-direction:column; gap:6px; font-size:14px">
 
     <div>
@@ -1231,20 +1272,36 @@ linhaPressao.innerHTML = `
         typeof radiacaoAtual === "number"
           ? `${radiacaoAtual.toFixed(0)} W/m² (${nivelRad})`
           : "0 W/m²"
-      }
-              </b>
+      }</b>
     </div>
-<div>
+
+    ${mostrarTempestadeSolar ? `
+    <div>
+      ⚡ Tempestade Solar:
+      <b>${kpAtual != null && kpAtual !== "—" ? kpAtual.toFixed(1) : "—"} (${nivelTempestade})</b>
+    </div>
+    ` : ""}
+
+    <div>
       🌧️Chuva acumulada hoje:
-       <b>${Number(chuvaMMAtual).toFixed(1)} mm</b>
+      <b>${Number(chuvaMMAtual).toFixed(1)} mm</b>
     </div>
 
     <div>
-      🌧️Probabilidade próximas horas:<b>${probChuvaAtual}%</b>
+      🌧️Probabilidade de chuva nas próximas horas:<b>${probChuvaAtual}%</b>
     </div>
 
-`;
- 
+  </div>
+  `;
+}
+
+// Chama a função para atualizar o painel
+atualizarPainelSolar();
+
+// Se quiser atualizar a cada X minutos:
+//setInterval(atualizarPainelSolar, 5 * 60 * 1000); // a cada 5 minutos
+
+
  /* =========================
     VISIBILIDADE (VALOR VÁLIDO)
  ========================= */
@@ -1292,13 +1349,13 @@ linhaPressao.innerHTML = `
   <div style="display:flex; flex-direction:column; gap:6px; font-size:14px">
 
     <div>
-      💨Veloc. Vento:
+      💨Velocidade do vento:
         <b>${atual.current_weather.windspeed} km/h 
       (${direcaoVento}</b>)
     </div>
 
     <div>
-      🌪️Rajadas:
+      🌪️ Velocidade das Rajadas dos ventos:
         <b>${rajadas} km/h</b> 
     </div>
   </div>
