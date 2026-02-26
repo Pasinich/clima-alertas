@@ -1169,22 +1169,31 @@ const sensacaoAtual =
   atual.hourly?.apparent_temperature?.[idx] ??
   temperaturaAtual;
 
-// UV diário (não existe UV horário)
-let uvIndex = (horaLocal >= 6 && horaLocal < 19)
-              ? Array.isArray(atual.daily?.uv_index_max) ? atual.daily.uv_index_max[0] : "N/A"
-              : 0; // noite = 0
+// =========================
+// UV DA HORA DA CONSULTA
+// =========================
+let uvIndexHora = 0;
 
-// Formata classe e descrição
-let classe="", descricao="";
-if (typeof uvIndex === "number") {
-  const uvInfo = formatarUV(uvIndex);
+if (horaLocal >= 6 && horaLocal <= 18 && Array.isArray(atual.daily?.uv_index_max)) {
+  const uvMax = atual.daily.uv_index_max[0]; // UV máximo do dia
+  // Aproxima UV da hora usando uma curva senoidal (pico ao meio-dia)
+  const x = (horaLocal - 6) / 12; // 0 = 6h, 1 = 18h
+  uvIndexHora = Math.sin(x * Math.PI) * uvMax;
+  uvIndexHora = Math.round(uvIndexHora * 10) / 10; // arredonda 1 casa decimal
+} else {
+  uvIndexHora = 0; // noite ou dados ausentes
+}
+
+// Formata classe e descrição usando sua função existente
+let classe = "", descricao = "";
+if (typeof uvIndexHora === "number") {
+  const uvInfo = formatarUV(uvIndexHora);
   classe = uvInfo.classe;
   descricao = uvInfo.descricao;
 }
 
 // Vitamina D
-const vitaminaD = (typeof uvIndex === "number") ? avaliarVitaminaD(uvIndex) : "N/A";
-
+const vitaminaD = (typeof uvIndexHora === "number") ? avaliarVitaminaD(uvIndexHora) : "N/A";
 
 // Atualiza painel
 // Data e hora REAL da cidade retornada pela API
@@ -1241,7 +1250,7 @@ info.innerHTML = `
   <span style="font-size:14px">
     🌡️Temp.:<b>${temperaturaAtual}°C</b>
     (Sensação: <b>${sensacaoAtual}°C</b>)
-    • ☀️UV:<b>${uvIndex}${descricao ? "(" + descricao + ")" : ""}</b>
+    • ☀️UV:<b>${uvIndexHora}${descricao ? "(" + descricao + ")" : ""}</b>
   </span>
 `;
 
