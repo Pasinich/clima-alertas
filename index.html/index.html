@@ -285,7 +285,7 @@ canvas{
 
 <div class="card" style="display:flex; gap:3px; align-items:center;">
   <input id="cidade" placeholder="Digite a cidade!" style="flex:1;">
-  <button id="btnMic" style="padding:6px 10px; cursor:pointer;">🎤</button>
+  <button id="btnMic" style="padding:10px 20px; cursor:pointer;">🎤</button>
 </div>
 <div id="lista" class="autocomplete"></div>
 
@@ -1192,6 +1192,41 @@ if (typeof uvIndexHora === "number") {
   descricao = uvInfo.descricao;
 }
 
+/* =========================
+   UVB e UVA DA HORA DA CONSULTA
+========================= */
+let uvaHora = 0, uvbHora = 0;
+
+// Máximos diários da API ou valores aproximados
+const uvaMax = atual.daily?.uva_max?.[0] ?? 8; // UVA máximo diário
+const uvbMax = atual.daily?.uvb_max?.[0] ?? 6; // UVB máximo diário
+
+// Função para calcular valor horário baseado no pico (12h local)
+function calcularUVHora(max, hora) {
+  if (hora < 6 || hora > 18) return 0;       // fora do período do sol
+  const x = (hora - 6) / 12;                 // 0 às 6h, 1 às 18h
+  return Math.round(Math.sin(x * Math.PI) * max * 10) / 10; // arredonda 1 casa decimal
+}
+
+uvaHora = calcularUVHora(uvaMax, horaLocal);
+uvbHora = calcularUVHora(uvbMax, horaLocal);
+
+/* =========================
+   Classificação
+========================= */
+function classificarUV(valor) {
+  if (typeof valor !== "number") return { classe: "-", descricao: "-" };
+  if (valor <= 2) return { classe: "Baixo", descricao: "Baixo risco" };
+  if (valor <= 5) return { classe: "Moderado", descricao: "Risco moderado" };
+  if (valor <= 7) return { classe: "Muito Alto", descricao: "Risco alto" };
+  if (valor <= 10) return { classe: "Elevado", descricao: "Risco muito alto" };
+  return { classe: "Extremo", descricao: "Risco extremo" };
+}
+
+const uvaInfo = classificarUV(uvaHora);
+const uvbInfo = classificarUV(uvbHora);
+;
+
 // Vitamina D
 const vitaminaD = (typeof uvIndexHora === "number") ? avaliarVitaminaD(uvIndexHora) : "N/A";
 
@@ -1221,8 +1256,8 @@ function iniciarRelogio(timezone) {
   const pegar = (tipo) => partes.find(p => p.type === tipo)?.value ?? "";
 
   const texto =
-    `📅 Data local:<b>${pegar("day")}/${pegar("month")}/${pegar("year")}</b> - ` +
-    `⏰ Hora local:<b>${pegar("hour")}:${pegar("minute")}:${pegar("second")}</b>`;
+    `📅Data local:<b>${pegar("day")}/${pegar("month")}/${pegar("year")}</b> • ` +
+    `⏰Hora local:<b>${pegar("hour")}:${pegar("minute")}:${pegar("second")}</b>`;
 
   // só atualiza, não redeclara
   divData.innerHTML = texto;
@@ -1243,15 +1278,20 @@ const divData = document.getElementById("relogioCidade");
 // ATUALIZA PAINEL UMA ÚNICA VEZ
 // ===============================
 info.innerHTML = `
-  <div style="font-size:13px; margin-bottom:4px;">
+  <div style="font-size:13px; margin-bottom:1px;">
     <span id="relogioCidade">Carregando horário da cidade...</span>
   </div>
-  
-  <span style="font-size:13px">
-    🌡️Temp.:<b>${temperaturaAtual}°C</b>
-    (Sensação: <b>${sensacaoAtual}°C</b>)
-    • ☀️UV:<b>${uvIndexHora}${descricao ? "(" + descricao + ")" : ""}</b>
-  </span>
+    <div style="display:flex; flex-direction:column; gap:1px; font-size:13px">
+  <div>
+    🌡️Temperatura atual:<b>${temperaturaAtual}°C</b>
+  • 🌡️Sensação térmica:<b>(${sensacaoAtual}°C</b>)
+    </div>
+    <div style="display:flex; flex-direction:column; gap:1px; font-size:13px">
+  <div>
+    ☀️UV:<b>${uvIndexHora}${descricao ? "(" + descricao + ")" : ""}</b>
+    • 🟠UVA:<b>${uvaHora}(${uvaInfo.classe})</b>
+    • 🔴UVB:<b>${uvbHora}(${uvbInfo.classe})</b>
+  </div>
 `;
 
 // ===============================
@@ -1420,28 +1460,27 @@ async function atualizarPainelSolar() {
 const mostrarTempestadeSolar = false; // coloque true para mostrar
 
   linhaPressao.innerHTML = `
-  <div style="display:flex; flex-direction:column; gap:3px; font-size:13px">
+  <div style="display:flex; flex-direction:column; gap:1px; font-size:13px">
     <div>
       🎈Pressão:<b>${pressaoAtual != null ? pressaoAtual.toFixed(1) : "—"} hPa</b>
-      ☀️Radiação Solar:<b>${
+        • ☀️Radiação Solar:<b>${
         typeof radiacaoAtual === "number"
           ? `${radiacaoAtual.toFixed(0)} W/m² (${nivelRad})`
           : "0 W/m²"
       }</b>
     </div>
-<div style="display:flex; flex-direction:column; gap:3px; font-size:13px">
+<div style="display:flex; flex-direction:column; gap:1px; font-size:13px">
     ${mostrarTempestadeSolar ? `
     <div>
       ⚡ Tempestade Solar:
       <b>${kpAtual != null && kpAtual !== "—" ? kpAtual.toFixed(1) : "—"} (${nivelTempestade})</b>
     </div>
     ` : ""}
-<div style="display:flex; flex-direction:column; gap:3px; font-size:13px">
+<div style="display:flex; flex-direction:column; gap:1px; font-size:13px">
     <div>
-      🌧️Chuva acumulada hoje:
-      <b>${Number(chuvaMMAtual).toFixed(1)} mm</b>
+      🌧️Chuva acumulada hoje:<b>${Number(chuvaMMAtual).toFixed(1)} mm</b>
     </div>
-<div style="display:flex; flex-direction:column; gap:3px; font-size:13px">
+<div style="display:flex; flex-direction:column; gap:1px; font-size:13px">
     <div>
       🌧️Probabilidade de chuva nas próximas horas:<b>${probChuvaAtual}%</b>
     </div>
@@ -1501,16 +1540,14 @@ atualizarPainelSolar();
  
  
  linhaVisibilidade.innerHTML = `
-  <div style="display:flex; flex-direction:column; gap:3px; font-size:13px">
+  <div style="display:flex; flex-direction:column; gap:1px; font-size:13px">
     <div>
-      💨Velocidade do vento:
-        <b>${atual.current_weather.windspeed} km/h 
+      💨Velocidade do vento:<b>${atual.current_weather.windspeed} km/h 
       (${direcaoVento}</b>)
     </div>
-    <div style="display:flex; flex-direction:column; gap:3px; font-size:13px">
+    <div style="display:flex; flex-direction:column; gap:1px; font-size:13px">
     <div>
-      🌪️ Velocidade das Rajadas dos ventos:
-        <b>${rajadas} km/h</b> 
+      🌪️ Velocidade das Rajadas dos ventos:<b>${rajadas} km/h</b> 
     </div>
   </div>
 `;
@@ -1538,13 +1575,27 @@ if(vis !== null && umid >= 84 && vento <= 4){
   nevoeiro = "Esparsos ";
 }
 
+const lua = calcularLua(new Date());
+const iluminacaoLua = Number(lua.iluminacao);
+
+const estrelas = avaliarEstrelas(
+  nebulosidade,
+  atual.hourly.precipitation_probability[idx],
+  iluminacaoLua
+  
+);
+
 linhaUmidade.innerHTML =`
   <div style="display:flex; flex-direction:column; gap:1px; font-size:13px">
    <div>💧Umidade:<b>${umid}%</b> •
    ☁️Nuvens:<b>${nebulosidade}%</b> • 
    🌁Nevoeiro:<b>${nevoeiro}</b></div>
-   <div style="display:flex; flex-direction:column; gap:3px; font-size:13px"></div>
-     <div>👁️Visibilidade:<b>${visibilidade} km</div></b>`;
+   <div style="display:flex; flex-direction:column; gap:1px; font-size:13px"></div>
+   <div>👁️Visibilidade:<b>${visibilidade} km</div></b>
+    <div>🌙Lua:<b>${lua.fase}</b> • Luar:<b>${lua.iluminacao}%</b> • Idade:<b>${lua.idade} dias</b>
+</div>`;
+
+
 
 
  function estacaoDoAno(data = new Date(), lat = -30) {
@@ -1632,25 +1683,11 @@ async function montarPainelClimatico(
 { atual, idx, idxChuva, probChuva, pais, estado,cidade, nebulosidade }) {
 const latPainel = atual.latitude ?? -30;
 const estacao = estacaoDoAno(new Date(), latPainel);
-const lua = calcularLua(new Date());
-const iluminacaoLua = Number(lua.iluminacao);
 
-const estrelas = avaliarEstrelas(
-  nebulosidade,
-  atual.hourly.precipitation_probability[idx],
-  iluminacaoLua
-  
-);
 
   // 🔹 normalizações
   const siglaEstado = normalizarEstadoParaSigla(estado);
 
-
-  /* ===== LUA ===== */
-  
-  linhaLua.innerHTML =`
-  <div style="display:flex; flex-direction:column; gap:1px; font-size:13px">
- <div>   🌙Lua:<b>${lua.fase}</b> • Luar:<b>${lua.iluminacao}%</b> • Idade: <b>${lua.idade} dias</div></b>`;
 
 
   /* ===== STATUS BASE (COLORIDO) ===== */
@@ -1984,7 +2021,7 @@ linhaStatus.innerHTML = `
 
 <div style="margin-top:4px">
     <b style="color:#8B008B;font-size:14px;">
-      Previsão do Tempo Em</b>(${nomeCidadePainel})<br><br>
+      Previsão do Tempo Em</b>(${nomeCidadePainel})<br>
   </div>
   
 
@@ -2051,8 +2088,8 @@ linhaStatus.innerHTML = `
     .pulsando {animation: pulsar 1s infinite;}
 
     #btnOuvir {
-      position:absolute; bottom:01px; right:01px; border:none; background:#ffffffcc;
-      font-size:22px; cursor:pointer; border-radius:50%; width:50px; height:50px;
+      position:absolute; bottom:01px; top:01px;right:01px; border:none; background:#ffffffcc;
+      font-size:20px; cursor:pointer; border-radius:50%; width:50px; height:50px;
       display:flex; align-items:center; justify-content:center; box-shadow:0 2px 6px rgba(0,0,0,0.25);
       transition: transform 0.2s;
     }
@@ -2740,8 +2777,8 @@ function montarLinhaSol(d){
    <div class="sol-dia">
     ${dia}/${mes}/${ano}<br>
     ${diasSemana[data.getDay()]}<br>
-    🌅 ${d.sunrise[i].slice(11,16)}<br>
-    🌇 ${d.sunset[i].slice(11,16)}
+    🌅 ${d.sunrise[i].slice(11,16)} hs<br>
+    🌇 ${d.sunset[i].slice(11,16)} hs
    </div>`;
  }
 }
