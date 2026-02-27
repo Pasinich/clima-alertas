@@ -299,7 +299,7 @@ canvas{
  <div id="linha-lua" class="linha-info"></div>
  <div id="linha-status" class="linha-status"></div>
  <div id="linha-aviso" class="linha-info"></div>
-
+<div id="risco-ciclone"></div>
 <!-- ===== PAINEL CLIMÁTICO ===== -->
 <div id="painelClima"></div>
 
@@ -1482,12 +1482,8 @@ const mostrarTempestadeSolar = false; // coloque true para mostrar
 <div style="display:flex; flex-direction:column; gap:1px; font-size:13px">
     <div>
       🌧️Chuva acumulada hoje:<b>${Number(chuvaMMAtual).toFixed(1)} mm</b>
+     •  🌧️Probab. próximas horas:<b>${probChuvaAtual}%</b>
     </div>
-<div style="display:flex; flex-direction:column; gap:1px; font-size:13px">
-    <div>
-      🌧️Probabilidade de chuva nas próximas horas:<b>${probChuvaAtual}%</b>
-    </div>
-
   </div>
   `;
 }
@@ -1541,6 +1537,43 @@ atualizarPainelSolar();
  ========================= */
  let rajadas = atual.hourly?.windgusts_10m?.[idx] ?? "—";
  
+ /* ===== DADOS PARA RISCO CICLÔNICO ===== */
+
+const ventoAtual = atual.current_weather?.windspeed ?? 0;
+const rajadaAtual = atual.hourly?.windgusts_10m?.[idx] ?? 0;
+
+/* ===== FUNÇÃO RISCO CICLONE ===== */
+
+function calcularRiscoCiclone(pressao, rajada) {
+
+  let nivel = "Baixo";
+  let texto = "🟢 Sem risco";
+  let cor = "#2e7d32";
+
+  if (pressao < 1005 && rajada > 50) {
+    nivel = "Moderado";
+    texto = "🟡 Possibilidade formação de ciclone";
+    cor = "#f9a825";
+  }
+
+  if (pressao < 995 && rajada > 60) {
+    nivel = "Elevado";
+    texto = "🟠 Sistema ciclônico próximo";
+    cor = "#ef6c00";
+  }
+
+  if (pressao < 985 && rajada > 80) {
+    nivel = "Perigoso";
+    texto = "🔴 Risco alto de ciclone";
+    cor = "#c62828";
+  }
+
+  return { nivel, texto, cor };
+}
+
+const riscoCiclone = calcularRiscoCiclone(pressaoAtual, rajadaAtual);
+ 
+ 
  
  linhaVisibilidade.innerHTML = `
   <div style="display:flex; flex-direction:column; gap:1px; font-size:13px">
@@ -1552,6 +1585,9 @@ atualizarPainelSolar();
     <div>
       🌪️ Velocidade das Rajadas dos ventos:<b>${rajadas} km/h</b> 
     </div>
+    <div>
+        🌀 Risco Ciclônico:<b>${riscoCiclone.nivel}<b>(${riscoCiclone.texto})</b>
+        </div>
   </div>
 `;
 
