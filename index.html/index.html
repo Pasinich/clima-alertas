@@ -2,9 +2,38 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<title>Clima & Pressão Atmosférica</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
+
+<title>Clima & Pressão Atmosférica</title>
+
+<!-- 🔒 BLOQUEAR USO EM IFRAME -->
+<meta http-equiv="X-Frame-Options" content="DENY">
+
+<!-- 🔒 NÃO ENVIAR REFERÊNCIA -->
+<meta name="referrer" content="no-referrer">
+
+<!-- 🔒 CONTENT SECURITY POLICY - PRODUÇÃO (GITHUB PAGES) 
+Colar quando for rodar pela internet. só aceita https-->
+<meta http-equiv="Content-Security-Policy"
+content="
+default-src 'self';
+script-src 'self' https://cdn.jsdelivr.net;
+style-src 'self' 'unsafe-inline';
+img-src 'self' https: data:;
+connect-src 'self' https://api.open-meteo.com https://nominatim.openstreetmap.org https:;
+font-src 'self' https:;
+object-src 'none';
+frame-ancestors 'none';
+base-uri 'self';
+form-action 'self';
+upgrade-insecure-requests;
+">
+
+
+<!-- Chart.js -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+
 
 <style>
 /* =========================
@@ -401,6 +430,31 @@ canvas{
 <script src="https://cdnjs.cloudflare.com/ajax/libs/suncalc/1.9.0/suncalc.min.js"></script>
 <script>
 
+function proteger(texto) {
+  return String(texto)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+
+/* ===== ESTILOS DO BOTÃO ===== */
+  const style = document.createElement("style");
+  style.innerHTML = `
+    @keyframes pulsar {0% {transform: scale(1);} 50% {transform: scale(1.15);} 100% {transform: scale(1);}}
+    .pulsando {animation: pulsar 1s infinite;}
+
+    #btnOuvir {
+      position:absolute; bottom:01px; top:01px;right:01px; border:none; background:#ffffffcc;
+      font-size:20px; cursor:pointer; border-radius:50%; width:50px; height:50px;
+      display:flex; align-items:center; justify-content:center; box-shadow:0 2px 6px rgba(0,0,0,0.25);
+      transition: transform 0.2s;
+    }
+  `;
+  document.head.appendChild(style);
+
 function limparTela(){
   info.innerHTML = "⏳ Carregando dados...";
   linhaPressao.innerHTML = "";
@@ -552,7 +606,7 @@ function pararRelogio() {
 }
 
 /* =========================
-   GEOLOCALIZAÇÃO INICIAL
+   GEOLOCALIZAÇÃO INICIAL (OTIMIZADA)
 ========================= */
 
 if (navigator.geolocation) {
@@ -565,13 +619,13 @@ if (navigator.geolocation) {
       lat = pos.coords.latitude;
       lon = pos.coords.longitude;
 
-      // 🔥 1️⃣ CHAMA O CLIMA IMEDIATAMENTE
-        // Para relógio 
       pararRelogio();
       limparTela();
-      buscar_cidade();  
 
-      // 🔹 2️⃣ BUSCA O NOME DA CIDADE EM PARALELO
+      // 🔥 1️⃣ Busca o clima imediatamente (mais importante)
+      buscar_cidade();
+
+      // 🔹 2️⃣ Busca o nome da cidade em paralelo (não bloqueia nada)
       buscarNomeCidade(lat, lon);
 
     },
@@ -580,9 +634,9 @@ if (navigator.geolocation) {
       console.log("Erro geolocalização:", erro);
     },
     {
-      enableHighAccuracy: true,
-      timeout: 15000,
-      maximumAge: 0
+      enableHighAccuracy: false,  // ⚡ mais rápido (WiFi + torre)
+      timeout: 8000,              // espera até 8s
+      maximumAge: 60000           // usa localização recente (até 1 min)
     }
   );
 
@@ -640,7 +694,6 @@ async function buscarNomeCidade(lat, lon) {
     nomeCidade.innerText = "📍Sua localização";
   }
 }
-
 
 /* =========================
    Distância das cidades até a praia 
@@ -2035,9 +2088,9 @@ if (possuiPraia) {
     if (!el) return;
 
     if (valor != null) {
-      el.innerHTML = valor.toFixed(1) + " metros";
+      el.textContent = valor.toFixed(1) + " metros";
     } else {
-      el.innerHTML = "-";
+      el.textContent = "-";
     }
   });
 }
@@ -2080,17 +2133,25 @@ const fotografia = `${avaliacaoFoto} <b style="color:#696969;font-size:13px;"></
 //const fotografia = `${avaliacaoFoto} <b style="color:#696969;font-size:13px;"> | Hora de Ouro</b>(${horarioOuro})`;
 
 
+
+
 /* ===== MONTA LINHA STATUS FINAL ===== */
+
 const mobileView = true; // true = Android / false = desktop
 const alertaTexto = "";
 
 const nomeCidadePainel = nomeCidadeFinal ?? "-";
 const estadoPainel = estado ? " - " + estado : "";
 
-
-
 // Painel relativo para posicionar o botão flutuante
 linhaStatus.style.position = "relative";
+
+
+/* ===== Fundo azul no painel ===== */
+linhaStatus.style.background = "#e6f2ff"; // azul bem suave
+linhaStatus.style.padding = "10px";
+linhaStatus.style.borderRadius = "10px";
+
 
 // Monta a seção Praia/Ondas/Piscina
 let secaoAgua = "";
@@ -2120,7 +2181,7 @@ linhaStatus.innerHTML = `
 
 <div style="margin-top:4px">
     <b style="color:#8B008B;font-size:14px;">
-      Previsão do Tempo Em</b>(${nomeCidadePainel})<br>
+      Previsão do Tempo Em</b>(${proteger(nomeCidadePainel)})<br>
   </div>
   
 
@@ -2180,20 +2241,7 @@ linhaStatus.innerHTML = `
     <button id="btnOuvir" class="btnVoz">🔊</button>
   `;
 
-  /* ===== ESTILOS DO BOTÃO ===== */
-  const style = document.createElement("style");
-  style.innerHTML = `
-    @keyframes pulsar {0% {transform: scale(1);} 50% {transform: scale(1.15);} 100% {transform: scale(1);}}
-    .pulsando {animation: pulsar 1s infinite;}
-
-    #btnOuvir {
-      position:absolute; bottom:01px; top:01px;right:01px; border:none; background:#ffffffcc;
-      font-size:20px; cursor:pointer; border-radius:50%; width:50px; height:50px;
-      display:flex; align-items:center; justify-content:center; box-shadow:0 2px 6px rgba(0,0,0,0.25);
-      transition: transform 0.2s;
-    }
-  `;
-  document.head.appendChild(style);
+  
 
   /* ===== FUNÇÃO DE VOZ ===== */
   if ("speechSynthesis" in window) {
