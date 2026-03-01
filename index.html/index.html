@@ -1111,7 +1111,7 @@ async function buscar_cidade(){
  const rAtual = await fetch(
   `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}` +
   `&current_weather=true` +
-  `&hourly=temperature_2m,windgusts_10m,shortwave_radiation,apparent_temperature,relativehumidity_2m,pressure_msl,precipitation,precipitation_probability,visibility,cloudcover,windspeed_10m` +
+  `&hourly=temperature_2m,windgusts_10m,shortwave_radiation,apparent_temperature,relative_humidity_2m,pressure_msl,precipitation,precipitation_probability,visibility,cloudcover,windspeed_10m` +
   `&daily=sunrise,sunset,temperature_2m_min,temperature_2m_max,precipitation_sum,precipitation_probability_max,uv_index_max` +
   `&timezone=auto`
  );
@@ -1661,7 +1661,7 @@ if(vis !== null){
 }
 
 // confirmação por umidade + vento
-const umid = atual.hourly?.relativehumidity_2m?.[idx] ?? 0;
+const umid = atual.hourly?.relative_humidity_2m?.[idx] ?? 0;
 const vento = atual.current_weather.windspeed;
 
 if(vis !== null && umid >= 84 && vento <= 4){
@@ -1688,11 +1688,13 @@ function mostrarAlturaNuvens(atual) {
   }
 
   const horaAtualAPI = atual.current_weather?.time;
-  let idx = atual.hourly.time.findIndex(t => t === horaAtualAPI);
+  let idx = atual.hourly.time.findIndex(t => 
+  t.slice(0,13) === horaAtualAPI.slice(0,13)
+);
   if (idx === -1) idx = 0;
 
   const temp = atual.hourly.temperature_2m?.[idx];
-  const rh   = atual.hourly.relativehumidity_2m?.[idx];
+  const rh   = atual.hourly.relative_humidity_2m?.[idx];
   const cobertura = atual.hourly.cloudcover?.[idx] ?? "-";
 
   if (temp == null || rh == null) {
@@ -1710,7 +1712,7 @@ function mostrarAlturaNuvens(atual) {
   const alpha = ((a * temp) / (b + temp)) + Math.log(rh / 100);
   const dew = (b * alpha) / (a - alpha);
 
-  let alturaNuvens = Math.round(222 * (temp - dew));
+  let alturaNuvens = Math.round(125 * (temp - dew));
   if (alturaNuvens < 0) alturaNuvens = 0;
 
   let tipo;
@@ -1981,19 +1983,19 @@ const piscina = avaliarPiscina(
 );
 
 const alergiasTexto = avaliarAlergias(
-  atual.hourly.relativehumidity_2m?.[idx] ?? 50,
+  atual.hourly.relative_humidity_2m?.[idx] ?? 50,
   atual.hourly.windspeed_10m?.[idx] ?? 0,
   estacao
 );
 
 const gripeTexto = avaliarGripeResfriado(
-  atual.hourly.relativehumidity_2m?.[idx] ?? 50,
+  atual.hourly.relative_humidity_2m?.[idx] ?? 50,
   atual.current_weather.temperature
 );
 
 
 const mosquitosTexto = avaliarMosquitos(
-  atual.hourly.relativehumidity_2m?.[idx] ?? 50,
+  atual.hourly.relative_humidity_2m?.[idx] ?? 50,
   atual.hourly.precipitation_probability?.[idx] ?? 0,
   atual.current_weather.temperature
 );
@@ -2001,7 +2003,7 @@ const mosquitosTexto = avaliarMosquitos(
 const pragasTexto = avaliarPragas(
   atual.current_weather.temperature,
   atual.hourly.precipitation_probability[idx],
-  atual.hourly.relativehumidity_2m[idx]
+  atual.hourly.relative_humidity_2m[idx]
 );
 
   /* ===== IMPACTO SOMENTE BRASIL ===== */
