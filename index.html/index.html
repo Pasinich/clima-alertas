@@ -591,10 +591,14 @@ function pararRelogio() {
 }
 
 /* =========================
-   GEOLOCALIZAÇÃO INICIAL (OTIMIZADA)
+   GEOLOCALIZAÇÃO INICIAL (ESTÁVEL)
 ========================= */
 
-if (navigator.geolocation) {
+let carregandoLocal = false;
+
+if (navigator.geolocation && !carregandoLocal) {
+
+  carregandoLocal = true;
 
   nomeCidade.innerText = "📍Buscando sua localização...";
 
@@ -607,11 +611,17 @@ if (navigator.geolocation) {
       pararRelogio();
       limparTela();
 
-      // 🔥 1️⃣ Busca o clima imediatamente (mais importante)
-      buscar_cidade();
+      try {
+        // 🔥 Busca clima primeiro (principal)
+        await buscar_cidade();
 
-      // 🔹 2️⃣ Busca o nome da cidade em paralelo (não bloqueia nada)
-      buscarNomeCidade(lat, lon);
+        // 🔹 Depois busca nome da cidade
+        await buscarNomeCidade(lat, lon);
+
+      } catch (erro) {
+        console.log("Erro geral:", erro);
+        nomeCidade.innerText = "📍Sua localização";
+      }
 
     },
     (erro) => {
@@ -619,9 +629,9 @@ if (navigator.geolocation) {
       console.log("Erro geolocalização:", erro);
     },
     {
-      enableHighAccuracy: false,  // ⚡ mais rápido (WiFi + torre)
-      timeout: 8000,              // espera até 8s
-      maximumAge: 60000           // usa localização recente (até 1 min)
+      enableHighAccuracy: false,
+      timeout: 8000,
+      maximumAge: 60000
     }
   );
 
@@ -630,41 +640,40 @@ if (navigator.geolocation) {
 }
 
 
+
 /* =========================
-   FUNÇÃO PARA BUSCAR NOME
+   BUSCAR NOME DA CIDADE (OPEN-METEO)
 ========================= */
 async function buscarNomeCidade(lat, lon) {
 
   try {
 
     const resposta = await fetch(
-      `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&accept-language=pt`
+      `https://geocoding-api.open-meteo.com/v1/reverse?latitude=${lat}&longitude=${lon}&language=pt&format=json`
     );
+
+    if (!resposta.ok) {
+      throw new Error("Erro na API de geocoding");
+    }
 
     const dados = await resposta.json();
 
-    console.log("RETORNO NOMINATIM:", dados);
+    console.log("RETORNO OPEN-METEO:", dados);
 
-    if (dados?.address) {
+    if (dados?.results?.length > 0) {
 
-      const cidadeNome =
-        dados.address.city ||
-        dados.address.town ||
-        dados.address.village ||
-        dados.address.municipality ||
-        "";
+      const local = dados.results[0];
 
-      const estadoNome = dados.address.state || "";
-      const paisNome = dados.address.country || "";
-      const paisCode = dados.address.country_code?.toUpperCase() || "";
+      const cidadeNome = local.name || "";
+      const estadoNome = local.admin1 || "";
+      const paisNome = local.country || "";
+      const paisCode = local.country_code?.toUpperCase() || "";
 
       if (cidadeNome) {
         nomeCidade.innerText =
           paisCode === "BR"
             ? `${cidadeNome} - ${estadoNome}`
             : `${cidadeNome} - ${paisNome}`;
-      } else if (estadoNome) {
-        nomeCidade.innerText = estadoNome;
       } else {
         nomeCidade.innerText = "📍Sua localização";
       }
@@ -672,6 +681,8 @@ async function buscarNomeCidade(lat, lon) {
       paisSelecionado = paisCode;
       estadoSelecionado = estadoNome;
 
+    } else {
+      nomeCidade.innerText = "📍Sua localização";
     }
 
   } catch (erro) {
@@ -679,6 +690,8 @@ async function buscarNomeCidade(lat, lon) {
     nomeCidade.innerText = "📍Sua localização";
   }
 }
+
+
 
 /* =========================
    Distância das cidades até a praia 
