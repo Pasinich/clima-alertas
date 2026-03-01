@@ -9,8 +9,8 @@
 <!-- 🔒 BLOQUEAR USO EM IFRAME -->
 <meta http-equiv="X-Frame-Options" content="DENY">
 
-<!-- 🔒 REFERRER CORRIGIDO -->
-<meta name="referrer" content="strict-origin-when-cross-origin">
+<!-- 🔒 NÃO ENVIAR REFERÊNCIA -->
+<meta name="referrer" content="no-referrer">
 
 <!-- 🔒 CONTENT SECURITY POLICY - PRODUÇÃO (GITHUB PAGES) -->
 <meta http-equiv="Content-Security-Policy"
@@ -25,6 +25,7 @@ frame-ancestors 'none';
 base-uri 'self';
 form-action 'self';
 ">
+
 
 
 <!-- Chart.js -->
@@ -603,14 +604,10 @@ function pararRelogio() {
 }
 
 /* =========================
-   GEOLOCALIZAÇÃO INICIAL (ESTÁVEL)
+   GEOLOCALIZAÇÃO INICIAL
 ========================= */
 
-let carregandoLocal = false;
-
-if (navigator.geolocation && !carregandoLocal) {
-
-  carregandoLocal = true;
+if (navigator.geolocation) {
 
   nomeCidade.innerText = "📍Buscando sua localização...";
 
@@ -620,20 +617,16 @@ if (navigator.geolocation && !carregandoLocal) {
       lat = pos.coords.latitude;
       lon = pos.coords.longitude;
 
+      // 🔥 1️⃣ CHAMA O CLIMA IMEDIATAMENTE
+        // Para relógio 
       pararRelogio();
       limparTela();
+      await buscarNomeCidade(lat, lon);
+      buscar_cidade();  
+      
 
-      try {
-        // 🔥 Busca clima primeiro (principal)
-        await buscar_cidade();
-
-        // 🔹 Depois busca nome da cidade
-        await buscarNomeCidade(lat, lon);
-
-      } catch (erro) {
-        console.log("Erro geral:", erro);
-        nomeCidade.innerText = "📍Sua localização";
-      }
+      // 🔹 2️⃣ BUSCA O NOME DA CIDADE EM PARALELO
+      buscarNomeCidade(lat, lon);
 
     },
     (erro) => {
@@ -641,10 +634,10 @@ if (navigator.geolocation && !carregandoLocal) {
       console.log("Erro geolocalização:", erro);
     },
     {
-      enableHighAccuracy: false,
-      timeout: 8000,
-      maximumAge: 60000
-    }
+  enableHighAccuracy: false, // ⚡ muito mais rápido
+  timeout: 8000,             // menor tempo
+  maximumAge: 60000          // aceita posição dos últimos 60s
+}
   );
 
 } else {
@@ -652,40 +645,41 @@ if (navigator.geolocation && !carregandoLocal) {
 }
 
 
-
 /* =========================
-   BUSCAR NOME DA CIDADE (OPEN-METEO)
+   FUNÇÃO PARA BUSCAR NOME
 ========================= */
 async function buscarNomeCidade(lat, lon) {
 
   try {
 
     const resposta = await fetch(
-      `https://geocoding-api.open-meteo.com/v1/reverse?latitude=${lat}&longitude=${lon}&language=pt&format=json`
+      `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&accept-language=pt`
     );
-
-    if (!resposta.ok) {
-      throw new Error("Erro na API de geocoding");
-    }
 
     const dados = await resposta.json();
 
-    console.log("RETORNO OPEN-METEO:", dados);
+    console.log("RETORNO NOMINATIM:", dados);
 
-    if (dados?.results?.length > 0) {
+    if (dados?.address) {
 
-      const local = dados.results[0];
+      const cidadeNome =
+        dados.address.city ||
+        dados.address.town ||
+        dados.address.village ||
+        dados.address.municipality ||
+        "";
 
-      const cidadeNome = local.name || "";
-      const estadoNome = local.admin1 || "";
-      const paisNome = local.country || "";
-      const paisCode = local.country_code?.toUpperCase() || "";
+      const estadoNome = dados.address.state || "";
+      const paisNome = dados.address.country || "";
+      const paisCode = dados.address.country_code?.toUpperCase() || "";
 
       if (cidadeNome) {
         nomeCidade.innerText =
           paisCode === "BR"
             ? `${cidadeNome} - ${estadoNome}`
             : `${cidadeNome} - ${paisNome}`;
+      } else if (estadoNome) {
+        nomeCidade.innerText = estadoNome;
       } else {
         nomeCidade.innerText = "📍Sua localização";
       }
@@ -693,8 +687,6 @@ async function buscarNomeCidade(lat, lon) {
       paisSelecionado = paisCode;
       estadoSelecionado = estadoNome;
 
-    } else {
-      nomeCidade.innerText = "📍Sua localização";
     }
 
   } catch (erro) {
@@ -702,7 +694,6 @@ async function buscarNomeCidade(lat, lon) {
     nomeCidade.innerText = "📍Sua localização";
   }
 }
-
 
 
 /* =========================
