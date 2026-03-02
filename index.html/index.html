@@ -1767,7 +1767,7 @@ function obterPosicaoLua(lat, lon) {
       Math.sin(lambda * rad)
     );
 
-    const GMST = ((18.697374558 + 24.06570982441908 * dias) % 24 + 24) % 24; e 
+    const GMST = ((18.697374558 + 24.06570982441908 * dias) % 24 + 24) % 24;
 
     // Normaliza LST corretamente
     const LST = ((GMST * 15 + lon) % 360 + 360) % 360;
