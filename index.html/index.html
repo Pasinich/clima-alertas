@@ -1735,52 +1735,73 @@ function mostrarAlturaNuvens(atual) {
 }
 
 /* =========================
-   POSIÇÃO DA LUA
+   POSIÇÃO DA LUA - CORRIGIDO
 ========================= */
 function obterPosicaoLua(lat, lon) {
 
   const agora = new Date();
   const rad = Math.PI / 180;
 
-  const dias = (agora - new Date('2000-01-01T12:00:00Z')) / 86400000;
-
-  const L = (218.316 + 13.176396 * dias) % 360;
-  const M = (134.963 + 13.064993 * dias) % 360;
-
-  const lambda = L + 6.289 * Math.sin(M * rad);
-  const beta = 5.128 * Math.sin((93.272 + 13.229350 * dias) * rad);
-
+  const latRad = lat * rad;
   const obliq = 23.44;
 
-  const ra = Math.atan2(
-    Math.sin(lambda * rad) * Math.cos(obliq * rad) - Math.tan(beta * rad) * Math.sin(obliq * rad),
-    Math.cos(lambda * rad)
-  );
+  function calcularPosicao(data) {
 
-  const dec = Math.asin(
-    Math.sin(beta * rad) * Math.cos(obliq * rad) +
-    Math.cos(beta * rad) * Math.sin(obliq * rad) * Math.sin(lambda * rad)
-  );
+    const dias = (data - new Date('2000-01-01T12:00:00Z')) / 86400000;
 
-  const GMST = (18.697374558 + 24.06570982441908 * dias) % 24;
-  const LST = (GMST * 15 + lon) % 360;
+    const L = (218.316 + 13.176396 * dias) % 360;
+    const M = (134.963 + 13.064993 * dias) % 360;
 
-  const HA = (LST - (ra / rad)) * rad;
+    const lambda = L + 6.289 * Math.sin(M * rad);
+    const beta = 5.128 * Math.sin((93.272 + 13.229350 * dias) * rad);
 
-  const latRad = lat * rad;
+    const ra = Math.atan2(
+      Math.sin(lambda * rad) * Math.cos(obliq * rad) -
+      Math.tan(beta * rad) * Math.sin(obliq * rad),
+      Math.cos(lambda * rad)
+    );
 
-  const altura = Math.asin(
-    Math.sin(dec) * Math.sin(latRad) +
-    Math.cos(dec) * Math.cos(latRad) * Math.cos(HA)
-  ) / rad;
+    const dec = Math.asin(
+      Math.sin(beta * rad) * Math.cos(obliq * rad) +
+      Math.cos(beta * rad) * Math.sin(obliq * rad) *
+      Math.sin(lambda * rad)
+    );
 
-  const azimute = Math.atan2(
-    -Math.sin(HA),
-    Math.tan(dec) * Math.cos(latRad) -
-    Math.sin(latRad) * Math.cos(HA)
-  ) / rad;
+    const GMST = ((18.697374558 + 24.06570982441908 * dias) % 24 + 24) % 24; e 
 
-  let azFinal = (azimute + 360) % 360;
+    // Normaliza LST corretamente
+    const LST = ((GMST * 15 + lon) % 360 + 360) % 360;
+
+    const HA = (LST - (ra / rad)) * rad;
+
+    const altura = Math.asin(
+      Math.sin(dec) * Math.sin(latRad) +
+      Math.cos(dec) * Math.cos(latRad) *
+      Math.cos(HA)
+    ) / rad;
+
+    const azimute = Math.atan2(
+      -Math.sin(HA),
+      Math.tan(dec) * Math.cos(latRad) -
+      Math.sin(latRad) * Math.cos(HA)
+    ) / rad;
+
+    const azFinal = (azimute + 360) % 360;
+
+    return { altura, azFinal };
+  }
+
+  // Posição atual
+  const atual = calcularPosicao(agora);
+
+  // Posição daqui 5 minutos (movimento real)
+  const daqui5min = new Date(agora.getTime() + 5 * 60000);
+  const futuro = calcularPosicao(daqui5min);
+
+  const altura = atual.altura;
+  const azFinal = atual.azFinal;
+
+  const movimento = futuro.altura > altura ? "Subindo" : "Descendo";
 
   // Direção cardinal
   let direcao = "";
@@ -1793,21 +1814,21 @@ function obterPosicaoLua(lat, lon) {
   else if (azFinal < 292.5) direcao = "Oeste";
   else direcao = "Noroeste";
 
-  // Subindo ou descendo
-  const daqui5min = new Date(agora.getTime() + 5 * 60000);
-  const novaAltura = altura + 0.2;
-  const movimento = novaAltura > altura ? "Subindo" : "Descendo";
-
   // Texto altura
   let textoAltura = "";
-  if (altura < 0) textoAltura = `Altura:<b>${altura.toFixed(1)}° (Abaixo do Horizonte)</b>`
-  else if (altura < 10) textoAltura = `Altura:<b>${altura.toFixed(1)}° (Baixa no horizonte-${movimento})</b>;`
-  else if (altura < 60) textoAltura = `Altura:<b>${altura.toFixed(1)}° (Média altura-${movimento})</b>`
-  else textoAltura = `Altura:<b>${altura.toFixed(1)}° (Alta no céu - ${movimento})</b>;`
+
+  if (altura < 0)
+    textoAltura = `Altura:<b>${altura.toFixed(1)}° (Abaixo do Horizonte)</b>`;
+  else if (altura < 10)
+    textoAltura = `Altura:<b>${altura.toFixed(1)}° (Baixa no horizonte - ${movimento})</b>`;
+  else if (altura < 60)
+    textoAltura = `Altura:<b>${altura.toFixed(1)}° (Média altura - ${movimento})</b>`;
+  else
+    textoAltura = `Altura:<b>${altura.toFixed(1)}° (Alta no céu - ${movimento})</b>`;
 
   return {
     azimuteFormatado: `Direção:<b>${azFinal.toFixed(1)}° (${direcao})</b>`,
-alturaFormatada: textoAltura
+    alturaFormatada: textoAltura
   };
 }
 
