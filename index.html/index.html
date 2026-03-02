@@ -424,7 +424,7 @@ canvas{
 </script>
 
 
-
+<script src="https://cdnjs.cloudflare.com/ajax/libs/suncalc/1.9.0/suncalc.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/suncalc/1.9.0/suncalc.min.js"></script>
 <script>
 
@@ -1733,6 +1733,87 @@ function mostrarAlturaNuvens(atual) {
     debug: `Temp:${temp}°C RH:${rh}% Dew:${dew.toFixed(1)}`
   };
 }
+
+/* =========================
+   POSIÇÃO DA LUA
+========================= */
+function obterPosicaoLua(lat, lon) {
+
+  const agora = new Date();
+  const rad = Math.PI / 180;
+
+  const dias = (agora - new Date('2000-01-01T12:00:00Z')) / 86400000;
+
+  const L = (218.316 + 13.176396 * dias) % 360;
+  const M = (134.963 + 13.064993 * dias) % 360;
+
+  const lambda = L + 6.289 * Math.sin(M * rad);
+  const beta = 5.128 * Math.sin((93.272 + 13.229350 * dias) * rad);
+
+  const obliq = 23.44;
+
+  const ra = Math.atan2(
+    Math.sin(lambda * rad) * Math.cos(obliq * rad) - Math.tan(beta * rad) * Math.sin(obliq * rad),
+    Math.cos(lambda * rad)
+  );
+
+  const dec = Math.asin(
+    Math.sin(beta * rad) * Math.cos(obliq * rad) +
+    Math.cos(beta * rad) * Math.sin(obliq * rad) * Math.sin(lambda * rad)
+  );
+
+  const GMST = (18.697374558 + 24.06570982441908 * dias) % 24;
+  const LST = (GMST * 15 + lon) % 360;
+
+  const HA = (LST - (ra / rad)) * rad;
+
+  const latRad = lat * rad;
+
+  const altura = Math.asin(
+    Math.sin(dec) * Math.sin(latRad) +
+    Math.cos(dec) * Math.cos(latRad) * Math.cos(HA)
+  ) / rad;
+
+  const azimute = Math.atan2(
+    -Math.sin(HA),
+    Math.tan(dec) * Math.cos(latRad) -
+    Math.sin(latRad) * Math.cos(HA)
+  ) / rad;
+
+  let azFinal = (azimute + 360) % 360;
+
+  // Direção cardinal
+  let direcao = "";
+  if (azFinal >= 337.5 || azFinal < 22.5) direcao = "Norte";
+  else if (azFinal < 67.5) direcao = "Nordeste";
+  else if (azFinal < 112.5) direcao = "Leste";
+  else if (azFinal < 157.5) direcao = "Sudeste";
+  else if (azFinal < 202.5) direcao = "Sul";
+  else if (azFinal < 247.5) direcao = "Sudoeste";
+  else if (azFinal < 292.5) direcao = "Oeste";
+  else direcao = "Noroeste";
+
+  // Subindo ou descendo
+  const daqui5min = new Date(agora.getTime() + 5 * 60000);
+  const novaAltura = altura + 0.2;
+  const movimento = novaAltura > altura ? "Subindo" : "Descendo";
+
+  // Texto altura
+  let textoAltura = "";
+  if (altura < 0) textoAltura = `Altura:<b>${altura.toFixed(1)}° (Abaixo do Horizonte)</b>;`
+  else if (altura < 10) textoAltura = `Altura:<b>${altura.toFixed(1)}° (Baixa no horizonte-${movimento})</b>;`
+  else if (altura < 60) textoAltura = `Altura:<b>${altura.toFixed(1)}° (Média altura-${movimento})</b>`
+  else textoAltura = `Altura:<b>${altura.toFixed(1)}° (Alta no céu - ${movimento})</b>;`
+
+  return {
+    azimuteFormatado: `Direção:<b>${azFinal.toFixed(1)}° (${direcao})</b>`,
+alturaFormatada: textoAltura
+  };
+}
+
+const posLua = obterPosicaoLua(lat, lon);
+
+
 // =========================
 // USO NO PAINEL
 // =========================
@@ -1748,6 +1829,9 @@ linhaUmidade.innerHTML =`
    <div>👁️Visibilidade:<b>${visibilidade} km</b>
      • 🏔️Altura das nuvens:<b>${alturaNuvens} m(${alturaPes} ft)</b></div>
     <div>🌙Lua:<b>${lua.fase}</b> • Luar:<b>${lua.iluminacao}%</b> • Idade:<b>${lua.idade} dias</b>
+<div>
+      🧭${posLua.azimuteFormatado} • ⏫${posLua.alturaFormatada}
+    </div>
 </div>`;
 
 
