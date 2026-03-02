@@ -1800,7 +1800,7 @@ function obterPosicaoLua(lat, lon) {
 
   // Texto altura
   let textoAltura = "";
-  if (altura < 0) textoAltura = `Altura:<b>${altura.toFixed(1)}° (Abaixo do Horizonte)</b>;`
+  if (altura < 0) textoAltura = `Altura:<b>${altura.toFixed(1)}° (Abaixo do Horizonte)</b>`
   else if (altura < 10) textoAltura = `Altura:<b>${altura.toFixed(1)}° (Baixa no horizonte-${movimento})</b>;`
   else if (altura < 60) textoAltura = `Altura:<b>${altura.toFixed(1)}° (Média altura-${movimento})</b>`
   else textoAltura = `Altura:<b>${altura.toFixed(1)}° (Alta no céu - ${movimento})</b>;`
