@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Turismo PRO</title>
+
+<style>
+body { font-family: Arial; background: #e6f4ea; margin:0; }
+header { background:#0d47a1; color:#fff; padding:15px; text-align:center; font-size:22px; }
+.container { padding:12px; }
+
+.input-box{display:flex; gap:6px;}
+input { flex:1; padding:10px; border-radius:10px; border:1px solid #ccc; }
+
+.voice{
+  padding:10px; border-radius:10px; border:none;
+  background:#1976d2; color:white; cursor:pointer; transition: background 0.3s;
+}
+.voice.ouvindo{ animation: piscar 1s infinite alternate; }
+@keyframes piscar { 0% { background: #f44336; } 100% { background: #d32f2f; } }
+
+.progress-wrapper{ margin-top:10px; display:none; }
+.progress-text{ font-size:13px; margin-bottom:4px; }
+.progress-container{ width:100%; height:12px; background:#ddd; border-radius:20px; overflow:hidden; position:relative; }
+.progress-bar{ height:100%; width:0%; background:linear-gradient(90deg,#4caf50,#81c784); transition:width .4s; }
+.progress-bar.pulsante{ animation: pulseBar 1s infinite; }
+@keyframes pulseBar { 0% { opacity:0.6; } 50% { opacity:1; } 100% { opacity:0.6; } }
+.progress-percent{ text-align:right; font-size:12px; }
+
+.abas { display:flex; gap:5px; margin-top:10px; flex-wrap:wrap; }
+.aba { padding:5px 8px; background:#ddd; border-radius:8px; cursor:pointer; font-size:11px; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
+.aba.ativa { background:#1976d2; color:white; }
+
+.conteudo-aba { display:none; }
+.conteudo-aba.ativo { display:block; }
+
+.lista { background:white; border-radius:10px; max-height:200px; overflow:auto; }
+.item { padding:8px; cursor:pointer; border-bottom:1px solid #eee; }
+.card { background:white; margin-top:12px; padding:12px; border-radius:16px; box-shadow:0 4px 10px rgba(0,0,0,0.1); }
+.botao { display:inline-block; margin:4px 4px 0 0; padding:6px 10px; background:#1976d2; color:white; border-radius:8px; text-decoration:none; font-size:12px; }
+</style>
+</head>
+
+<body>
+
+<header>🌎 Turismo PRO</header>
+
+<div class="container">
+
+<div class="input-box">
+  <input id="cidade" placeholder="Digite a cidade..." oninput="buscarCidades()" onclick="limparBusca()">
+  <button class="voice" onclick="iniciarVoz()">🎤</button>
+</div>
+
+<div id="progressWrapper" class="progress-wrapper">
+  <div id="progressText" class="progress-text"></div>
+  <div class="progress-container"><div id="barra" class="progress-bar"></div></div>
+  <div id="percent" class="progress-percent">0%</div>
+</div>
+
+<div id="listaCidades" class="lista"></div>
+<div id="abas"></div>
+<div id="conteudoAbas"></div>
+
+</div>
+
+<script>
+let cidadeSelecionada=null;
+let secoesGlobal=[];
+const GEOAPIFY_KEY = "fe0e3b15d5a24081addfa75fd5762fbd";
+
+const delay = ms => new Promise(r => setTimeout(r, ms));
+
+function limparBusca(){
+  cidade.value="";
+  cidadeSelecionada=null;
+  listaCidades.innerHTML="";
+  abas.innerHTML="";
+  conteudoAbas.innerHTML="";
+  esconderBarra();
+}
+
+function mostrarBarra(){ progressWrapper.style.display="block"; barra.classList.add("pulsante"); }
+function esconderBarra(){ progressWrapper.style.display="none"; barra.classList.remove("pulsante"); }
+function atualizarBarra(p,texto){ barra.style.width=p+"%"; percent.innerText=Math.floor(p)+"%"; if(texto) progressText.innerText=texto; if(p>=100) barra.classList.remove("pulsante"); }
+
+async function buscarCidades(){
+  const txt = cidade.value.trim();
+
+  if(txt.length < 2){
+    listaCidades.innerHTML = "";
+    return;
+  }
+
+  listaCidades.innerHTML = "<div class='item'>🔎 Buscando...</div>";
+
+  try{
+    let lista = [];
+    const r = await fetch(
+  `https://api.geoapify.com/v1/geocode/autocomplete?text=${encodeURIComponent(txt)}&limit=10&lang=pt&filter=countrycode:br&apiKey=${GEOAPIFY_KEY}`
+);
+const data = await r.json();
+
+if(data.features){
+  lista = data.features.map(f => ({
+    name: f.properties.city || f.properties.name,
+    admin1: f.properties.state || "",
+    latitude: f.properties.lat,
+    longitude: f.properties.lon,
+    country: f.properties.country_code?.toUpperCase()
+  }));
+}
+
+    if(!lista.length){
+      const r2 = await fetch(
+        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(txt + ", Brasil")}&format=json&addressdetails=1&limit=10&accept-language=pt`
+      );
+
+      const data2 = await r2.json();
+
+      lista = data2.map(c => ({
+        name:
+          c.address?.city ||
+          c.address?.town ||
+          c.address?.village ||
+          c.address?.municipality ||
+          "",
+        admin1: c.address?.state || "",
+        latitude: parseFloat(c.lat),
+        longitude: parseFloat(c.lon),
+        country: c.address?.country_code?.toUpperCase()
+      })).filter(c => c.name);
+    }
+
+    lista = lista.filter(c => c.name && c.name.length > 2);
+
+    const mapa = new Map();
+    lista.forEach(c=>{
+      const chave = c.name + c.admin1;
+      if(!mapa.has(chave)) mapa.set(chave,c);
+    });
+    lista = Array.from(mapa.values());
+
+    lista.sort((a,b)=>{
+      const aBR = a.country === "BR";
+      const bBR = b.country === "BR";
+
+      if(aBR && !bBR) return -1;
+      if(!aBR && bBR) return 1;
+
+      // aproximação por nome
+      const aMatch = a.name.toLowerCase().startsWith(txt.toLowerCase());
+      const bMatch = b.name.toLowerCase().startsWith(txt.toLowerCase());
+
+      if(aMatch && !bMatch) return -1;
+      if(!aMatch && bMatch) return 1;
+
+      return 0;
+    });
+
+    // 🔹 RENDER
+    listaCidades.innerHTML = "";
+
+    if(!lista.length){
+      listaCidades.innerHTML = "<div class='item'>❌ Cidade não encontrada</div>";
+      return;
+    }
+
+    lista.slice(0,8).forEach(c=>{
+      const div = document.createElement("div");
+      div.className = "item";
+
+      div.innerText = `${c.name} - ${c.admin1}`;
+
+      div.onclick = ()=>{
+        cidadeSelecionada = c;
+        cidade.value = `${c.name} - ${c.admin1}`;
+        listaCidades.innerHTML = "";
+        montarAbasECards();
+      };
+
+      listaCidades.appendChild(div);
+    });
+
+  }catch(e){
+    listaCidades.innerHTML = "<div class='item'>⚠️ Erro ao buscar</div>";
+  }
+}
+
+
+// ✅ Função de Wikipedia geolocalizada
+async function buscarPontosTuristicosWiki(nomeCidade, lat, lon){
+  try {
+    let geoRes = await fetch(
+      `https://pt.wikipedia.org/w/api.php?action=query&format=json&origin=*&list=geosearch&gscoord=${lat}|${lon}&gsradius=10000&gslimit=10`
+    );
+    let geoData = await geoRes.json();
+    let pages = geoData.query.geosearch || [];
+    let page = pages.find(p => p.title.toLowerCase().includes(nomeCidade.toLowerCase()));
+    if(!page && pages.length) page = pages[0];
+
+    if(!page) {
+      let searchRes = await fetch(
+        `https://pt.wikipedia.org/w/api.php?action=query&format=json&origin=*&list=search&srsearch=${encodeURIComponent(nomeCidade)}&srlimit=1`
+      );
+      let searchData = await searchRes.json();
+      if(searchData.query.search.length) page = {title: searchData.query.search[0].title};
+    }
+
+    if(!page) return "Nenhuma informação confiável sobre esta cidade encontrada.";
+
+    let extractRes = await fetch(
+      `https://pt.wikipedia.org/w/api.php?action=query&format=json&origin=*&prop=extracts&exsectionformat=plain&titles=${encodeURIComponent(page.title)}&explaintext=1`
+    );
+    let extractData = await extractRes.json();
+    let key = Object.keys(extractData.query.pages)[0];
+    let texto = extractData.query.pages[key].extract;
+    return texto && texto.length>50 ? texto : "Nenhuma informação confiável sobre esta cidade encontrada.";
+  } catch (e) {
+    return "Não foi possível obter dados da cidade.";
+  }
+}
+
+async function montarAbasECards(){
+  if(!cidadeSelecionada) return;
+
+  mostrarBarra();
+  atualizarBarra(0,"Iniciando...");
+
+  abas.innerHTML='<div class="abas" id="botoesAbas"></div>';
+  conteudoAbas.innerHTML=`<div class="card"><b>${cidadeSelecionada.name} - ${cidadeSelecionada.admin1}</b></div>`;
+
+  const lat=cidadeSelecionada.latitude;
+  const lon=cidadeSelecionada.longitude;
+
+  const secoes=[
+    ["🏨Hotéis","tourism=hotel","ranking"],
+    ["🍽️Restaurantes","amenity=restaurant","ranking"],
+["📸Turismo",[
+
+  "tourism=attraction",
+  "tourism=museum",
+  "tourism=viewpoint",
+  "tourism=gallery",
+  "tourism=artwork",
+  "tourism=theme_park",
+  "tourism=zoo",
+
+  "leisure=park",
+  "leisure=garden",
+  "leisure=nature_reserve",
+  "leisure=recreation_ground",
+
+  "historic=monument",
+  "historic=memorial",
+  "historic=ruins",
+
+  "place=square",
+
+  "natural=water",
+  "natural=wood",
+  "natural=peak",
+
+  "amenity=place_of_worship"
+
+],null],
+
+    ["🎭Teatro/Cinema",["amenity=theatre","building=theatre","amenity=cinema"],null],
+    ["⚽Estádios",[
+  "leisure=stadium",
+  "leisure=pitch",
+  "amenity=sports_centre",
+  "sport=soccer",
+"building=stadium"
+],"estadio"],
+    [`📝Um pouco sobre:${cidadeSelecionada.name}`,"wiki_turistico",null]
+  ];
+
+  secoesGlobal=secoes;
+  const botoes=document.getElementById("botoesAbas");
+
+  for(let i=0;i<secoes.length;i++){
+    const s=secoes[i];
+
+    const btn=document.createElement("div");
+    btn.className="aba";
+    btn.innerText=s[0];
+    btn.onclick=()=>{
+      document.querySelectorAll(".aba").forEach(a=>a.classList.remove("ativa"));
+      document.querySelectorAll(".conteudo-aba").forEach(c=>c.classList.remove("ativo"));
+      btn.classList.add("ativa");
+      document.getElementById("aba_"+i).classList.add("ativo");
+    };
+    botoes.appendChild(btn);
+
+    const div=document.createElement("div");
+    div.id="aba_"+i;
+    div.className="conteudo-aba";
+
+    if(s[1]==="wiki_turistico"){
+      div.innerHTML="<p>Carregando informações turísticas...</p>";
+      buscarPontosTuristicosWiki(cidadeSelecionada.name, lat, lon).then(texto=>{
+        div.innerHTML=`<div class="card"><h3>${s[0]}</h3><p>${texto.replace(/\n/g,"<br><br>")}</p></div>`;
+      });
+    }
+
+    conteudoAbas.appendChild(div);
+    if(i===0){ btn.classList.add("ativa"); div.classList.add("ativo"); }
+  }
+
+  buscar(); // inicia busca Overpass
+}
+
+/* BUSCA POR VOZ */
+function iniciarVoz(){
+  const btn = document.querySelector(".voice");
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if(!SpeechRecognition){ alert("Sem suporte a voz"); return; }
+
+  const rec = new SpeechRecognition();
+  rec.lang="pt-BR";
+  btn.classList.add("ouvindo");
+  const iconOriginal = btn.innerText;
+  btn.innerText = "🔴";
+
+  rec.start();
+  rec.onresult = async (e)=>{
+    let texto = e.results[0][0].transcript.toLowerCase();
+    cidade.value=texto;
+    await buscarCidades();
+  };
+  rec.onend = rec.onerror = ()=>{
+    btn.classList.remove("ouvindo");
+    btn.innerText = iconOriginal;
+  };
+}
+
+/* ================= OVERPASS ================= */
+function montarQuery(filtro,lat,lon,raio){
+  if(Array.isArray(filtro)){
+    return `[out:json][timeout:25];(${filtro.map(f => `node(around:${raio},${lat},${lon})[${f}];way(around:${raio},${lat},${lon})[${f}];relation(around:${raio},${lat},${lon})[${f}];`).join("")});out center 20;`;
+  }
+  return `[out:json][timeout:25];(node(around:${raio},${lat},${lon})[${filtro}];way(around:${raio},${lat},${lon})[${filtro}];relation(around:${raio},${lat},${lon})[${filtro}];);out center 20;`;
+}
+
+async function fetchOverpass(lat,lon,filtro){
+  const raios=[5000,10000,15000,25000,35000];
+  for(let r of raios){
+    try{
+      const res = await fetch("https://overpass-api.de/api/interpreter",{ method:"POST", body:montarQuery(filtro,lat,lon,r)});
+      if(!res.ok) continue;
+      const data=await res.json();
+      if(data?.elements?.length) return data;
+      await delay(1500);
+    }catch{}
+  }
+  return {elements:[]};
+}
+
+async function buscar(){
+  mostrarBarra();
+  atualizarBarra(0,"Iniciando...");
+  const lat=cidadeSelecionada.latitude;
+  const lon=cidadeSelecionada.longitude;
+  let progresso=0;
+  const passo=100/secoesGlobal.length;
+
+  for(let i=0;i<secoesGlobal.length;i++){
+    atualizarBarra(progresso,secoesGlobal[i][0]);
+    await secao(i,secoesGlobal[i][0],secoesGlobal[i][1],lat,lon,secoesGlobal[i][2]);
+    progresso+=passo;
+    atualizarBarra(progresso);
+  }
+  atualizarBarra(100,"Concluído ✔");
+}
+
+async function secao(index,titulo,filtro,lat,lon,modo){
+  const container=document.getElementById("aba_"+index);
+
+  if(filtro==="wiki_turistico") return;
+
+  container.innerHTML=`<div class="card"><h3>${titulo}</h3>Buscando...</div>`;
+
+  let elementos=[];
+
+  if(Array.isArray(filtro)){
+    const resultados = await Promise.all(filtro.map(f => fetchOverpass(lat, lon, f)));
+    elementos = resultados.flatMap(d => d.elements || []);
+  } else {
+    const d=await fetchOverpass(lat,lon,filtro);
+    elementos = d.elements || [];
+  }
+
+  if(!elementos.length){
+
+  try{
+
+    let categoria = "tourism";
+
+    if(titulo==="🏨Hotéis") categoria="accommodation.hotel";
+    if(titulo==="🍽️Restaurantes") categoria="catering.restaurant";
+    if(titulo==="⚽Estádios") categoria="sport.stadium";
+    if(titulo==="🎭Teatro/Cinema") categoria="entertainment";
+
+    const url = `https://api.geoapify.com/v2/places?categories=${categoria}&filter=circle:${lon},${lat},10000&limit=10&apiKey=${GEOAPIFY_KEY}`;
+    const res = await fetch(url);
+    const data = await res.json();
+
+    if(data.features && data.features.length){
+      elementos = data.features.map(f => {
+
+  const categorias = f.properties.categories || [];
+  const isStadium = categorias.some(c => c.includes("stadium"));
+
+  return {
+    type: "node",
+
+    tags:{
+      name: f.properties.name || "Local sem nome",
+      "addr:street": f.properties.street,
+      "addr:city": f.properties.city,
+      phone: f.properties.phone,
+
+      leisure: isStadium ? "stadium" : undefined,
+      building: isStadium ? "stadium" : undefined
+    },
+
+    lat: f.properties.lat,
+    lon: f.properties.lon
+  };
+});
+    }
+
+  }catch(e){}
+
+  if(!elementos.length){
+    container.innerHTML=`<div class="card">⚠️ Nenhum resultado encontrado</div>`;
+    return;
+  }
+}
+
+  let lista = elementos
+    .filter(p=>p.tags?.name && p.tags.name.length > 2)
+    .map(p=>{
+      let estrelas=parseInt(p.tags?.stars)||0;
+      const nome = (p.tags.name || "").toLowerCase();
+
+      let score =
+        (estrelas * 20) +
+        (p.tags.website ? 5 : 0) +
+        (p.tags.phone ? 4 : 0) +
+        (p.tags["addr:street"] ? 3 : 0) +
+        (p.tags.opening_hours ? 2 : 0);
+        
+  if(titulo==="⚽Estádios"){
+
+  if(p.type === "way" || p.type === "relation") score += 40;
+
+  if(nome.includes("estadio") || nome.includes("estádio")) score += 120;
+
+  if(nome.includes("arena") && nome.split(" ").length <= 4) score += 60;
+
+  if(p.tags.leisure === "stadium") score += 100;
+
+  if(p.tags.leisure === "pitch") score -= 100;
+
+  if(nome.includes("municipal")) score += 40;
+
+  if(nome.includes("olímpico") || nome.includes("olimpico")) score += 60;
+
+  if(nome.includes("campo") || nome.includes("quadra")) score -= 80;
+
+  if(p.tags.wikipedia) score += 150;
+  if(p.tags.wikidata) score += 180;
+
+  if(p.tags.capacity){
+    const cap = parseInt(p.tags.capacity) || 0;
+    if(cap > 40000) score += 150;
+    else if(cap > 20000) score += 100;
+    else if(cap > 10000) score += 60;
+  }
+
+  // 🧠 NOVO
+  if((p.type === "way" || p.type === "relation") && p.center){
+    score += 80;
+  }
+
+  if(p.tags.amenity === "sports_centre"){
+    score += 40;
+  }
+
+  if(p.tags.leisure === "pitch" && !p.tags.capacity){
+    score -= 120;
+  }
+
+  if(nome.includes("de ") && nome.includes("municipal")){
+    score += 50;
+  }
+
+  if(p.tags.website) score += 20;
+  if(p.tags.phone) score += 10;
+  if(p.tags["addr:street"]) score += 10;
+
+  if(p.tags.name && p.tags.name.length > 25) score -= 20;
+}
+
+      // 🔥 MELHORIA APENAS NO TURISMO
+      if(titulo==="📸Turismo"){
+
+// 🌟 DETECÇÃO DE PONTO TURÍSTICO FAMOSO
+let famoso = false;
+
+if(p.tags.wikidata) {
+  score += 200;
+  famoso = true;
+}
+
+if(p.tags.wikipedia){
+  score += 150;
+  famoso = true;
+}
+
+if(p.tags.tourism === "attraction"){
+  score += 80;
+}
+
+// Lugares que normalmente são relevantes
+if(
+  p.tags.tourism === "museum" ||
+  p.tags.tourism === "zoo" ||
+  p.tags.tourism === "theme_park"
+){
+  score += 90;
+}
+
+// Nome forte (fallback inteligente)
+if(
+  nome.includes("cachoeira") ||
+  nome.includes("parque nacional") ||
+  nome.includes("parque estadual")
+){
+  score += 100;
+  famoso = true;
+}
+
+// Pequeno boost final
+if(famoso) score += 50;
+
+  if(nome.includes("eco parque") || nome.includes("parque ecológico")) score+=120;
+
+  if(nome.includes("cachoeira")) score+=100;
+
+  if(nome.includes("parque")) score+=80;
+  if(nome.includes("mirante")) score+=70;
+  if(nome.includes("lago")) score+=60;
+  if(nome.includes("balneário")) score+=70;
+
+  if(nome.includes("praça")) score+=50;
+  if(nome.includes("bosque")) score+=50;
+  if(nome.includes("reserva")) score+=60;
+
+  if(p.tags.tourism) score+=40;
+  if(p.tags.leisure==="park") score+=50;
+  if(p.tags.historic) score+=30;
+  if(p.tags.natural) score+=40;
+
+  if(p.tags.website) score+=10;
+  if(p.tags.wikipedia) score+=20;
+
+  if(nome.includes("loja") || nome.includes("mercado")) score-=30;
+
+  if(score < 20) score += 20;
+}
+
+
+      return {...p, estrelas, score};
+    });
+
+  const nomes=new Set();
+  lista=lista.filter(p=>{
+    if(nomes.has(p.tags.name)) return false;
+    nomes.add(p.tags.name);
+    return true;
+  });
+
+  lista.sort((a,b)=>b.score-a.score);
+
+  let finalLista=[];
+
+  if(modo==="ranking"){
+    finalLista = lista
+      .sort((a,b)=> (b.estrelas - a.estrelas) || (b.score - a.score))
+      .slice(0,12);
+  }
+
+  else if(modo==="estadio"){
+
+  finalLista = lista.filter(p => {
+  const nome = (p.tags?.name || "").toLowerCase();
+
+  return (
+    p.tags?.leisure === "stadium" ||
+    p.tags?.building === "stadium" ||
+
+    nome.includes("estadio") ||
+    nome.includes("estádio") ||
+
+    (nome.includes("arena") && nome.split(" ").length <= 4) ||
+
+    nome.includes("municipal")
+    
+    && !nome.includes("society")
+&& !nome.includes("futebol")
+&& !nome.includes("escola")
+  );
+})
+  .filter((p, i, arr) =>
+    arr.findIndex(x => x.tags.name === p.tags.name) === i
+  )
+  .sort((a,b)=>b.score - a.score)
+  .slice(0,6);
+
+  if(finalLista.length === 0){
+    finalLista = lista.slice(0,5);
+  }
+}
+
+  else if(titulo==="🎭Teatro/Cinema"){
+    const teatros = lista
+      .filter(p=>p.tags?.amenity==="theatre" || p.tags?.building==="theatre")
+      .slice(0,6);
+
+    const cinemas = lista
+      .filter(p=>p.tags?.amenity==="cinema")
+      .slice(0,6);
+
+    finalLista = [...teatros, ...cinemas];
+  }
+  else if(titulo==="📸Turismo"){
+
+  finalLista = lista
+  .sort((a,b)=>b.score-a.score)
+  .slice(0,12);
+
+  // 🔥 fallback inteligente nível PRO
+  if(finalLista.length < 5){
+
+    const fallback = lista.filter(p=>{
+      const nome = (p.tags.name || "").toLowerCase();
+
+      return (
+        nome.includes("parque") ||
+        nome.includes("praça") ||
+        nome.includes("lago") ||
+        nome.includes("centro") ||
+        nome.includes("bosque")
+      );
+    });
+
+    finalLista = fallback.slice(0,10);
+
+    // 🔥 último fallback
+    if(finalLista.length < 3){
+      finalLista = lista.slice(0,10);
+    }
+  }
+}
+
+  else{
+    finalLista = lista.slice(0,12);
+  }
+
+  let html=`<div class="card"><h3>${titulo}</h3>`;
+
+  finalLista.forEach((p,i)=>{
+    const endereco=[
+      p.tags["addr:street"],
+      p.tags["addr:housenumber"],
+      p.tags["addr:city"]
+    ].filter(Boolean).join(", ");
+
+    let estrelas = p.estrelas ? " " + "⭐".repeat(p.estrelas) : "";
+    let destaque = "";
+
+if(p.tags.wikidata || p.tags.wikipedia){
+  destaque = "🌟 ";
+} else if(i===0){
+  destaque = "🏆 ";
+}
+
+    const latMapa = p.lat || p.center?.lat;
+    const lonMapa = p.lon || p.center?.lon;
+
+    html+=`
+    <p>
+      <b>${destaque}${p.tags.name}${estrelas}</b><br>
+      📍 ${endereco || "Endereço não informado"}<br>
+      📞 ${p.tags.phone || "Não informado"}<br>
+      ${p.tags.phone ? `<a class="botao" href="tel:${p.tags.phone.replace(/\D/g,"")}">📞 Ligar</a>` : ""}
+      ${latMapa && lonMapa ? `<a class="botao" target="_blank" href="https://www.google.com/maps/search/?api=1&query=${latMapa},${lonMapa}">📍 Mapa</a>` : ""}
+    </p><hr>`;
+  });
+
+  html+="</div>";
+  container.innerHTML=html;
+}
+
+</script>
+</body>
+</html>
