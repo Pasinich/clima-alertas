@@ -1604,19 +1604,19 @@ function calcularRiscoCiclone(pressao, rajada) {
   let texto = "🟢 Sem risco";
   let cor = "#2e7d32";
 
-  if (pressao < 1005 && rajada > 50) {
+  if (pressao < 1011.5 && rajada > 50) {
     nivel = "Moderado";
     texto = "🟡 Possibilidade formação de ciclone";
     cor = "#f9a825";
   }
 
-  if (pressao < 995 && rajada > 60) {
+  if (pressao < 1011.5 && rajada > 60) {
     nivel = "Elevado";
     texto = "🟠 Sistema ciclônico próximo";
     cor = "#ef6c00";
   }
 
-  if (pressao < 985 && rajada > 80) {
+  if (pressao < 1011.5 && rajada > 80) {
     nivel = "Perigoso";
     texto = "🔴 Risco alto de ciclone";
     cor = "#c62828";
