@@ -2017,9 +2017,14 @@ if (chuvaAtual > 0) {
   }
 
   /* ===== FENÔMENO ONI ===== */
-  let fenomeno = "Neutro";
+  let fenomeno = "Sem dados";
+
+if (oni !== null) {
   if (oni >= 0.5) fenomeno = "El Niño";
   else if (oni <= -0.5) fenomeno = "La Niña";
+  else fenomeno = "Neutro";
+}
+
 
 /* ===== AVALIAÇÕES  Atividades ===== */
 const pesca = avaliarPesca(
