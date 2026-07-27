@@ -1536,8 +1536,8 @@ const mostrarTempestadeSolar = false; // coloque true para mostrar
     ` : ""}
 <div style="display:flex; flex-direction:column; gap:1px; font-size:13px">
     <div>
-      🌧️Chuva acumulada hoje:<b>${Number(chuvaMMAtual).toFixed(1)} mm</b>
-     •  🌧️Probab. próximas horas:<b>${probChuvaAtual}%</b>
+      🌧️Prob.chuva acumul.hoje:<b>${Number(chuvaMMAtual).toFixed(1)} mm</b>
+     •  🌧️Prob.chuva próximas hs:<b>${probChuvaAtual}%</b>
     </div>
   </div>
   `;
@@ -1638,7 +1638,7 @@ const riscoCiclone = calcularRiscoCiclone(pressaoAtual, rajadaAtual);
     </div>
     <div style="display:flex; flex-direction:column; gap:1px; font-size:13px">
     <div>
-      🌪️ Velocidade das Rajadas dos ventos:<b>${rajadas} km/h</b> 
+      🌪️ Velocidade das rajadas dos ventos:<b>${rajadas} km/h</b> 
     </div>
     <div>
         🌀 Risco Ciclônico:<b>${riscoCiclone.nivel}<b>(${riscoCiclone.texto})</b>
